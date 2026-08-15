@@ -1,6 +1,29 @@
-@TravelAssistant_HostAddress = http://localhost:5263
+POST http://localhost:5263/api/trips
+Content-Type: application/json
 
-GET {{TravelAssistant_HostAddress}}/weatherforecast/
-Accept: application/json
+{
+  "destination": "Barcelona",
+  "startDate": "2026-09-05",
+  "endDate": "2026-09-10",
+  "type": "CityBreak",
+  "budget": 1500.00,
+  "currency": "EUR"
+}
 
 ###
+
+GET http://localhost:5263/api/trips
+
+###
+
+PUT http://localhost:5263/api/trips/cae55429-9de7-4959-8bd1-28051acb5f1a
+Content-Type: application/json
+
+{
+  "destination": "Barcelona",
+  "startDate": "2026-09-05",
+  "endDate": "2026-09-10",
+  "type": "Beach",
+  "budget": 1650.00,
+  "currency": "EUR"
+}

@@ -13,6 +13,9 @@
 .env.*
 !.env.example
 
+# Private local project planning
+/TASKS.md
+
 # Frontend dependencies and build output
 **/node_modules/
 **/dist/
