@@ -1,0 +1,18 @@
+﻿# .NET build output
+**/bin/
+**/obj/
+
+# Rider / IntelliJ project settings
+.idea/
+
+# Visual Studio user files
+.vs/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
