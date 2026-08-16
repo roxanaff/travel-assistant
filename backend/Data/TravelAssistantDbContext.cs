@@ -8,27 +8,29 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
 {
     public DbSet<Trip> Trips => Set<Trip>();
 
+    public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Trip>(trip =>
         {
-            trip.Property(item => item.Destination)
-                .HasMaxLength(200)
-                .IsRequired();
+            trip.Property(item => item.Destination).HasMaxLength(200).IsRequired();
+            trip.Property(item => item.Type).HasConversion<string>().HasMaxLength(30).IsRequired();
+            trip.Property(item => item.Budget).HasPrecision(12, 2);
+            trip.Property(item => item.Currency).HasMaxLength(3).IsRequired();
+        });
 
-            trip.Property(item => item.Type)
-                .HasConversion<string>()
-                .HasMaxLength(30)
-                .IsRequired();
-
-            trip.Property(item => item.Budget)
-                .HasPrecision(12, 2);
-
-            trip.Property(item => item.Currency)
-                .HasMaxLength(3)
-                .IsRequired();
+        modelBuilder.Entity<BudgetItem>(budgetItem =>
+        {
+            budgetItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            budgetItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            budgetItem.Property(item => item.Amount).HasPrecision(12, 2);
+            budgetItem.HasOne(item => item.Trip)
+                .WithMany(trip => trip.BudgetItems)
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

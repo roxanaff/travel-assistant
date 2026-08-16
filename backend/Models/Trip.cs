@@ -17,6 +17,8 @@ public class Trip
     public string Currency { get; set; } = "EUR";
 
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    public List<BudgetItem> BudgetItems { get; set; } = [];
 }
 
 public enum TripType
@@ -25,5 +27,14 @@ public enum TripType
     Beach,
     Hiking,
     Skiing,
+    Other
+}
+
+public enum BudgetCategory
+{
+    Accommodation,
+    Transport,
+    Food,
+    Activities,
     Other
 }

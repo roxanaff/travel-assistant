@@ -11,6 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("frontend", policy =>
+        policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod())
+    );
 builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("TravelAssistant")
@@ -25,19 +29,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("frontend");
 
 app.MapGet("/api/trips", async (TravelAssistantDbContext database) =>
-    await database.Trips
-        .OrderBy(trip => trip.StartDate)
-        .ToListAsync())
-    .WithName("GetTrips");
+    await database.Trips.OrderBy(trip => trip.StartDate).ToListAsync()
+).WithName("GetTrips");
 
 app.MapGet("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
 {
     var trip = await database.Trips.FindAsync(id);
     return trip is null ? Results.NotFound() : Results.Ok(trip);
-})
-    .WithName("GetTrip");
+}).WithName("GetTrip");
 
 app.MapPost("/api/trips", async (CreateTripRequest request, TravelAssistantDbContext database) =>
 {
@@ -61,8 +63,7 @@ app.MapPost("/api/trips", async (CreateTripRequest request, TravelAssistantDbCon
     await database.SaveChangesAsync();
 
     return Results.Created($"/api/trips/{trip.Id}", trip);
-})
-    .WithName("CreateTrip");
+}).WithName("CreateTrip");
 
 app.MapPut("/api/trips/{id:guid}", async (Guid id, CreateTripRequest request, TravelAssistantDbContext database) =>
 {
@@ -87,8 +88,7 @@ app.MapPut("/api/trips/{id:guid}", async (Guid id, CreateTripRequest request, Tr
 
     await database.SaveChangesAsync();
     return Results.Ok(trip);
-})
-    .WithName("UpdateTrip");
+}).WithName("UpdateTrip");
 
 app.MapDelete("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
 {
@@ -101,8 +101,98 @@ app.MapDelete("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext d
     database.Trips.Remove(trip);
     await database.SaveChangesAsync();
     return Results.NoContent();
-})
-    .WithName("DeleteTrip");
+}).WithName("DeleteTrip");
+
+app.MapGet("/api/trips/{tripId:guid}/budget-items", async (Guid tripId, TravelAssistantDbContext database) =>
+{
+    var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
+    if (!tripExists)
+    {
+        return Results.NotFound();
+    }
+
+    var budgetItems = await database.BudgetItems
+        .Where(item => item.TripId == tripId)
+        .OrderBy(item => item.CreatedAtUtc)
+        .ToListAsync();
+
+    return Results.Ok(budgetItems);
+}).WithName("GetBudgetItems");
+
+app.MapPost("/api/trips/{tripId:guid}/budget-items", async (
+    Guid tripId,
+    CreateBudgetItemRequest request,
+    TravelAssistantDbContext database) =>
+{
+    var validationError = ValidateBudgetItemRequest(request);
+    if (validationError is not null)
+    {
+        return Results.BadRequest(validationError);
+    }
+
+    var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
+    if (!tripExists)
+    {
+        return Results.NotFound();
+    }
+
+    var budgetItem = new BudgetItem
+    {
+        TripId = tripId,
+        Name = request.Name.Trim(),
+        Category = request.Category,
+        Amount = request.Amount
+    };
+
+    database.BudgetItems.Add(budgetItem);
+    await database.SaveChangesAsync();
+
+    return Results.Created($"/api/trips/{tripId}/budget-items/{budgetItem.Id}", budgetItem);
+}).WithName("CreateBudgetItem");
+
+app.MapPut("/api/trips/{tripId:guid}/budget-items/{id:guid}", async (
+    Guid tripId,
+    Guid id,
+    CreateBudgetItemRequest request,
+    TravelAssistantDbContext database) =>
+{
+    var validationError = ValidateBudgetItemRequest(request);
+    if (validationError is not null)
+    {
+        return Results.BadRequest(validationError);
+    }
+
+    var budgetItem = await database.BudgetItems
+        .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+    if (budgetItem is null)
+    {
+        return Results.NotFound();
+    }
+
+    budgetItem.Name = request.Name.Trim();
+    budgetItem.Category = request.Category;
+    budgetItem.Amount = request.Amount;
+
+    await database.SaveChangesAsync();
+    return Results.Ok(budgetItem);
+}).WithName("UpdateBudgetItem");
+
+app.MapDelete("/api/trips/{tripId:guid}/budget-items/{id:guid}", async (
+    Guid tripId,
+    Guid id,
+    TravelAssistantDbContext database) =>
+{
+    var budgetItem = await database.BudgetItems
+        .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+    if (budgetItem is null)
+    {
+        return Results.NotFound();
+    }
+
+    database.BudgetItems.Remove(budgetItem);
+    await database.SaveChangesAsync();
+    return Results.NoContent();
+}).WithName("DeleteBudgetItem");
 
 app.Run();
 
@@ -126,6 +216,21 @@ static string? ValidateTripRequest(CreateTripRequest request)
     if (string.IsNullOrWhiteSpace(request.Currency) || request.Currency.Trim().Length != 3)
     {
         return "Currency must be a three-letter code, such as EUR.";
+    }
+
+    return null;
+}
+
+static string? ValidateBudgetItemRequest(CreateBudgetItemRequest request)
+{
+    if (string.IsNullOrWhiteSpace(request.Name))
+    {
+        return "Budget item name is required.";
+    }
+
+    if (request.Amount <= 0)
+    {
+        return "Budget item amount must be greater than zero.";
     }
 
     return null;
