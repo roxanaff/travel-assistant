@@ -5,4 +5,6 @@ namespace TravelAssistant.Contracts;
 public record CreateBudgetItemRequest(
     string Name,
     BudgetCategory Category,
-    decimal Amount);
+    decimal Amount,
+    DateOnly? ExpenseDate
+);

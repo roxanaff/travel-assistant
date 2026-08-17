@@ -10,15 +10,21 @@ public class Trip
 
     public DateOnly EndDate { get; set; }
 
+    public TimeOnly? ArrivalTime { get; set; }
+
     public TripType Type { get; set; } = TripType.Other;
 
     public decimal Budget { get; set; }
+
+    public decimal? GettingThereCost { get; set; }
 
     public string Currency { get; set; } = "EUR";
 
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public List<BudgetItem> BudgetItems { get; set; } = [];
+
+    public List<ItineraryItem> ItineraryItems { get; set; } = [];
 }
 
 public enum TripType

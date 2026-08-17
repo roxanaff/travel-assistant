@@ -3,12 +3,11 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Data;
 
-public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options)
-    : DbContext(options)
+public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options) : DbContext(options)
 {
     public DbSet<Trip> Trips => Set<Trip>();
-
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
+    public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,6 +18,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             trip.Property(item => item.Destination).HasMaxLength(200).IsRequired();
             trip.Property(item => item.Type).HasConversion<string>().HasMaxLength(30).IsRequired();
             trip.Property(item => item.Budget).HasPrecision(12, 2);
+            trip.Property(item => item.GettingThereCost).HasPrecision(12, 2);
             trip.Property(item => item.Currency).HasMaxLength(3).IsRequired();
         });
 
@@ -29,6 +29,18 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             budgetItem.Property(item => item.Amount).HasPrecision(12, 2);
             budgetItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.BudgetItems)
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ItineraryItem>(itineraryItem =>
+        {
+            itineraryItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            itineraryItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            itineraryItem.Property(item => item.Cost).HasPrecision(12, 2);
+            itineraryItem.Property(item => item.Note).HasMaxLength(1000);
+            itineraryItem.HasOne(item => item.Trip)
+                .WithMany(trip => trip.ItineraryItems)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

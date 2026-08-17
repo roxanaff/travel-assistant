@@ -6,6 +6,9 @@ public record CreateTripRequest(
     string Destination,
     DateOnly StartDate,
     DateOnly EndDate,
+    TimeOnly? ArrivalTime,
     TripType Type,
     decimal Budget,
-    string Currency);
+    decimal? GettingThereCost,
+    string Currency
+);

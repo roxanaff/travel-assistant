@@ -14,5 +14,7 @@ public class BudgetItem
 
     public decimal Amount { get; set; }
 
+    public DateOnly? ExpenseDate { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }
