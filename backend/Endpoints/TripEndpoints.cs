@@ -11,13 +11,13 @@ public static class TripEndpoints
     public static IEndpointRouteBuilder MapTripEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips", async (TravelAssistantDbContext database) =>
-            await database.Trips.OrderBy(trip => trip.StartDate).ToListAsync()
+            (await database.Trips.ToListAsync()).Select(ToResponse)
         ).WithName("GetTrips");
 
         app.MapGet("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(id);
-            return trip is null ? Results.NotFound() : Results.Ok(trip);
+            return trip is null ? Results.NotFound() : Results.Ok(ToResponse(trip));
         }).WithName("GetTrip");
 
         app.MapPost("/api/trips", async (CreateTripRequest request, TravelAssistantDbContext database) =>
@@ -30,20 +30,21 @@ public static class TripEndpoints
 
             var trip = new Trip
             {
-                Destination = request.Destination.Trim(),
+                Name = request.Name.Trim(),
+                Destination = NormalizeOptionalText(request.Destination),
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
                 ArrivalTime = request.ArrivalTime,
                 Type = request.Type,
                 Budget = request.Budget,
-                GettingThereCost = request.GettingThereCost,
-                Currency = request.Currency.Trim().ToUpperInvariant()
+                Currency = request.Currency.Trim().ToUpperInvariant(),
+                Note = NormalizeOptionalText(request.Note)
             };
 
             database.Trips.Add(trip);
             await database.SaveChangesAsync();
 
-            return Results.Created($"/api/trips/{trip.Id}", trip);
+            return Results.Created($"/api/trips/{trip.Id}", ToResponse(trip));
         }).WithName("CreateTrip");
 
         app.MapPut("/api/trips/{id:guid}", async (Guid id, CreateTripRequest request, TravelAssistantDbContext database) =>
@@ -60,17 +61,18 @@ public static class TripEndpoints
                 return Results.NotFound();
             }
 
-            trip.Destination = request.Destination.Trim();
+            trip.Name = request.Name.Trim();
+            trip.Destination = NormalizeOptionalText(request.Destination);
             trip.StartDate = request.StartDate;
             trip.EndDate = request.EndDate;
             trip.ArrivalTime = request.ArrivalTime;
             trip.Type = request.Type;
             trip.Budget = request.Budget;
-            trip.GettingThereCost = request.GettingThereCost;
             trip.Currency = request.Currency.Trim().ToUpperInvariant();
+            trip.Note = NormalizeOptionalText(request.Note);
 
             await database.SaveChangesAsync();
-            return Results.Ok(trip);
+            return Results.Ok(ToResponse(trip));
         }).WithName("UpdateTrip");
 
         app.MapDelete("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
@@ -87,5 +89,41 @@ public static class TripEndpoints
         }).WithName("DeleteTrip");
 
         return app;
+    }
+
+    private static string? NormalizeOptionalText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static TripResponse ToResponse(Trip trip)
+    {
+        var status = GetStatus(trip, DateOnly.FromDateTime(DateTime.UtcNow));
+        return new TripResponse(
+            trip.Id,
+            trip.Name,
+            trip.Destination,
+            trip.StartDate,
+            trip.EndDate,
+            trip.ArrivalTime,
+            trip.Type,
+            trip.Budget,
+            trip.Currency,
+            trip.Note,
+            trip.CreatedAtUtc,
+            status);
+    }
+
+    private static TripLifecycleStatus GetStatus(Trip trip, DateOnly today)
+    {
+        if (string.IsNullOrWhiteSpace(trip.Destination) || trip.StartDate is null || trip.EndDate is null)
+        {
+            return TripLifecycleStatus.Draft;
+        }
+
+        if (trip.StartDate > today)
+        {
+            return TripLifecycleStatus.Upcoming;
+        }
+
+        return trip.EndDate < today ? TripLifecycleStatus.Past : TripLifecycleStatus.Ongoing;
     }
 }

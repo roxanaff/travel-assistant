@@ -1,0 +1,23 @@
+.topbar {
+  width: 100vw;
+  margin: 0 calc(50% - 50vw) 40px;
+  padding: 14px clamp(20px, 5vw, 72px);
+  background: var(--color-gray-100);
+}
+.brand {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
+  background: var(--color-blue-500);
+  color: var(--color-surface);
+}

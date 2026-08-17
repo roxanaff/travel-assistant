@@ -1,8 +1,8 @@
-import { Route, Routes } from "react-router-dom"
-import { Header } from "./components/Header"
-import { TripDashboard } from "./pages/TripDashboard"
-import { TripDetails } from "./pages/TripDetails"
-import "./App.css"
+import { Route, Routes } from "react-router-dom";
+import { Header } from "./components/Header";
+import { TripDashboard } from "./pages/TripDashboard";
+import { TripDetails } from "./pages/TripDetails";
+import "./App.css";
 
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
         <Route path="/trips/:id" element={<TripDetails />} />
       </Routes>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

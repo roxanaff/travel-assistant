@@ -1,0 +1,70 @@
+.section-heading,
+.card-topline,
+.budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.trip-type,
+.status-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.trip-type {
+  color: var(--color-pink-500);
+}
+.status-pill {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--color-blue-100);
+  color: var(--color-blue-700);
+}
+.primary-button {
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-blue-500);
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: 700;
+  padding: 14px 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+.primary-button:not(:disabled):hover {
+  background: var(--color-blue-700);
+  transform: translateY(-1px);
+}
+.primary-button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.text-button {
+  border: 0;
+  background: transparent;
+  color: var(--color-blue-500);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+.form-error {
+  margin: 0;
+  color: var(--color-pink-500);
+}
+.trip-dates {
+  color: var(--color-gray-500);
+}
+@media (max-width: 700px) {
+  .form-row {
+    flex-direction: column;
+  }
+}

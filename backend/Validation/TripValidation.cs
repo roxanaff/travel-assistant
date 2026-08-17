@@ -6,24 +6,29 @@ public static class TripValidation
 {
     public static string? Validate(CreateTripRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Destination))
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            return "Destination is required.";
+            return "Trip name is required.";
         }
 
-        if (request.EndDate < request.StartDate)
+        if (request.Name.Trim().Length > 150)
+        {
+            return "Trip name must be 150 characters or fewer.";
+        }
+
+        if ((request.StartDate is null) != (request.EndDate is null))
+        {
+            return "Enter both a start date and an end date, or leave both blank.";
+        }
+
+        if (request.StartDate is not null && request.EndDate < request.StartDate)
         {
             return "End date must be on or after the start date.";
         }
 
-        if (request.Budget < 0)
+        if (request.Budget is < 0)
         {
-            return "Budget cannot be negative.";
-        }
-
-        if (request.GettingThereCost < 0)
-        {
-            return "Getting-there cost cannot be negative.";
+            return "Target budget cannot be negative.";
         }
 
         if (string.IsNullOrWhiteSpace(request.Currency) || request.Currency.Trim().Length != 3)

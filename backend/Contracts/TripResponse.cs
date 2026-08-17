@@ -2,7 +2,8 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;
 
-public record CreateTripRequest(
+public record TripResponse(
+    Guid Id,
     string Name,
     string? Destination,
     DateOnly? StartDate,
@@ -11,5 +12,7 @@ public record CreateTripRequest(
     TripType? Type,
     decimal? Budget,
     string Currency,
-    string? Note
+    string? Note,
+    DateTimeOffset CreatedAtUtc,
+    TripLifecycleStatus Status
 );

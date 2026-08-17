@@ -15,11 +15,12 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
 
         modelBuilder.Entity<Trip>(trip =>
         {
-            trip.Property(item => item.Destination).HasMaxLength(200).IsRequired();
-            trip.Property(item => item.Type).HasConversion<string>().HasMaxLength(30).IsRequired();
+            trip.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            trip.Property(item => item.Destination).HasMaxLength(200);
+            trip.Property(item => item.Type).HasConversion<string>().HasMaxLength(30);
             trip.Property(item => item.Budget).HasPrecision(12, 2);
-            trip.Property(item => item.GettingThereCost).HasPrecision(12, 2);
             trip.Property(item => item.Currency).HasMaxLength(3).IsRequired();
+            trip.Property(item => item.Note).HasMaxLength(1000);
         });
 
         modelBuilder.Entity<BudgetItem>(budgetItem =>

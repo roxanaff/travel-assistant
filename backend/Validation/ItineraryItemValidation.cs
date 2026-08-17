@@ -12,7 +12,7 @@ public static class ItineraryItemValidation
             return "Itinerary item name is required.";
         }
 
-        if (request.Date < trip.StartDate || request.Date > trip.EndDate)
+        if (trip.StartDate is null || trip.EndDate is null || request.Date < trip.StartDate || request.Date > trip.EndDate)
         {
             return "The itinerary date must fall within the trip dates.";
         }
