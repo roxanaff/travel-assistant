@@ -1,42 +1,3 @@
-.trip-details {
-  max-width: 1120px;
-  margin: 0 auto;
-}
-.back-link {
-  display: inline-block;
-  margin-bottom: 28px;
-  color: var(--color-green-700);
-  font-weight: 700;
-  text-decoration: none;
-}
-.trip-details-header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 32px;
-}
-.trip-details-header h1 {
-  margin: 14px 0 7px;
-  font-size: clamp(2.25rem, 5vw, 2.5rem);
-}
-.trip-budget-summary {
-  display: grid;
-  gap: 7px;
-  min-width: 180px;
-  padding: 15px;
-  border-radius: 16px;
-  background: var(--color-gray-700);
-  color: var(--color-blue-100);
-}
-.trip-budget-summary strong {
-  font-size: 1.5rem;
-}
-.trip-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
 .detail-section {
   min-height: 180px;
   padding: 24px;
@@ -163,17 +124,4 @@
 }
 .icon-button.danger-button:hover {
   background: var(--color-pink-100);
-}
-@media (max-width: 700px) {
-  .trip-details-header {
-    align-items: start;
-    flex-direction: column;
-  }
-  .trip-detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.trip-details-note {
-  margin: 12px 0 0;
-  white-space: pre-wrap;
 }

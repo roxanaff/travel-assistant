@@ -1,7 +1,11 @@
 import { Route, Routes } from "react-router-dom";
 import { Header } from "./components/Header";
 import { TripDashboard } from "./pages/TripDashboard";
-import { TripDetails } from "./pages/TripDetails";
+import { TripBudgetPage } from "./pages/TripBudgetPage";
+import { TripItineraryPage } from "./pages/TripItineraryPage";
+import { TripPackingPage } from "./pages/TripPackingPage";
+import { TripSetupPage } from "./pages/TripSetupPage";
+import { TripWorkspace } from "./pages/TripWorkspace";
 import "./App.css";
 
 function App() {
@@ -10,7 +14,12 @@ function App() {
       <Header />
       <Routes>
         <Route path="/" element={<TripDashboard />} />
-        <Route path="/trips/:id" element={<TripDetails />} />
+        <Route path="/trips/:id" element={<TripWorkspace />}>
+          <Route index element={<TripItineraryPage />} />
+          <Route path="budget" element={<TripBudgetPage />} />
+          <Route path="packing" element={<TripPackingPage />} />
+          <Route path="details" element={<TripSetupPage />} />
+        </Route>
       </Routes>
     </main>
   );

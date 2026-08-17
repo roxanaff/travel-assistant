@@ -130,7 +130,7 @@ Expenses use the same list except **Emergency buffer**. Entries without a catego
 
 ## Relevant current files
 
-- Existing budget/expense UI: `frontend/src/pages/TripDetails.tsx`
+- Existing budget/expense UI: `frontend/src/pages/TripBudgetPage.tsx`
 - Frontend types: `frontend/src/types/budgetItem.ts`
 - Backend model: `backend/Models/BudgetItem.cs`
 - API endpoints/validation: `backend/Program.cs`

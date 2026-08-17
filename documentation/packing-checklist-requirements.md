@@ -41,7 +41,8 @@ Later, users may add default items after starting empty. Duplicate prevention sh
 
 ## Current implementation
 
-- [ ] No packing data model, API endpoint, or frontend Packing section is implemented yet.
+- [x] The workspace includes a Packing route placeholder at `/trips/:id/packing`.
+- [ ] No packing data model, API endpoint, or checklist UI is implemented yet.
 
 ## First-stage implementation tasks
 
@@ -100,6 +101,6 @@ Later, users may add default items after starting empty. Duplicate prevention sh
 ## Relevant implementation locations
 
 - Trip workspace routing: `frontend/src/App.tsx`
-- Existing workspace page: `frontend/src/pages/TripDetails.tsx`
+- Trip workspace layout: `frontend/src/pages/TripWorkspace.tsx`
 - Backend model folder: `backend/Models`
 - API endpoint definitions: `backend/Program.cs`

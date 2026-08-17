@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { apiBaseUrl } from "../api/travelAssistantApi";
@@ -9,12 +9,15 @@ import { createEmptyItineraryItemForm } from "../types/itineraryItem";
 
 import "./Itinerary.css";
 
-type ItineraryProps = { trip: Trip };
+type ItineraryProps = {
+  trip: Trip;
+  setHasUnsavedForm?: Dispatch<SetStateAction<boolean>>;
+};
 
 const formatTime = (time: string | null) =>
   time ? time.slice(0, 5) : "Any time";
 
-export function Itinerary({ trip }: ItineraryProps) {
+export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
   const [items, setItems] = useState<ItineraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,11 @@ export function Itinerary({ trip }: ItineraryProps) {
   const [editingItem, setEditingItem] = useState<ItineraryItemForm>(
     createEmptyItineraryItemForm(trip.startDate ?? ""),
   );
+  
+  useEffect(() => {
+    setHasUnsavedForm?.(isAdding || editingItemId !== null);
+    return () => setHasUnsavedForm?.(false);
+  }, [editingItemId, isAdding, setHasUnsavedForm]);
 
   useEffect(() => {
     const loadItems = async () => {

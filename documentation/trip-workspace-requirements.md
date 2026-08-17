@@ -27,40 +27,27 @@ Keep a compact persistent header above the tabs. Do not use a permanent side pan
 - [x] Dashboard cards link to `/trips/:id`.
 - [x] The existing trip details page loads a trip and handles loading/not-found/API errors.
 - [x] The page has a return link to the dashboard.
-- [x] A header currently displays type, a hard-coded status, destination, dates, and budget information.
-- [x] Itinerary and budget/expense content are currently rendered together in one page grid.
+- [x] A shared workspace header displays the trip name, destination, dates, and calculated status.
+- [x] Itinerary, Budget & expenses, Packing, and Details have separate routes beneath the workspace.
+- [x] The Details page displays the complete trip setup and reuses the trip form for editing.
+- [x] The Itinerary and Budget & expenses implementations each render only in their own workspace route.
+- [x] Switching tabs warns before discarding an open Add/Edit form.
 
 ## First-stage implementation tasks
 
 ### A. Routing and navigation
 
-- [ ] Add nested routes for Budget & expenses, Packing, and Details while retaining `/trips/:id` for Itinerary.
-- [ ] Add tab-style navigation beneath the workspace header.
-- [ ] Make the active tab visually clear and accessible (`aria-current` or equivalent).
-- [ ] Preserve a direct URL for each workspace section.
-- [ ] Keep a return link to the dashboard.
 
 ### B. Persistent workspace header
 
-- [ ] Show trip name, primary destination, date range, and calculated lifecycle status.
-- [ ] Hide optional values that are absent; show Draft prompts for missing destination or dates.
-- [ ] Make the header work for Draft trips without invalid date formatting.
-- [ ] Remove the hard-coded `Planned` status.
 
 ### C. Details section
 
-- [ ] Add a Details page that displays the complete trip setup information.
-- [ ] Add edit functionality for name, destination, dates, trip type(s), currency, target budget, and notes.
-- [ ] Reuse the trip-creation form for editing, pre-filled with the selected trip's current values.
 - [ ] Apply the agreed trip-date change rules to itinerary activities when dates are edited.
-- [ ] Provide clear save, cancel, validation, and API-error states.
 
 ### D. Section ownership
 
-- [ ] Move the current itinerary component into the Itinerary route only.
-- [ ] Move the current budget/expense UI into the Budget & expenses route only.
 - [ ] Add the manual packing checklist to the Packing route.
-- [ ] Ensure changing tabs does not lose an unsaved form without warning or an explicit discard action.
 
 ### E. Verification
 
@@ -78,7 +65,9 @@ Keep a compact persistent header above the tabs. Do not use a permanent side pan
 
 ## Relevant current files
 
-- Existing workspace page: `frontend/src/pages/TripDetails.tsx`
-- Existing page styles: `frontend/src/pages/TripDetails.css`
+- Workspace layout: `frontend/src/pages/TripWorkspace.tsx`
+- Workspace styles: `frontend/src/pages/TripWorkspace.css`
+- Budget page: `frontend/src/pages/TripBudgetPage.tsx`
+- Details page: `frontend/src/pages/TripSetupPage.tsx`
 - Router configuration: `frontend/src/App.tsx`
 - Itinerary section: `frontend/src/components/Itinerary.tsx`
