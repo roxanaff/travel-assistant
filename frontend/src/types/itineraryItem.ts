@@ -2,32 +2,46 @@ export type ItineraryItem = {
   id: string;
   tripId: string;
   name: string;
-  date: string;
+  date: string | null;
   startTime: string | null;
-  endTime: string | null;
-  category: string;
+  durationMinutes: number | null;
+  openingTime: string | null;
+  closingTime: string | null;
+  category: string | null;
   cost: number | null;
+  location: string | null;
+  externalLink: string | null;
+  priority: string;
   note: string | null;
+  createdAtUtc: string;
 };
 
 export type ItineraryItemForm = {
   name: string;
   date: string;
   startTime: string;
-  endTime: string;
+  duration: string;
+  openingTime: string;
+  closingTime: string;
   category: string;
   cost: string;
+  location: string;
+  externalLink: string;
+  priority: string;
   note: string;
 };
 
-export const createEmptyItineraryItemForm = (
-  date: string,
-): ItineraryItemForm => ({
+export const createEmptyItineraryItemForm = (): ItineraryItemForm => ({
   name: "",
-  date,
+  date: "",
   startTime: "",
-  endTime: "",
-  category: "Sightseeing",
+  duration: "",
+  openingTime: "",
+  closingTime: "",
+  category: "",
   cost: "",
+  location: "",
+  externalLink: "",
+  priority: "WouldLikeToDo",
   note: "",
 });

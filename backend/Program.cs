@@ -32,6 +32,7 @@ app.UseCors("frontend");
 
 app.MapTripEndpoints();
 app.MapBudgetItemEndpoints();
+app.MapPlannedCostEndpoints();
 app.MapItineraryEndpoints();
 
 app.Run();

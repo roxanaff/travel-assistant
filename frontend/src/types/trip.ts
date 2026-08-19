@@ -13,6 +13,7 @@ export type Trip = {
   note: string | null;
   createdAtUtc: string;
   status: TripStatus;
+  unscheduledActivityCount: number;
 };
 
 export type TripFormValues = {

@@ -5,7 +5,7 @@
 .back-link {
   display: inline-block;
   margin-bottom: 28px;
-  color: var(--color-green-700);
+  color: var(--color-pink-700);
   font-weight: 700;
   text-decoration: none;
 }
@@ -18,7 +18,7 @@
 }
 .workspace-destination {
   margin: 0;
-  color: var(--color-blue-700);
+  color: var(--color-pink-700);
   font-weight: 700;
 }
 .workspace-tabs {

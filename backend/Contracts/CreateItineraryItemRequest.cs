@@ -4,10 +4,15 @@ namespace TravelAssistant.Contracts;
 
 public record CreateItineraryItemRequest(
     string Name,
-    DateOnly Date,
+    DateOnly? Date,
     TimeOnly? StartTime,
-    TimeOnly? EndTime,
-    ItineraryCategory Category,
+    int? DurationMinutes,
+    TimeOnly? OpeningTime,
+    TimeOnly? ClosingTime,
+    ItineraryCategory? Category,
     decimal? Cost,
+    string? Location,
+    string? ExternalLink,
+    ItineraryPriority Priority,
     string? Note
 );

@@ -12,14 +12,19 @@ public static class ItineraryItemValidation
             return "Itinerary item name is required.";
         }
 
-        if (trip.StartDate is null || trip.EndDate is null || request.Date < trip.StartDate || request.Date > trip.EndDate)
+        if (request.StartTime is not null && request.Date is null)
+        {
+            return "A start time requires a date.";
+        }
+
+        if (request.Date is not null && (trip.StartDate is null || trip.EndDate is null || request.Date < trip.StartDate || request.Date > trip.EndDate))
         {
             return "The itinerary date must fall within the trip dates.";
         }
 
-        if (request.StartTime is not null && request.EndTime is not null && request.EndTime < request.StartTime)
+        if (request.DurationMinutes is <= 0)
         {
-            return "End time must be later than the start time.";
+            return "Duration must be greater than zero.";
         }
 
         if (request.Cost < 0)

@@ -26,6 +26,8 @@ public class Trip
 
     public List<BudgetItem> BudgetItems { get; set; } = [];
 
+    public List<PlannedCost> PlannedCosts { get; set; } = [];
+
     public List<ItineraryItem> ItineraryItems { get; set; } = [];
 }
 

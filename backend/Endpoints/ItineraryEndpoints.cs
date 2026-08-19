@@ -20,7 +20,8 @@ public static class ItineraryEndpoints
 
             var itineraryItems = await database.ItineraryItems
                 .Where(item => item.TripId == tripId)
-                .OrderBy(item => item.Date)
+                .OrderBy(item => item.Date == null)
+                .ThenBy(item => item.Date)
                 .ThenBy(item => item.StartTime)
                 .ThenBy(item => item.CreatedAtUtc)
                 .ToListAsync();
@@ -48,9 +49,14 @@ public static class ItineraryEndpoints
                 Name = request.Name.Trim(),
                 Date = request.Date,
                 StartTime = request.StartTime,
-                EndTime = request.EndTime,
+                DurationMinutes = request.DurationMinutes,
+                OpeningTime = request.OpeningTime,
+                ClosingTime = request.ClosingTime,
                 Category = request.Category,
                 Cost = request.Cost,
+                Location = NormalizeOptionalText(request.Location),
+                ExternalLink = NormalizeOptionalText(request.ExternalLink),
+                Priority = request.Priority,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
             };
 
@@ -82,9 +88,14 @@ public static class ItineraryEndpoints
             itineraryItem.Name = request.Name.Trim();
             itineraryItem.Date = request.Date;
             itineraryItem.StartTime = request.StartTime;
-            itineraryItem.EndTime = request.EndTime;
+            itineraryItem.DurationMinutes = request.DurationMinutes;
+            itineraryItem.OpeningTime = request.OpeningTime;
+            itineraryItem.ClosingTime = request.ClosingTime;
             itineraryItem.Category = request.Category;
             itineraryItem.Cost = request.Cost;
+            itineraryItem.Location = NormalizeOptionalText(request.Location);
+            itineraryItem.ExternalLink = NormalizeOptionalText(request.ExternalLink);
+            itineraryItem.Priority = request.Priority;
             itineraryItem.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
 
             await database.SaveChangesAsync();
@@ -107,6 +118,9 @@ public static class ItineraryEndpoints
         return app;
     }
 
+    private static string? NormalizeOptionalText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static object ToResponse(ItineraryItem item) => new
     {
         item.Id,
@@ -114,9 +128,14 @@ public static class ItineraryEndpoints
         item.Name,
         item.Date,
         item.StartTime,
-        item.EndTime,
+        item.DurationMinutes,
+        item.OpeningTime,
+        item.ClosingTime,
         item.Category,
         item.Cost,
+        item.Location,
+        item.ExternalLink,
+        item.Priority,
         item.Note,
         item.CreatedAtUtc
     };

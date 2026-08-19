@@ -7,6 +7,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
 {
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
+    public DbSet<PlannedCost> PlannedCosts => Set<PlannedCost>();
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,11 +35,25 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<PlannedCost>(plannedCost =>
+        {
+            plannedCost.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            plannedCost.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            plannedCost.Property(item => item.Amount).HasPrecision(12, 2);
+            plannedCost.HasOne(item => item.Trip)
+                .WithMany(trip => trip.PlannedCosts)
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ItineraryItem>(itineraryItem =>
         {
             itineraryItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
-            itineraryItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            itineraryItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             itineraryItem.Property(item => item.Cost).HasPrecision(12, 2);
+            itineraryItem.Property(item => item.Location).HasMaxLength(300);
+            itineraryItem.Property(item => item.ExternalLink).HasMaxLength(2000);
+            itineraryItem.Property(item => item.Priority).HasConversion<string>().HasMaxLength(30).IsRequired();
             itineraryItem.Property(item => item.Note).HasMaxLength(1000);
             itineraryItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.ItineraryItems)

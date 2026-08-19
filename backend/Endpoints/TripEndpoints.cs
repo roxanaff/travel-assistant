@@ -61,6 +61,9 @@ public static class TripEndpoints
                 return Results.NotFound();
             }
 
+            var previousStartDate = trip.StartDate;
+            var previousEndDate = trip.EndDate;
+
             trip.Name = request.Name.Trim();
             trip.Destination = NormalizeOptionalText(request.Destination);
             trip.StartDate = request.StartDate;
@@ -71,8 +74,14 @@ public static class TripEndpoints
             trip.Currency = request.Currency.Trim().ToUpperInvariant();
             trip.Note = NormalizeOptionalText(request.Note);
 
+            var unscheduledActivityCount = await ApplyItineraryDateChanges(
+                trip,
+                previousStartDate,
+                previousEndDate,
+                database);
+
             await database.SaveChangesAsync();
-            return Results.Ok(ToResponse(trip));
+            return Results.Ok(ToResponse(trip, unscheduledActivityCount));
         }).WithName("UpdateTrip");
 
         app.MapDelete("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
@@ -94,7 +103,62 @@ public static class TripEndpoints
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static TripResponse ToResponse(Trip trip)
+    private static async Task<int> ApplyItineraryDateChanges(
+        Trip trip,
+        DateOnly? previousStartDate,
+        DateOnly? previousEndDate,
+        TravelAssistantDbContext database)
+    {
+        var scheduledItems = await database.ItineraryItems
+            .Where(item => item.TripId == trip.Id && item.Date != null)
+            .ToListAsync();
+
+        if (scheduledItems.Count == 0)
+        {
+            return 0;
+        }
+
+        if (trip.StartDate is null || trip.EndDate is null)
+        {
+            foreach (var item in scheduledItems)
+            {
+                item.Date = null;
+                item.StartTime = null;
+            }
+
+            return scheduledItems.Count;
+        }
+
+        if (previousStartDate is not null && previousEndDate is not null)
+        {
+            var previousLength = previousEndDate.Value.DayNumber - previousStartDate.Value.DayNumber;
+            var revisedLength = trip.EndDate.Value.DayNumber - trip.StartDate.Value.DayNumber;
+            var startDateDifference = trip.StartDate.Value.DayNumber - previousStartDate.Value.DayNumber;
+
+            if (revisedLength >= previousLength && startDateDifference != 0)
+            {
+                foreach (var item in scheduledItems)
+                {
+                    item.Date = item.Date!.Value.AddDays(startDateDifference);
+                }
+
+                return 0;
+            }
+        }
+
+        var unscheduledCount = 0;
+        foreach (var item in scheduledItems.Where(item =>
+                     item.Date < trip.StartDate || item.Date > trip.EndDate))
+        {
+            item.Date = null;
+            item.StartTime = null;
+            unscheduledCount++;
+        }
+
+        return unscheduledCount;
+    }
+
+    private static TripResponse ToResponse(Trip trip, int unscheduledActivityCount = 0)
     {
         var status = GetStatus(trip, DateOnly.FromDateTime(DateTime.UtcNow));
         return new TripResponse(
@@ -109,7 +173,8 @@ public static class TripEndpoints
             trip.Currency,
             trip.Note,
             trip.CreatedAtUtc,
-            status);
+            status,
+            unscheduledActivityCount);
     }
 
     private static TripLifecycleStatus GetStatus(Trip trip, DateOnly today)

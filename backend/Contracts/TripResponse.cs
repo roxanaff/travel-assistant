@@ -14,5 +14,6 @@ public record TripResponse(
     string Currency,
     string? Note,
     DateTimeOffset CreatedAtUtc,
-    TripLifecycleStatus Status
+    TripLifecycleStatus Status,
+    int UnscheduledActivityCount
 );

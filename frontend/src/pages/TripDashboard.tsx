@@ -125,7 +125,7 @@ export function TripDashboard() {
         <div>
           <h2 id="trips-heading">Your trips</h2>
         </div>
-        <span className="trip-count">{trips.length} total</span>
+        {/*<span className="trip-count">{trips.length} total</span>*/}
       </div>
       <button
         className="primary-button"

@@ -10,15 +10,25 @@ public class ItineraryItem
 
     public string Name { get; set; } = string.Empty;
 
-    public DateOnly Date { get; set; }
+    public DateOnly? Date { get; set; }
 
     public TimeOnly? StartTime { get; set; }
 
-    public TimeOnly? EndTime { get; set; }
+    public int? DurationMinutes { get; set; }
 
-    public ItineraryCategory Category { get; set; } = ItineraryCategory.Other;
+    public TimeOnly? OpeningTime { get; set; }
+
+    public TimeOnly? ClosingTime { get; set; }
+
+    public ItineraryCategory? Category { get; set; }
 
     public decimal? Cost { get; set; }
+
+    public string? Location { get; set; }
+
+    public string? ExternalLink { get; set; }
+
+    public ItineraryPriority Priority { get; set; } = ItineraryPriority.WouldLikeToDo;
 
     public string? Note { get; set; }
 
@@ -27,10 +37,19 @@ public class ItineraryItem
 
 public enum ItineraryCategory
 {
-    Sightseeing,
-    FoodAndDrink,
-    Transport,
+    Museum,
+    Tour,
     Event,
-    Activity,
+    Food,
+    Beach,
+    Bar,
+    Attraction,
     Other
+}
+
+public enum ItineraryPriority
+{
+    MustDo,
+    WouldLikeToDo,
+    Optional
 }

@@ -120,8 +120,8 @@
   background: var(--color-blue-100);
 }
 .icon-button.danger-button {
-  color: var(--color-pink-500);
+  color: var(--color-red-500);
 }
 .icon-button.danger-button:hover {
-  background: var(--color-pink-100);
+  background: var(--color-red-100);
 }

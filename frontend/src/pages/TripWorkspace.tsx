@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
 import { apiBaseUrl } from "../api/travelAssistantApi";
 import { formatDate } from "../utils/format";
 import type { Trip } from "../types/trip";
@@ -68,6 +68,15 @@ export function TripWorkspace() {
     !trip.destination && "Destination not set",
     (!trip.startDate || !trip.endDate) && "Dates not set",
   ].filter(Boolean);
+
+  const confirmSectionChange = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      hasUnsavedForm &&
+      !window.confirm("Discard your unsaved changes and switch sections?")
+    ) {
+      event.preventDefault();
+    }
+  };
   
   return (
     <section className="trip-workspace">
@@ -93,26 +102,20 @@ export function TripWorkspace() {
           )}
         </div>
       </header>
-      <nav
-        className="workspace-tabs"
-        aria-label="Trip sections"
-        // Do not silently discard a currently open Add/Edit form when changing tabs.
-        onClick={(event) => {
-          const target = event.target as HTMLElement;
-          if (
-            hasUnsavedForm &&
-            target.tagName === "A" &&
-            !window.confirm("Discard your unsaved changes and switch sections?")
-          )
-            event.preventDefault();
-        }}
-      >
-        <NavLink end to={`/trips/${trip.id}`}>
+      <nav className="workspace-tabs" aria-label="Trip sections">
+        {/* Do not silently discard a currently open Add/Edit form when changing tabs. */}
+        <NavLink end to={`/trips/${trip.id}`} onClick={confirmSectionChange}>
           Itinerary
         </NavLink>
-        <NavLink to={`/trips/${trip.id}/budget`}>Budget &amp; expenses</NavLink>
-        <NavLink to={`/trips/${trip.id}/packing`}>Packing</NavLink>
-        <NavLink to={`/trips/${trip.id}/details`}>Details</NavLink>
+        <NavLink to={`/trips/${trip.id}/budget`} onClick={confirmSectionChange}>
+          Budget &amp; expenses
+        </NavLink>
+        <NavLink to={`/trips/${trip.id}/packing`} onClick={confirmSectionChange}>
+          Packing
+        </NavLink>
+        <NavLink to={`/trips/${trip.id}/details`} onClick={confirmSectionChange}>
+          Details
+        </NavLink>
       </nav>
       <Outlet
         context={

@@ -15,6 +15,7 @@ export function TripSetupPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
   
   // An open trip form should be protected from accidental tab changes.
   useEffect(() => {
@@ -26,6 +27,7 @@ export function TripSetupPage() {
   const save = async (request: TripRequest) => {
     setSaving(true);
     setError(null);
+    setItineraryMessage(null);
     
     try {
       const response = await fetch(`${apiBaseUrl}/api/trips/${trip.id}`, {
@@ -37,7 +39,13 @@ export function TripSetupPage() {
       if (!response.ok) 
         throw new Error(await response.text());
       
-      setTrip(await response.json());
+      const updatedTrip = await response.json();
+      setTrip(updatedTrip);
+      if (updatedTrip.unscheduledActivityCount > 0) {
+        setItineraryMessage(
+          `${updatedTrip.unscheduledActivityCount} itinerary ${updatedTrip.unscheduledActivityCount === 1 ? "activity was" : "activities were"} moved to Unscheduled because the trip dates changed.`,
+        );
+      }
       setEditing(false);
     } catch (exception) {
       setError(
@@ -100,6 +108,7 @@ export function TripSetupPage() {
         </div>
       </div>
       {error && <p className="form-error">{error}</p>}
+      {itineraryMessage && <p className="detail-message">{itineraryMessage}</p>}
       {editing ? (
         <TripForm
           heading="Edit trip"

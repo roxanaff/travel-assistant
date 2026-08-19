@@ -45,20 +45,20 @@ export function TripCard({
         <div className="card-topline">
           <span className="status-pill">{trip.status}</span>
         </div>
-        <h3>
-          <Link className="trip-name-link" to={`/trips/${trip.id}`}>
+        <Link className="trip-name-link" to={`/trips/${trip.id}`}>
+          <h3>
             {trip.name}
-          </Link>
-        </h3>
-        {trip.destination && (
-          <p className="trip-destination">{trip.destination}</p>
-        )}
-        {trip.startDate && trip.endDate && (
-          <p className="trip-dates">
-            {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
-          </p>
-        )}
-        {trip.type && <span className="trip-type">{typeLabel(trip.type)}</span>}
+          </h3>
+          {trip.destination && (
+            <p className="trip-destination">{trip.destination}</p>
+          )}
+          {trip.startDate && trip.endDate && (
+            <p className="trip-dates">
+              {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+            </p>
+          )}
+          {trip.type && <p className="trip-type">{typeLabel(trip.type)}</p>}
+        </Link>
         {trip.budget !== null && (
           <div className="budget-row">
             <span>Target budget</span>
@@ -68,7 +68,12 @@ export function TripCard({
         {prompts.length > 0 && (
           <p className="draft-prompt">{prompts.join(" · ")}</p>
         )}
-        {trip.note && <p className="trip-note">{trip.note}</p>}
+        {trip.note && (
+          <div className="trip-note-preview">
+            <span className="trip-note-label">Notes</span>
+            <p className="trip-note">{trip.note}</p>
+          </div>
+        )}
       </div>
       <div className="card-menu">
         <button
