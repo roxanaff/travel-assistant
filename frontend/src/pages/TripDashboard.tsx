@@ -125,18 +125,18 @@ export function TripDashboard() {
         <div>
           <h2 id="trips-heading">Your trips</h2>
         </div>
+        <button
+          className="primary-button"
+          type="button"
+          onClick={() => {
+            setFormError(null);
+            setEditingTrip(null);
+          }}
+        >
+          New trip <span aria-hidden="true">+</span>
+        </button>
         {/*<span className="trip-count">{trips.length} total</span>*/}
       </div>
-      <button
-        className="primary-button"
-        type="button"
-        onClick={() => {
-          setFormError(null);
-          setEditingTrip(null);
-        }}
-      >
-        New trip <span aria-hidden="true">+</span>
-      </button>
       {editingTrip !== undefined && (
         <TripForm
           heading={editingTrip ? "Edit trip" : "New trip"}

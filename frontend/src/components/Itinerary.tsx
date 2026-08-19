@@ -685,8 +685,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
   return (
     <section className="detail-section itinerary-section">
-      <h2>Itinerary</h2>
-      <div className="itinerary-actions">
+      <div className="itinerary-section-heading">
+        <h2>Itinerary</h2>
         <button
           className="primary-button"
           type="button"
@@ -718,16 +718,18 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             return (
               <section className="itinerary-day" key={day}>
                 <div className="itinerary-day-heading">
-                  <h3>{formatDate(day)}</h3>
-                  <button
-                    className="icon-button itinerary-day-add"
-                    type="button"
-                    onClick={() => startAdding(day)}
-                    aria-label={`Add an item for ${formatDate(day)}`}
-                    title="Add item for this day"
-                  >
-                    <Plus size={17} />
-                  </button>
+                  <div className="itinerary-day-title">
+                    <h3>{formatDate(day)}</h3>
+                    <button
+                      className="icon-button itinerary-day-add"
+                      type="button"
+                      onClick={() => startAdding(day)}
+                      aria-label={`Add an item for ${formatDate(day)}`}
+                      title="Add item for this day"
+                    >
+                      <Plus size={17} />
+                    </button>
+                  </div>
                 </div>
                 <ul>{dayItems.map(renderItem)}</ul>
                 {isAdding && addingForDate === day && form(newItem, saveNewItem)}

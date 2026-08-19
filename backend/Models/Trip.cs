@@ -42,9 +42,12 @@ public enum TripType
 
 public enum BudgetCategory
 {
+    TravelToFrom,
     Accommodation,
-    Transport,
+    LocalTransport,
     Food,
-    Activities,
+    ActivitiesAndMuseums,
+    BarsAndNightlife,
+    Shopping,
     Other
 }

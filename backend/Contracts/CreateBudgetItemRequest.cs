@@ -3,8 +3,9 @@ using TravelAssistant.Models;
 namespace TravelAssistant.Contracts;
 
 public record CreateBudgetItemRequest(
-    string Name,
-    BudgetCategory Category,
+    string? Name,
+    BudgetCategory? Category,
     decimal Amount,
-    DateOnly? ExpenseDate
+    DateOnly? ExpenseDate,
+    Guid? PlannedCostId
 );

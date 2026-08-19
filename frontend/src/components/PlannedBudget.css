@@ -1,0 +1,120 @@
+.planned-budget-section {
+  margin-top: 0;
+}
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.section-title-row h3,
+.planned-cost-category h4 {
+  margin: 0;
+  color: var(--color-blue-700);
+}
+.planned-budget-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.planned-budget-overview > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--color-gray-100);
+  color: var(--color-blue-700);
+}
+.planned-budget-overview strong {
+  font-size: 1.15rem;
+}
+.planned-budget-overview .over-budget {
+  background: var(--color-red-100);
+  color: var(--color-red-700);
+}
+.planned-cost-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 12px;
+}
+.planned-cost-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-blue-700);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.planned-cost-form input,
+.planned-cost-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 9px;
+  background: var(--color-white);
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+.planned-cost-category {
+  margin-top: 24px;
+}
+.planned-cost-category-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.planned-cost-category-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.planned-cost-category ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.planned-cost-category li:not(.planned-cost-editing) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+.planned-cost-description {
+  display: grid;
+  gap: 2px;
+}
+.planned-cost-description span {
+  color: var(--color-gray-500);
+  font-size: 0.85rem;
+}
+.planned-cost-expense-added {
+  color: var(--color-gray-500);
+  font-size: 0.85rem;
+}
+.planned-cost-editing .planned-cost-form {
+  margin-top: 0;
+}
+.planned-cost-undo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 10px;
+  background: var(--color-white);
+}
+@media (max-width: 700px) {
+  .planned-budget-overview {
+    grid-template-columns: 1fr;
+  }
+}

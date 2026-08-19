@@ -5,6 +5,12 @@
   border-radius: 18px;
   background: var(--color-surface);
 }
+.trip-budget-page {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
+}
 .detail-section h2 {
   margin: 0 0 8px;
   font-size: 1.25rem;
@@ -18,6 +24,11 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-top: 24px;
+}
+.expenses-heading {
+  margin: 32px 0 0;
+  color: var(--color-blue-700);
+  font-size: 1.1rem;
 }
 .budget-overview div {
   display: grid;
@@ -124,4 +135,9 @@
 }
 .icon-button.danger-button:hover {
   background: var(--color-red-100);
+}
+@media (max-width: 900px) {
+  .trip-budget-page {
+    grid-template-columns: 1fr;
+  }
 }

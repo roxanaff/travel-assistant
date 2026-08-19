@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TravelAssistant.Data;
@@ -11,9 +12,11 @@ using TravelAssistant.Data;
 namespace TravelAssistant.Migrations
 {
     [DbContext(typeof(TravelAssistantDbContext))]
-    partial class TravelAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819091526_MakeExpenseCategoryOptional")]
+    partial class MakeExpenseCategoryOptional
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -47,16 +50,10 @@ namespace TravelAssistant.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
-                    b.Property<Guid?>("PlannedCostId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("TripId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("PlannedCostId")
-                        .IsUnique();
 
                     b.HasIndex("TripId");
 
@@ -211,18 +208,11 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.BudgetItem", b =>
                 {
-                    b.HasOne("TravelAssistant.Models.PlannedCost", "PlannedCost")
-                        .WithOne("Expense")
-                        .HasForeignKey("TravelAssistant.Models.BudgetItem", "PlannedCostId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("TravelAssistant.Models.Trip", "Trip")
                         .WithMany("BudgetItems")
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("PlannedCost");
 
                     b.Navigation("Trip");
                 });
@@ -247,11 +237,6 @@ namespace TravelAssistant.Migrations
                         .IsRequired();
 
                     b.Navigation("Trip");
-                });
-
-            modelBuilder.Entity("TravelAssistant.Models.PlannedCost", b =>
-                {
-                    b.Navigation("Expense");
                 });
 
             modelBuilder.Entity("TravelAssistant.Models.Trip", b =>

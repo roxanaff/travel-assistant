@@ -27,12 +27,17 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         modelBuilder.Entity<BudgetItem>(budgetItem =>
         {
             budgetItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
-            budgetItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            budgetItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             budgetItem.Property(item => item.Amount).HasPrecision(12, 2);
+            budgetItem.HasIndex(item => item.PlannedCostId).IsUnique();
             budgetItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.BudgetItems)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
+            budgetItem.HasOne(item => item.PlannedCost)
+                .WithOne(cost => cost.Expense)
+                .HasForeignKey<BudgetItem>(item => item.PlannedCostId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PlannedCost>(plannedCost =>

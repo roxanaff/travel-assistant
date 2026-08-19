@@ -21,6 +21,16 @@ public static class PlannedCostEndpoints
             var plannedCosts = await database.PlannedCosts
                 .Where(cost => cost.TripId == tripId)
                 .OrderBy(cost => cost.CreatedAtUtc)
+                .Select(cost => new
+                {
+                    cost.Id,
+                    cost.TripId,
+                    cost.Name,
+                    cost.Category,
+                    cost.Amount,
+                    cost.CreatedAtUtc,
+                    ExpenseAdded = cost.Expense != null
+                })
                 .ToListAsync();
 
             return Results.Ok(plannedCosts);

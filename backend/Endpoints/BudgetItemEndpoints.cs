@@ -40,10 +40,23 @@ public static class BudgetItemEndpoints
                 return Results.NotFound();
             }
 
+            if (request.PlannedCostId is not null)
+            {
+                var plannedCostExists = await database.PlannedCosts.AnyAsync(cost =>
+                    cost.Id == request.PlannedCostId && cost.TripId == tripId);
+                var expenseAlreadyAdded = await database.BudgetItems.AnyAsync(item =>
+                    item.PlannedCostId == request.PlannedCostId);
+                if (!plannedCostExists || expenseAlreadyAdded)
+                {
+                    return Results.BadRequest("This planned cost has already been added to expenses.");
+                }
+            }
+
             var budgetItem = new BudgetItem
             {
                 TripId = tripId,
-                Name = request.Name.Trim(),
+                Name = NormalizeName(request.Name),
+                PlannedCostId = request.PlannedCostId,
                 Category = request.Category,
                 Amount = request.Amount,
                 ExpenseDate = request.ExpenseDate
@@ -68,7 +81,12 @@ public static class BudgetItemEndpoints
                 return Results.NotFound();
             }
 
-            budgetItem.Name = request.Name.Trim();
+            if (request.PlannedCostId != budgetItem.PlannedCostId)
+            {
+                return Results.BadRequest("A linked planned cost cannot be changed.");
+            }
+
+            budgetItem.Name = NormalizeName(request.Name);
             budgetItem.Category = request.Category;
             budgetItem.Amount = request.Amount;
             budgetItem.ExpenseDate = request.ExpenseDate;
@@ -92,4 +110,7 @@ public static class BudgetItemEndpoints
 
         return app;
     }
+
+    private static string NormalizeName(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 }

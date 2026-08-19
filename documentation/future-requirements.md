@@ -20,11 +20,19 @@ This document collects intentionally deferred improvements that span more than o
 - [ ] Rebalance the colour system: reduce the amount of blue, use pink more intentionally, and use ink for neutral text and controls that do not need emphasis.
 - [ ] Rework the workspace header to use less vertical space and make better use of its empty area while retaining trip context and navigation.
 - [ ] Improve the opening-hours input and display. Explore a compact time-picker or spinner-style control with narrower hour/minute fields; native time inputs behave differently across browsers and do not consistently support scroll-wheel selection.
+- [ ] Redesign budget category headings and grouping controls so they are less cramped and visually clearer.
 
 ## Itinerary usability
 
 - [ ] When an Add or Edit form opens, move focus to it and scroll it into view so the active form is fully usable without manual scrolling.
 - [ ] Add an itinerary control to expand all activity details or collapse all activity details.
+
+## List and card controls
+
+- [ ] Let users switch planned costs between grouped and ungrouped views. In the ungrouped view, show the category on each planned-cost row.
+- [ ] Add clear, appropriate sorting options to cards and lists across the app.
+- [ ] Let users collapse the Planned budget or Expenses sections into compact, clickable summary cards when they do not need to work in that section.
+- [ ] Let users adjust card and list-entry sizes using a small set of presets or drag-resize controls.
 
 ## Code quality and consistency
 

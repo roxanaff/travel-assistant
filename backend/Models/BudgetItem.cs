@@ -8,9 +8,13 @@ public class BudgetItem
 
     public Trip Trip { get; set; } = null!;
 
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = "Cost item";
 
-    public BudgetCategory Category { get; set; } = BudgetCategory.Other;
+    public Guid? PlannedCostId { get; set; }
+
+    public PlannedCost? PlannedCost { get; set; }
+
+    public BudgetCategory? Category { get; set; }
 
     public decimal Amount { get; set; }
 

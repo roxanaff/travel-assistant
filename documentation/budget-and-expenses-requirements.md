@@ -26,11 +26,11 @@ This document covers the Budget & expenses workspace section. Planned costs and 
 ### Expenses
 
 - Expense tracking is implemented after the planned budget by category.
-- Every expense requires a name and amount.
+- Every expense requires an amount; its name is optional and defaults to `Cost item` when blank.
 - Category is optional and empty by default.
 - Date defaults to today and can be cleared.
 - Users may record pre-trip and during-trip expenses.
-- Expenses are grouped by category in fixed category order; **Uncategorised** is last.
+- Expenses can be grouped by category in fixed category order, with **Uncategorised** last, or by expense day with **Undated** last.
 - Within a category, dated expenses are newest first and undated expenses are last.
 - Users can edit, rename, and delete expenses. Delete has no confirmation dialog and supplies a short-lived Undo action.
 - `Actual remaining = target budget − total actual expenses`.
@@ -40,7 +40,7 @@ This document covers the Budget & expenses workspace section. Planned costs and 
 
 Planned-budget categories, in display order:
 
-1. Travel to/from destination
+1. Travel to/from
 2. Accommodation
 3. Local transport
 4. Food
@@ -58,31 +58,21 @@ Expenses use the same list except **Emergency buffer**. Entries without a catego
 - [x] The existing UI supports add, inline edit, and delete for those records.
 - [x] The existing record has name, amount, category, and optional expense date fields.
 - [x] The current page calculates one total spent/remaining value against the trip budget.
+- [x] Planned costs are stored separately from expenses and have their own CRUD API.
+- [x] Planned costs use the agreed category list, including Travel to/from and Emergency buffer. A blank name is stored as `Cost item`.
+- [x] The Planned budget UI groups populated categories, calculates category and overall totals, supports target-budget comparison, and provides add, edit, delete, and five-second Undo actions.
+- [x] The user-facing expense tracking section supports optional categories, an initially-today date that can be cleared, pre-trip dates, Category/Day grouping, newest-first ordering, totals, target-budget comparison, and five-second Undo.
+- [x] Planned-cost rows can be copied to Expenses with today's date. Each copied expense stays linked to its source planned cost so it cannot be added twice; Emergency-buffer rows have no copy action because that category is not valid for expenses.
 
 ## Phase 2 — Planned budget implementation tasks
 
 ### A. Data model and API
 
-- [ ] Make the trip Target budget nullable.
-- [ ] Add a planned-cost entity distinct from recorded expenses.
-- [ ] Migrate or replace the current `BudgetItem` model so expenses and planned costs cannot be confused.
-- [ ] Add the agreed category set and support a null category.
-- [ ] Ensure Emergency buffer can be used for planned costs but not expenses.
-- [ ] Add CRUD endpoints for planned-cost entries.
-- [ ] Update frontend types, API contracts, database migrations, and validation.
-- [ ] Decide how existing `GettingThereCost` data is migrated into the new category model.
+All planned-cost data and API tasks are complete. Existing expense records are intentionally left unchanged; no historical `GettingThereCost` field exists to migrate.
 
 ### B. Planned budget UI
 
-- [ ] Add the Planned budget view to `/trips/:id/budget`.
-- [ ] Group entries by category in the agreed fixed order.
-- [ ] Hide categories with no entries.
-- [ ] Provide an action to add a first entry and a `+` action within each visible category.
-- [ ] Allow a planned-cost name to be blank while requiring a positive amount.
-- [ ] Calculate each category total and total planned costs from entries only.
-- [ ] Show Target budget, total planned costs, and theoretical remaining when a target exists.
-- [ ] Show an accessible over-budget state for a negative theoretical remaining value.
-- [ ] Support edit, rename, delete, and short-lived Undo for planned costs.
+All planned-budget UI tasks are complete.
 
 ### C. Phase 2 verification
 
@@ -96,20 +86,11 @@ Expenses use the same list except **Emergency buffer**. Entries without a catego
 
 ### A. Expense model and form
 
-- [ ] Rename the user-facing current BudgetItem concept to Expense.
-- [ ] Require name and positive amount.
-- [ ] Make category nullable with no selected default.
-- [ ] Default the date to today and allow the user to clear it.
-- [ ] Preserve support for pre-trip expense dates.
-- [ ] Add edit, rename, delete, and short-lived Undo.
+All expense model and form tasks are complete. `BudgetItem` remains the internal backend type for now, while the UI and API behavior use the user-facing term Expenses.
 
 ### B. Expenses view and calculations
 
-- [ ] Group expenses by category in the agreed order, with Uncategorised last.
-- [ ] Order dated entries newest first and undated entries last within each group.
-- [ ] Show category subtotals and total actual spending.
-- [ ] When a target exists, calculate and display actual remaining and its over-budget state.
-- [ ] Keep planned costs and actual expenses separate; do not automatically link activity costs yet.
+All expense-view and calculation tasks are complete. Planned costs and expenses remain separate and are not linked to itinerary activity costs.
 
 ### C. Phase 3 verification
 
@@ -130,8 +111,13 @@ Expenses use the same list except **Emergency buffer**. Entries without a catego
 
 ## Relevant current files
 
-- Existing budget/expense UI: `frontend/src/pages/TripBudgetPage.tsx`
-- Frontend types: `frontend/src/types/budgetItem.ts`
+- Budget page: `frontend/src/pages/TripBudgetPage.tsx`
+- Planned-budget UI: `frontend/src/components/PlannedBudget.tsx`
+- Expense UI: `frontend/src/components/ExpenseTracking.tsx`
+- Expense types: `frontend/src/types/budgetItem.ts`
 - Backend model: `backend/Models/BudgetItem.cs`
-- API endpoints/validation: `backend/Program.cs`
-- Create/update contract: `backend/Contracts/CreateBudgetItemRequest.cs`
+- Expense API endpoints: `backend/Endpoints/BudgetItemEndpoints.cs`
+- Planned-cost API endpoints: `backend/Endpoints/PlannedCostEndpoints.cs`
+- Planned-cost contract and validation: `backend/Contracts/CreatePlannedCostRequest.cs`, `backend/Validation/PlannedCostValidation.cs`
+- Expense contract and validation: `backend/Contracts/CreateBudgetItemRequest.cs`, `backend/Validation/BudgetItemValidation.cs`
+- Data migrations: `backend/Migrations/20260819083911_AddPlannedCosts.cs`, `backend/Migrations/20260819095049_LinkExpensesToPlannedCosts.cs`

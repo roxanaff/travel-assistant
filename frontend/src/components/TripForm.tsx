@@ -75,8 +75,7 @@ export function TripForm({
         />
       </label>
       <label>
-        Primary destination{" "}
-        <span className="optional">(optional for drafts)</span>
+        <span className="field-label">Primary destination <span className="optional">(optional for drafts)</span></span>
         <input
           value={values.destination}
           onChange={(e) => update("destination", e.target.value)}
@@ -118,7 +117,7 @@ export function TripForm({
           </select>
         </label>
         <label>
-          Target budget <span className="optional">(optional)</span>
+          <span className="field-label">Target budget <span className="optional">(optional)</span></span>
           <input
             type="number"
             min="0"
@@ -140,7 +139,7 @@ export function TripForm({
         </label>
       </div>
       <label>
-        Notes <span className="optional">(optional)</span>
+        <span className="field-label">Notes <span className="optional">(optional)</span></span>
         <textarea
           value={values.note}
           onChange={(e) => update("note", e.target.value)}

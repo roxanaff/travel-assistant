@@ -52,6 +52,10 @@
   font-weight: 700;
   cursor: pointer;
 }
+.field-label {
+  display: flex;
+  gap: 4px;
+}
 .form-row {
   display: flex;
   gap: 16px;

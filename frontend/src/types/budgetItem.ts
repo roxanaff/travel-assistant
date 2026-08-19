@@ -2,9 +2,11 @@
   id: string;
   tripId: string;
   name: string;
-  category: string;
+  plannedCostId: string | null;
+  category: string | null;
   amount: number;
   expenseDate: string | null;
+  createdAtUtc: string;
 };
 
 export type NewBudgetItemForm = {
@@ -12,11 +14,13 @@ export type NewBudgetItemForm = {
   category: string;
   amount: string;
   expenseDate: string;
+  plannedCostId: string | null;
 };
 
 export const initialNewBudgetItemForm: NewBudgetItemForm = {
   name: "",
-  category: "Accommodation",
+  category: "",
   amount: "",
   expenseDate: "",
+  plannedCostId: null,
 };
