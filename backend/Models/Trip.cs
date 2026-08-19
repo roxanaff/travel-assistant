@@ -22,6 +22,11 @@ public class Trip
     
     public string? Note { get; set; }
 
+    /// <summary>
+    /// Records that the user has chosen either the default list or an empty checklist.
+    /// </summary>
+    public bool HasStartedPackingList { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public List<BudgetItem> BudgetItems { get; set; } = [];
@@ -29,6 +34,8 @@ public class Trip
     public List<PlannedCost> PlannedCosts { get; set; } = [];
 
     public List<ItineraryItem> ItineraryItems { get; set; } = [];
+
+    public List<PackingItem> PackingItems { get; set; } = [];
 }
 
 public enum TripType

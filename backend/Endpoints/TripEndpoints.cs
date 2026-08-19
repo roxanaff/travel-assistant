@@ -172,6 +172,7 @@ public static class TripEndpoints
             trip.Budget,
             trip.Currency,
             trip.Note,
+            trip.HasStartedPackingList,
             trip.CreatedAtUtc,
             status,
             unscheduledActivityCount);

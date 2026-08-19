@@ -40,12 +40,6 @@
   border-color: var(--color-blue-500);
   color: var(--color-blue-700);
 }
-.section-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
 .trip-setup-list {
   display: grid;
   gap: 16px;

@@ -257,7 +257,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
     editing = false,
   ) => (
-    <form className="planned-cost-form" onSubmit={submit}>
+    <form className="planned-cost-form form-surface" onSubmit={submit}>
       <label>
         <span className="field-label">Name <span className="optional">(optional)</span></span>
         <input
@@ -325,12 +325,12 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
           <strong>{trip.budget === null ? "Not set" : formatMoney(trip.budget, trip.currency)}</strong>
         </div>
         <div>
-          <span>Total planned</span>
+          <span>Planned spending</span>
           <strong>{formatMoney(totalPlannedCosts, trip.currency)}</strong>
         </div>
         {theoreticalRemaining !== null && (
           <div className={theoreticalRemaining < 0 ? "over-budget" : ""}>
-            <span>{theoreticalRemaining < 0 ? "Over budget" : "Theoretical remaining"}</span>
+            <span>{theoreticalRemaining < 0 ? "Over budget" : "Remaining"}</span>
             <strong>{formatMoney(Math.abs(theoreticalRemaining), trip.currency)}</strong>
           </div>
         )}
@@ -339,10 +339,10 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
       {isLoading && <p className="detail-message">Loading planned costs…</p>}
       {error && <p className="detail-message form-error">{error}</p>}
       {pendingDeletion && (
-        <div className="planned-cost-undo" role="status">
+        <button className="undo-toast" type="button" onClick={undoDelete}>
           <span>Planned cost deleted.</span>
-          <button className="text-button" type="button" onClick={undoDelete}>Undo</button>
-        </div>
+          <strong>Undo</strong>
+        </button>
       )}
       {!isLoading && !error && costs.length === 0 && (
         <p className="detail-message">No planned costs yet.</p>
@@ -368,16 +368,16 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
               </div>
               <strong>{formatMoney(categoryTotal, trip.currency)}</strong>
             </div>
-            <ul>
+            <ul className="list-items">
               {categoryCosts.map((cost) => editingCostId === cost.id ? (
                 <li className="planned-cost-editing" key={cost.id}>{form(editingCost, saveEdit, true)}</li>
               ) : (
-                <li key={cost.id}>
+                <li className="list-row" key={cost.id}>
                   <div className="planned-cost-description">
                     <strong>{cost.name}</strong>
                     <span>{formatMoney(cost.amount, trip.currency)}</span>
                   </div>
-                  <div className="budget-item-actions">
+                  <div className="item-actions">
                     {cost.category !== "EmergencyBuffer" && (
                       cost.expenseAdded ? (
                         <span className="planned-cost-expense-added">Expense added</span>

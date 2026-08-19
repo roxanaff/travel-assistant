@@ -54,7 +54,7 @@ export function TripForm({
   };
   return (
     <form
-      className="new-trip-form"
+      className="new-trip-form form-surface"
       onSubmit={(event) => {
         event.preventDefault();
         void onSubmit(request);

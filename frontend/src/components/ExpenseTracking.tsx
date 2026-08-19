@@ -244,7 +244,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
     editing = false,
   ) => (
-    <form className="expense-form" onSubmit={submit}>
+    <form className="expense-form form-surface" onSubmit={submit}>
       <label>
         <span className="field-label">What did you pay for? <span className="optional">(optional)</span></span>
         <input
@@ -381,10 +381,10 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
       {isLoading && <p className="detail-message">Loading expenses…</p>}
       {error && <p className="detail-message form-error">{error}</p>}
       {pendingDeletion && (
-        <div className="expense-undo" role="status">
+        <button className="undo-toast" type="button" onClick={undoDelete}>
           <span>Expense deleted.</span>
-          <button className="text-button" type="button" onClick={undoDelete}>Undo</button>
-        </div>
+          <strong>Undo</strong>
+        </button>
       )}
       {!isLoading && !error && expenses.length === 0 && (
         <p className="detail-message">No expenses yet.</p>
@@ -414,16 +414,16 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
               </div>
               <strong>{formatMoney(subtotal, trip.currency)}</strong>
             </div>
-            <ul>
+            <ul className="list-items">
               {group.expenses.map((expense) => editingExpenseId === expense.id ? (
                 <li className="expense-editing" key={expense.id}>{form(editingExpense, saveEdit, true)}</li>
               ) : (
-                <li key={expense.id}>
+                <li className="list-row" key={expense.id}>
                   <div className="expense-description">
                     <strong>{expense.name}</strong>
                     <span>{formatMoney(expense.amount, trip.currency)}{expense.expenseDate ? ` · ${formatDate(expense.expenseDate)}` : ""}</span>
                   </div>
-                  <div className="budget-item-actions">
+                  <div className="item-actions">
                     <button className="icon-button" type="button" onClick={() => startEditing(expense)} aria-label={`Edit ${expense.name}`}>
                       <Pencil size={17} />
                     </button>

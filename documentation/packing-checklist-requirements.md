@@ -41,45 +41,47 @@ Later, users may add default items after starting empty. Duplicate prevention sh
 
 ## Current implementation
 
-- [x] The workspace includes a Packing route placeholder at `/trips/:id/packing`.
-- [ ] No packing data model, API endpoint, or checklist UI is implemented yet.
+- [x] The workspace includes the Packing checklist route at `/trips/:id/packing`.
+- [x] The packing-item database model and migration are in place.
+- [x] The packing API supports loading, creating, editing, toggling, reordering, and deleting checklist items.
+- [x] The Packing route offers the initial default-list or empty-list choice and displays the basic two-section checklist.
 
 ## First-stage implementation tasks
 
 ### A. Data model and API
 
-- [ ] Create a packing-item model with trip ID, name, optional category, quantity, packed state, sort order, and creation timestamp.
-- [ ] Store quantity as a positive integer with a default of one.
-- [ ] Add the agreed fixed categories and allow a null category.
-- [ ] Add list, create, update, reorder, and delete API endpoints scoped to a trip.
-- [ ] Add frontend types, request contracts, validation, and database migrations.
-- [ ] Preserve packing items when trip dates or status change.
+- [x] Create a packing-item model with trip ID, name, optional category, quantity, packed state, sort order, and creation timestamp.
+- [x] Store quantity as a positive integer with a default of one.
+- [x] Add the agreed fixed categories and allow a null category.
+- [x] Add list, create, update, reorder, and delete API endpoints scoped to a trip.
+- [x] Add frontend types, request contracts, validation, and database migrations.
+- [x] Preserve packing items when trip dates or status change.
 
 ### B. Packing route and checklist UI
 
-- [ ] Add the Packing section at `/trips/:id/packing` in the trip workspace.
-- [ ] Render the To pack and Packed lists from one set of packing items.
-- [ ] Toggle packed state directly from the checklist row.
-- [ ] Keep manual order stable when an item is packed or unpacked.
-- [ ] Show item quantity only when greater than one.
-- [ ] Show progress as packed checklist rows divided by all checklist rows.
-- [ ] Render optional category labels in the standard, ungrouped display.
-- [ ] Add a view control for grouping list items by category.
-- [ ] Support accessible drag-and-drop ordering within To pack and Packed lists.
+- [x] Add the Packing section at `/trips/:id/packing` in the trip workspace.
+- [x] Render the To pack and Packed lists from one set of packing items.
+- [x] Toggle packed state directly from the checklist row.
+- [x] Keep manual order stable when an item is packed or unpacked.
+- [x] Show item quantity only when greater than one.
+- [x] Show progress as packed checklist rows divided by all checklist rows.
+- [x] Render optional category labels in the standard, ungrouped display.
+- [x] Add a view control for grouping list items by category.
+- [x] Support drag-and-drop ordering within To pack and Packed lists, with Move up / Move down controls for keyboard users.
 
 ### C. Item management and recovery
 
-- [ ] Provide quick Add item flow with fields for name, optional quantity, and optional category.
-- [ ] Add edit/rename controls for every item.
-- [ ] Delete immediately, remove the row optimistically, and display a short-lived Undo action.
-- [ ] Delay the API delete until the Undo window ends so Undo restores the same item.
-- [ ] Report errors if saving, reordering, or deferred deletion fails.
+- [x] Provide quick Add item flow with fields for name, optional quantity, and optional category.
+- [x] Add edit/rename controls for every item.
+- [x] Delete immediately, remove the row optimistically, and display a short-lived Undo action.
+- [x] Delay the API delete until the Undo window ends so Undo restores the same item.
+- [x] Report errors if saving or deferred deletion fails. Reordering errors will be added with drag-and-drop.
 
 ### D. Default-list flow
 
-- [ ] Show the Use default list / Start empty choice only for a truly empty checklist.
-- [ ] Copy the agreed default items into the trip checklist when Use default list is selected.
-- [ ] Ensure copied default items are normal editable trip items, not template links.
+- [x] Show the Use default list / Start empty choice only for a truly empty checklist.
+- [x] Copy the agreed default items into the trip checklist when Use default list is selected.
+- [x] Ensure copied default items are normal editable trip items, not template links.
 
 ### E. Verification
 
@@ -102,5 +104,7 @@ Later, users may add default items after starting empty. Duplicate prevention sh
 
 - Trip workspace routing: `frontend/src/App.tsx`
 - Trip workspace layout: `frontend/src/pages/TripWorkspace.tsx`
+- Packing page: `frontend/src/pages/TripPackingPage.tsx`
+- Packing API helper: `frontend/src/api/packingItemsApi.ts`
 - Backend model folder: `backend/Models`
-- API endpoint definitions: `backend/Program.cs`
+- Packing API endpoints: `backend/Endpoints/PackingItemEndpoints.cs`

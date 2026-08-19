@@ -11,6 +11,7 @@ export type Trip = {
   budget: number | null;
   currency: string;
   note: string | null;
+  hasStartedPackingList: boolean;
   createdAtUtc: string;
   status: TripStatus;
   unscheduledActivityCount: number;

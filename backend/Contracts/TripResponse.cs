@@ -13,6 +13,7 @@ public record TripResponse(
     decimal? Budget,
     string Currency,
     string? Note,
+    bool HasStartedPackingList,
     DateTimeOffset CreatedAtUtc,
     TripLifecycleStatus Status,
     int UnscheduledActivityCount

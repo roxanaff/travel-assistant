@@ -413,7 +413,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
     editing = false,
   ) => (
-    <form className="itinerary-form" onSubmit={submit}>
+    <form className="itinerary-form form-surface" onSubmit={submit}>
       <label>
         Name
         <input
@@ -621,7 +621,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const openingHoursWarning = getOpeningHoursWarning(item);
 
     return (
-      <li key={item.id}>
+      <li className="item-card" key={item.id}>
         <div className="itinerary-item-summary">
           <div>
             <strong>{item.name}</strong>
@@ -699,12 +699,10 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
       {isLoading && <p className="detail-message">Loading itinerary…</p>}
       {error && <p className="detail-message form-error">{error}</p>}
       {pendingDeletion && (
-        <div className="itinerary-undo-message" role="status">
+        <button className="undo-toast" type="button" onClick={undoDelete}>
           <span>Activity deleted.</span>
-          <button className="text-button" type="button" onClick={undoDelete}>
-            Undo
-          </button>
-        </div>
+          <strong>Undo</strong>
+        </button>
       )}
       {!isLoading && !error && (
         <div className="itinerary-list">
@@ -731,7 +729,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     </button>
                   </div>
                 </div>
-                <ul>{dayItems.map(renderItem)}</ul>
+                <ul className="list-items">{dayItems.map(renderItem)}</ul>
                 {isAdding && addingForDate === day && form(newItem, saveNewItem)}
               </section>
             );
@@ -739,7 +737,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
           {sortUnscheduledItems(items.filter((item) => !item.date)).length > 0 && (
             <section className="itinerary-day itinerary-unscheduled">
               <h3>Unscheduled</h3>
-              <ul>{sortUnscheduledItems(items.filter((item) => !item.date)).map(renderItem)}</ul>
+              <ul className="list-items">{sortUnscheduledItems(items.filter((item) => !item.date)).map(renderItem)}</ul>
             </section>
           )}
         </div>

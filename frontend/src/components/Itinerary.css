@@ -7,39 +7,8 @@
   justify-content: space-between;
   gap: 16px;
 }
-.itinerary-form {
-  display: grid;
-  gap: 14px;
-  margin-top: 20px;
-  padding: 20px;
-  border: 1px solid var(--color-gray-200);
-  border-radius: 18px;
-  background-color: var(--color-white);
-}
-.itinerary-form label {
-  display: grid;
-  gap: 7px;
-  color: var(--color-blue-700);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
 .itinerary-form .form-row > label {
   flex: 1;
-}
-.itinerary-form input,
-.itinerary-form select,
-.itinerary-form textarea {
-  width: 100%;
-  padding: 10px 18px;
-  border: 1px solid var(--color-gray-200);
-  border-radius: 9px;
-  background: var(--color-white);
-  /*color: inherit;*/
-  font: inherit;
-  font-weight: 400;
-}
-.itinerary-form textarea {
-  resize: vertical;
 }
 .itinerary-form .field-label {
   display: flex;
@@ -69,7 +38,7 @@
 }
 .itinerary-day h3 {
   margin: 0 0 8px;
-  color: var(--color-blue-700);
+  color: var(--color-pink-700);
   font-size: 1rem;
   /*border-bottom: 1px solid var(--color-gray-200)*/
 }
@@ -97,22 +66,6 @@
 .itinerary-day-add:hover {
   background: var(--color-gray-200);
 }
-.itinerary-day ul {
-  display: grid;
-  /*gap: 10px;*/
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.itinerary-day li {
-  display: grid;
-  gap: 8px;
-  /*gap: 16px;*/
-  padding: 14px;
-  border: 1px solid var(--color-gray-200);
-  border-radius: 12px;
-  background: var(--color-white);
-}
 .itinerary-item-summary {
   display: flex;
   align-items: center;
@@ -125,11 +78,11 @@
 }
 .itinerary-item-details {
   color: var(--color-gray-500);
-  font-size: 0.85rem;
+  /*font-size: 0.85rem;*/
 }
 .itinerary-warning {
   margin: 4px 0 0;
-  color: #9a6700;
+  color: var(--color-red-500);
   font-size: 0.85rem;
 }
 .itinerary-item-actions {
@@ -151,9 +104,11 @@
 }
 .itinerary-expanded-details p {
   margin: 0;
+  color: var(--color-gray-500);
 }
 .itinerary-expanded-details strong {
-  color: var(--color-ink);
+  /*color: var(--color-ink);*/
+  color: var(--color-gray-700);
 }
 .itinerary-expanded-details a {
   color: var(--color-blue-500);
@@ -163,14 +118,4 @@
 }
 .itinerary-section .danger-button:hover {
   background: var(--color-red-100);
-}
-.itinerary-undo-message {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 16px 0 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-gray-200);
-  border-radius: 10px;
-  background: var(--color-white);
 }
