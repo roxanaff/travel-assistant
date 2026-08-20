@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Text.Json.Serialization;
 using TravelAssistant.Data;
 using TravelAssistant.Endpoints;
@@ -33,8 +34,9 @@ builder.Services.AddCors(options =>
 // configuration or Render's environment variables.
 builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("TravelAssistant")
-        ?? throw new InvalidOperationException("Connection string 'TravelAssistant' was not found.")
+        NormalizeConnectionString(
+            builder.Configuration.GetConnectionString("TravelAssistant")
+            ?? throw new InvalidOperationException("Connection string 'TravelAssistant' was not found."))
     )
 );
 
@@ -75,3 +77,28 @@ app.MapItineraryEndpoints();
 app.MapPackingItemEndpoints();
 
 app.Run();
+
+static string NormalizeConnectionString(string connectionString)
+{
+    if (!Uri.TryCreate(connectionString, UriKind.Absolute, out var uri)
+        || (uri.Scheme is not "postgres" and not "postgresql"))
+    {
+        return connectionString;
+    }
+
+    var userInfoParts = uri.UserInfo.Split(':', 2);
+    if (userInfoParts.Length != 2)
+    {
+        throw new InvalidOperationException("The PostgreSQL connection URL must include a username and password.");
+    }
+
+    return new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.IsDefaultPort ? 5432 : uri.Port,
+        Database = Uri.UnescapeDataString(uri.AbsolutePath.Trim('/')),
+        Username = Uri.UnescapeDataString(userInfoParts[0]),
+        Password = Uri.UnescapeDataString(userInfoParts[1]),
+        SslMode = SslMode.Require,
+    }.ConnectionString;
+}
