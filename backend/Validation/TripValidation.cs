@@ -2,8 +2,10 @@ using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;
 
+/// <summary>Validates the editable trip setup before an endpoint saves it.</summary>
 public static class TripValidation
 {
+    /// <summary>Returns a user-facing validation message, or <c>null</c> when the request is valid.</summary>
     public static string? Validate(CreateTripRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))

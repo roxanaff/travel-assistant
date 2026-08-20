@@ -1,3 +1,4 @@
+/** Formats an ISO date for display without shifting it across time zones. */
 export const formatDate = (date: string | null | undefined) => {
   if (!date) 
     return "Date not set";

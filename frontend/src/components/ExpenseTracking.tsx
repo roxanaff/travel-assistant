@@ -8,6 +8,7 @@ import type { Trip } from "../types/trip";
 
 import "./ExpenseTracking.css";
 
+// This component owns actual spending; planned-budget categories live in their own feature type file.
 const expenseCategories = [
   { value: "TravelToFrom", label: "Travel to/from" },
   { value: "Accommodation", label: "Accommodation" },
@@ -31,6 +32,7 @@ type PendingDeletion = {
 
 type ExpenseGrouping = "category" | "day";
 
+/** Returns today's local calendar date for a newly entered expense. */
 const localToday = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -48,6 +50,7 @@ const createEmptyExpenseForm = (): NewBudgetItemForm => ({
   plannedCostId: null,
 });
 
+/** Sorts dated expenses newest first, with undated entries after them. */
 const sortExpenses = (expenses: BudgetItem[]) =>
   [...expenses].sort(
     (first, second) =>
@@ -56,7 +59,10 @@ const sortExpenses = (expenses: BudgetItem[]) =>
       first.createdAtUtc.localeCompare(second.createdAtUtc),
   );
 
-/** Shows recorded expenses separately from the trip's planned budget. */
+/**
+ * Manages actual expenses, including inline edits, grouping, and a five-second deletion Undo window.
+ * It reloads when PlannedBudget converts an estimated cost into an expense.
+ */
 export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
   const [expenses, setExpenses] = useState<BudgetItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,6 +108,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     else setNewExpense(update);
   };
 
+  /** Converts editable browser strings into the API's expense payload. */
   const toRequest = (expense: NewBudgetItemForm) => ({
     name: expense.name.trim(),
     category: expense.category || null,
@@ -202,6 +209,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     }
   };
 
+  /** Permanently deletes an expense once its Undo window has elapsed. */
   const commitDelete = async (expense: BudgetItem) => {
     try {
       const response = await fetch(
@@ -217,6 +225,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     }
   };
 
+  /** Removes an expense optimistically and holds its data locally until the Undo timer ends. */
   const deleteExpense = (expense: BudgetItem) => {
     if (pendingDeletion) {
       if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
@@ -239,6 +248,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     deleteTimerRef.current = null;
   };
 
+  /** Shared inline form used by the create and edit flows. */
   const form = (
     expense: NewBudgetItemForm,
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,

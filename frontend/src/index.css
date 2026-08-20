@@ -1,3 +1,4 @@
+/* Application-wide design tokens and browser-level defaults. Feature styles build on these values. */
 :root {
   /*--color-green-700: #4d6e1c;*/
   /*--color-green-500: #6a9127;*/

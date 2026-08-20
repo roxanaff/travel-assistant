@@ -25,10 +25,12 @@ export function TripForm({
   onCancel,
   onSubmit,
 }: Props) {
+  // Local string values suit controlled HTML inputs; they are converted to API values only on submit.
   const [values, setValues] = useState(initialValues);
   useEffect(() => setValues(initialValues), [initialValues]);
   
   // Keeps form values as strings for HTML controls until the request is submitted.
+  /** Updates one field and provides a helpful next-day default when the user first chooses a start date. */
   const update = (field: keyof TripFormValues, value: string) =>
     setValues((current) => {
       const next = { ...current, [field]: value };
@@ -40,6 +42,7 @@ export function TripForm({
       return next;
     });
   
+  // Convert optional blank form values to null so the API can store them as absent.
   // Convert optional blank form values to null so the API can store them as absent.
   const request: TripRequest = {
     name: values.name.trim(),

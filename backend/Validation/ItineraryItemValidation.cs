@@ -3,8 +3,12 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Validation;
 
+/// <summary>
+/// Validates itinerary input, including rules that depend on the dates configured for its parent trip.
+/// </summary>
 public static class ItineraryItemValidation
 {
+    /// <summary>Returns a user-facing validation message, or <c>null</c> when the request is valid.</summary>
     public static string? Validate(CreateItineraryItemRequest request, Trip trip)
     {
         if (string.IsNullOrWhiteSpace(request.Name))

@@ -10,8 +10,10 @@ import {
 } from "../types/trip";
 import "./TripDashboard.css";
 
+// Dashboard-specific workflow: loads the user's trip index and coordinates create, edit, and delete actions.
 const statusOrder = { Ongoing: 0, Upcoming: 1, Draft: 2, Past: 3 } as const;
 
+/** Keeps the most relevant trips at the top while retaining useful chronological ordering within each status. */
 const sortTrips = (trips: Trip[]) =>
   [...trips].sort((a, b) => {
     const statusDifference = statusOrder[a.status] - statusOrder[b.status];
@@ -28,6 +30,7 @@ const sortTrips = (trips: Trip[]) =>
     return b.createdAtUtc.localeCompare(a.createdAtUtc);
   });
 
+/** Renders the top-level trip list and keeps its local view in sync after each mutation. */
 export function TripDashboard() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +42,7 @@ export function TripDashboard() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Load once when the dashboard mounts; child workspaces load individual trips separately.
   useEffect(() => {
     void (async () => {
       try {
@@ -57,6 +61,7 @@ export function TripDashboard() {
   
   const orderedTrips = useMemo(() => sortTrips(trips), [trips]);
   
+  /** Sends one create-or-update request, then updates the list without another full reload. */
   const saveTrip = async (request: TripRequest) => {
     setIsSaving(true);
     setFormError(null);
@@ -97,6 +102,7 @@ export function TripDashboard() {
     }
   };
   
+  /** Confirms and removes a trip from both the API and the displayed list. */
   const deleteTrip = async (trip: Trip) => {
     if (!window.confirm(`Delete “${trip.name}”? This cannot be undone.`))
       return;

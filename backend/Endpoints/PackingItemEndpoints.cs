@@ -11,6 +11,7 @@ namespace TravelAssistant.Endpoints;
 /// </summary>
 public static class PackingItemEndpoints
 {
+    // The starter checklist is copied into the database so users can edit it without changing this template.
     private static readonly (string Name, PackingCategory Category)[] DefaultItems =
     [
         ("Passport/ID", PackingCategory.DocumentsAndMoney),
@@ -27,6 +28,7 @@ public static class PackingItemEndpoints
         ("Regular medication", PackingCategory.Health)
     ];
 
+    /// <summary>Maps routes for starting, editing, ordering, and resetting a trip's packing checklist.</summary>
     public static IEndpointRouteBuilder MapPackingItemEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips/{tripId:guid}/packing-items", async (Guid tripId, TravelAssistantDbContext database) =>
@@ -54,6 +56,7 @@ public static class PackingItemEndpoints
                 return Results.NotFound();
             }
 
+            // A trip must make exactly one initial checklist choice: blank or the standard template.
             if (trip.HasStartedPackingList || await database.PackingItems.AnyAsync(item => item.TripId == tripId))
             {
                 return Results.Conflict("This packing checklist has already been started.");
@@ -106,6 +109,7 @@ public static class PackingItemEndpoints
                 return Results.NotFound();
             }
 
+            // New manual items are appended without disturbing the user's current custom order.
             var lastSortOrder = await database.PackingItems
                 .Where(item => item.TripId == tripId)
                 .Select(item => (int?)item.SortOrder)
@@ -168,6 +172,7 @@ public static class PackingItemEndpoints
                 return Results.NotFound();
             }
 
+            // Reject duplicates and IDs from another trip before changing any stored ordering.
             if (request.ItemIds.Count != request.ItemIds.Distinct().Count())
             {
                 return Results.BadRequest("Each packing item can only appear once in a reorder request.");
@@ -226,9 +231,11 @@ public static class PackingItemEndpoints
         return app;
     }
 
+    /// <summary>Finds an item only when it belongs to the trip named in the route.</summary>
     private static Task<PackingItem?> FindPackingItem(Guid tripId, Guid id, TravelAssistantDbContext database) =>
         database.PackingItems.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
 
+    /// <summary>Chooses the stable API shape returned to the React frontend.</summary>
     private static object ToResponse(PackingItem item) => new
     {
         item.Id,

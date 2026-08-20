@@ -33,7 +33,10 @@ type PendingDeletion = {
 const categoryLabel = (category: PackingItem["category"]) =>
   packingCategories.find((option) => option.value === category)?.label ?? null;
 
-/** Displays one trip's manual packing checklist and its initial setup choice. */
+/**
+ * Owns the packing-checklist workflow: choose its initial template, edit items, mark items packed,
+ * reorder them, and offer a short undo period before a deletion reaches the API.
+ */
 export function TripPackingPage() {
   const { trip, setHasUnsavedForm, setTrip } = useOutletContext<TripWorkspaceContext>();
   const [items, setItems] = useState<PackingItem[]>([]);
@@ -74,6 +77,7 @@ export function TripPackingPage() {
     void loadItems();
   }, [trip.id]);
 
+  /** Mirrors the API's setup flag in workspace state so this page immediately leaves the setup view. */
   const markChecklistStarted = () => {
     setTrip((current) => current
       ? { ...current, hasStartedPackingList: true }
@@ -117,6 +121,7 @@ export function TripPackingPage() {
     }
   };
 
+  /** Optimistically ticks an item, restoring its former state if the request fails. */
   const togglePacked = async (item: PackingItem) => {
     const nextPackedState = !item.isPacked;
     setUpdatingItemId(item.id);
@@ -156,6 +161,7 @@ export function TripPackingPage() {
     else setNewItem(update);
   };
 
+  /** Performs quick browser-side checks before the API repeats its authoritative validation. */
   const validateForm = (item: PackingItemForm) => {
     if (!item.name.trim()) return "Enter an item name.";
     if (item.quantity && (!Number.isInteger(Number(item.quantity)) || Number(item.quantity) <= 0)) {
@@ -224,6 +230,7 @@ export function TripPackingPage() {
     }
   };
 
+  /** Permanently deletes an item after its Undo window expires. */
   const commitDelete = async (item: PackingItem) => {
     try {
       await deletePackingItem(trip.id, item.id);
@@ -235,6 +242,7 @@ export function TripPackingPage() {
     }
   };
 
+  /** Removes an item from the view immediately, keeping it available for five seconds of Undo. */
   const removeItem = (item: PackingItem) => {
     if (pendingDeletion) {
       if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
@@ -275,6 +283,7 @@ export function TripPackingPage() {
     }
   };
 
+  /** Optimistically saves a complete ordering and restores the previous order if it is rejected. */
   const persistOrder = async (nextItems: PackingItem[]) => {
     const previousItems = items;
     setItems(nextItems.map((item, index) => ({ ...item, sortOrder: index })));
@@ -287,6 +296,7 @@ export function TripPackingPage() {
     }
   };
 
+  /** Reorders within the packed or unpacked section, then delegates persistence to the API helper. */
   const moveItem = (sectionItems: PackingItem[], itemId: string, destinationIndex: number) => {
     const currentIndex = sectionItems.findIndex((item) => item.id === itemId);
     if (currentIndex < 0 || currentIndex === destinationIndex) return;
@@ -303,6 +313,7 @@ export function TripPackingPage() {
     void persistOrder(nextItems);
   };
 
+  /** Shared add/edit form so both flows enforce the same input behaviour and error display. */
   const form = (
     item: PackingItemForm,
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
@@ -362,6 +373,7 @@ export function TripPackingPage() {
   const packed = items.filter((item) => item.isPacked);
   const showSetupChoice = !trip.hasStartedPackingList && items.length === 0;
 
+  /** Renders either an item row or its inline edit form. */
   const renderItem = (item: PackingItem, sectionItems: PackingItem[]) => editingItemId === item.id ? (
     <li className="packing-item-editing" key={item.id}>{form(editingItem, saveEdit, true)}</li>
   ) : (
@@ -405,6 +417,7 @@ export function TripPackingPage() {
     </li>
   );
 
+  /** Switches between the user's chosen flat-list and category-grouped views. */
   const renderSectionItems = (sectionItems: PackingItem[]) => {
     if (view === "list") return <ul className="list-items">{sectionItems.map((item) => renderItem(item, sectionItems))}</ul>;
 

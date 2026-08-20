@@ -6,8 +6,12 @@ using TravelAssistant.Validation;
 
 namespace TravelAssistant.Endpoints;
 
+/// <summary>
+/// Defines the API workflow for actual expenses: list a trip's expenses, create one, edit it, or delete it.
+/// </summary>
 public static class BudgetItemEndpoints
 {
+    /// <summary>Maps all routes whose resource is an actual expense recorded for a trip.</summary>
     public static IEndpointRouteBuilder MapBudgetItemEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips/{tripId:guid}/budget-items", async (Guid tripId, TravelAssistantDbContext database) =>
@@ -40,6 +44,7 @@ public static class BudgetItemEndpoints
                 return Results.NotFound();
             }
 
+            // A planned cost may be converted into only one actual expense for the same trip.
             if (request.PlannedCostId is not null)
             {
                 var plannedCostExists = await database.PlannedCosts.AnyAsync(cost =>
@@ -81,6 +86,7 @@ public static class BudgetItemEndpoints
                 return Results.NotFound();
             }
 
+            // Relinking would make expense/planned-cost tracking ambiguous; delete and recreate instead.
             if (request.PlannedCostId != budgetItem.PlannedCostId)
             {
                 return Results.BadRequest("A linked planned cost cannot be changed.");
@@ -111,6 +117,7 @@ public static class BudgetItemEndpoints
         return app;
     }
 
+    /// <summary>Provides a consistent display name when an optional expense name is omitted.</summary>
     private static string NormalizeName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 }

@@ -23,6 +23,7 @@ export type PackingItemForm = {
   quantity: string;
 };
 
+/** Returns a fresh form object for a new checklist item. */
 export const createEmptyPackingItemForm = (): PackingItemForm => ({
   name: "",
   category: "",

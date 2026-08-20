@@ -53,6 +53,7 @@ export const initialTripFormValues: TripFormValues = {
   note: "",
 };
 
+/** Converts nullable API values into the empty strings required by controlled form inputs. */
 export const tripToFormValues = (trip: Trip): TripFormValues => ({
   name: trip.name,
   destination: trip.destination ?? "",

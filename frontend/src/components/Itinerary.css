@@ -1,3 +1,4 @@
+/* Activity-list, day-section, inline-form, and expanded-detail styling for the itinerary feature. */
 .itinerary-section {
   grid-column: 1 / -1;
 }

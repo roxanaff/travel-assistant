@@ -2,6 +2,7 @@ import type { PackingItem, PackingItemForm } from "../types/packingItem";
 
 import { apiBaseUrl } from "./travelAssistantApi";
 
+/** Builds the common nested resource route for one trip's packing items. */
 const packingItemsUrl = (tripId: string) =>
   `${apiBaseUrl}/api/trips/${tripId}/packing-items`;
 

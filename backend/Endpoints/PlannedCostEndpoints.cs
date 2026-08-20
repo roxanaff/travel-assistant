@@ -6,8 +6,12 @@ using TravelAssistant.Validation;
 
 namespace TravelAssistant.Endpoints;
 
+/// <summary>
+/// Defines the API workflow for estimated trip costs before they become actual expenses.
+/// </summary>
 public static class PlannedCostEndpoints
 {
+    /// <summary>Maps all routes that create, read, update, or delete a trip's planned costs.</summary>
     public static IEndpointRouteBuilder MapPlannedCostEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips/{tripId:guid}/planned-costs", async (Guid tripId, TravelAssistantDbContext database) =>
@@ -29,6 +33,7 @@ public static class PlannedCostEndpoints
                     cost.Category,
                     cost.Amount,
                     cost.CreatedAtUtc,
+                    // The UI uses this derived flag to show whether a planned cost has been spent.
                     ExpenseAdded = cost.Expense != null
                 })
                 .ToListAsync();
@@ -103,6 +108,7 @@ public static class PlannedCostEndpoints
         return app;
     }
 
+    /// <summary>Provides a consistent display name when an optional planned-cost name is omitted.</summary>
     private static string NormalizeName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 }

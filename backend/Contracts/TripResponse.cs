@@ -2,6 +2,9 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;
 
+/// <summary>
+/// Trip data returned to the frontend, including calculated information that is not stored on <c>Trip</c>.
+/// </summary>
 public record TripResponse(
     Guid Id,
     string Name,

@@ -20,6 +20,7 @@ type PendingDeletion = {
   item: ItineraryItem;
 };
 
+// This component owns the itinerary workflow: scheduling, optional activity details, inline editing, and Undo.
 const formatTime = (time: string | null) =>
   time ? time.slice(0, 5) : "Any time";
 
@@ -53,6 +54,7 @@ const getMinutesSinceMidnight = (time: string) => {
   return hours * 60 + minutes;
 };
 
+/** Gives a non-blocking warning when an entered schedule conflicts with stated opening hours. */
 const getOpeningHoursWarning = (item: ItineraryItem) => {
   if (!item.startTime || !item.closingTime) return null;
 
@@ -72,6 +74,7 @@ const getOpeningHoursWarning = (item: ItineraryItem) => {
   return null;
 };
 
+/** Builds each calendar date used to create the dated itinerary sections. */
 const getTripDays = (trip: Trip) => {
   if (!trip.startDate || !trip.endDate) return [];
 
@@ -91,6 +94,7 @@ const getTripDays = (trip: Trip) => {
   return days;
 };
 
+/** Shows timed activities before untimed ones within a day. */
 const sortDatedItems = (items: ItineraryItem[]) =>
   [...items].sort(
     (first, second) =>
@@ -105,6 +109,7 @@ const priorityOrder: Record<string, number> = {
   Optional: 2,
 };
 
+/** Keeps unscheduled ideas ordered by their importance rather than creation date alone. */
 const sortUnscheduledItems = (items: ItineraryItem[]) =>
   [...items].sort(
     (first, second) =>
@@ -112,6 +117,7 @@ const sortUnscheduledItems = (items: ItineraryItem[]) =>
       first.createdAtUtc.localeCompare(second.createdAtUtc),
   );
 
+/** Renders and coordinates all activities belonging to the current trip. */
 export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
   const [items, setItems] = useState<ItineraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -210,6 +216,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     return errors;
   };
 
+  /** Maps known backend validation messages back to the corresponding browser form field. */
   const getResponseFormErrors = (message: string): ItineraryFormErrors => {
     if (message.includes("name is required")) return { name: message };
     if (message.includes("start time requires")) return { startTime: message };
@@ -224,6 +231,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     setItems((current) => [...current, item]);
   };
 
+  /** Permanently removes an activity after its Undo period. */
   const commitDelete = async (item: ItineraryItem) => {
     try {
       const response = await fetch(
@@ -326,6 +334,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     }
   };
 
+  /** Optimistically removes an activity while preserving it locally for five seconds of Undo. */
   const deleteItem = async (item: ItineraryItem) => {
     if (pendingDeletion) {
       if (deleteTimerRef.current !== null) {
@@ -408,6 +417,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     });
   };
 
+  /** Shared inline activity form for both adding and editing. */
   const form = (
     item: ItineraryItemForm,
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
@@ -598,6 +608,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     </form>
   );
 
+  /** Renders a compact itinerary card, with secondary details available on demand. */
   const renderItem = (item: ItineraryItem) => {
     if (editingItemId === item.id) {
       return <li key={item.id}>{form(editingItem, saveEdit, true)}</li>;

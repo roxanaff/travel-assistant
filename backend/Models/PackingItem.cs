@@ -27,6 +27,7 @@ public class PackingItem
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>Groups packing items into the checklist sections shown by the frontend.</summary>
 public enum PackingCategory
 {
     DocumentsAndMoney,

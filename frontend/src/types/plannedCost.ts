@@ -40,6 +40,7 @@ export const plannedCostCategories: Array<{
   { value: "Other", label: "Other" },
 ];
 
+/** Creates a new cost form, optionally preserving a category selected from a quick-add action. */
 export const createEmptyPlannedCostForm = (
   category: PlannedCostForm["category"] = "",
 ): PlannedCostForm => ({

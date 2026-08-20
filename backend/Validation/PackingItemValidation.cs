@@ -2,11 +2,10 @@ using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;
 
-/// <summary>
-/// Validates packing-item requests before they are saved.
-/// </summary>
+/// <summary>Validates packing-item input before an endpoint changes the database.</summary>
 public static class PackingItemValidation
 {
+    /// <summary>Returns a user-facing validation message, or <c>null</c> when the request is valid.</summary>
     public static string? Validate(string? name, int? quantity)
     {
         if (string.IsNullOrWhiteSpace(name))

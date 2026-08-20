@@ -1,5 +1,8 @@
 namespace TravelAssistant.Models;
 
+/// <summary>
+/// Represents one planned activity. It can be unscheduled or placed on a specific day and time.
+/// </summary>
 public class ItineraryItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -35,6 +38,7 @@ public class ItineraryItem
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>Groups itinerary activities for display and filtering.</summary>
 public enum ItineraryCategory
 {
     Museum,
@@ -47,6 +51,7 @@ public enum ItineraryCategory
     Other
 }
 
+/// <summary>Captures how essential an activity is to the trip.</summary>
 public enum ItineraryPriority
 {
     MustDo,

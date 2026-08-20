@@ -6,8 +6,12 @@ using TravelAssistant.Validation;
 
 namespace TravelAssistant.Endpoints;
 
+/// <summary>
+/// Defines the API workflow for a trip's activities, from an unscheduled idea to a timed itinerary entry.
+/// </summary>
 public static class ItineraryEndpoints
 {
+    /// <summary>Maps routes that list, create, change, and delete itinerary activities.</summary>
     public static IEndpointRouteBuilder MapItineraryEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips/{tripId:guid}/itinerary-items", async (Guid tripId, TravelAssistantDbContext database) =>
@@ -20,6 +24,7 @@ public static class ItineraryEndpoints
 
             var itineraryItems = await database.ItineraryItems
                 .Where(item => item.TripId == tripId)
+                // Scheduled activities come first in chronological order; unscheduled ideas follow.
                 .OrderBy(item => item.Date == null)
                 .ThenBy(item => item.Date)
                 .ThenBy(item => item.StartTime)
@@ -118,9 +123,11 @@ public static class ItineraryEndpoints
         return app;
     }
 
+    /// <summary>Stores blank optional text as <c>null</c>, avoiding meaningless whitespace values.</summary>
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>Chooses the stable API shape returned to the React frontend.</summary>
     private static object ToResponse(ItineraryItem item) => new
     {
         item.Id,

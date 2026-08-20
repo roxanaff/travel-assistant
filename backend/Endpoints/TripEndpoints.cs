@@ -6,8 +6,12 @@ using TravelAssistant.Validation;
 
 namespace TravelAssistant.Endpoints;
 
+/// <summary>
+/// Defines the top-level trip API. Updating a trip can also shift or unschedule affected itinerary items.
+/// </summary>
 public static class TripEndpoints
 {
+    /// <summary>Maps routes for listing, reading, creating, editing, and deleting trips.</summary>
     public static IEndpointRouteBuilder MapTripEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/trips", async (TravelAssistantDbContext database) =>
@@ -61,6 +65,7 @@ public static class TripEndpoints
                 return Results.NotFound();
             }
 
+            // Keep the old date range so related scheduled activities can be adjusted after the edit.
             var previousStartDate = trip.StartDate;
             var previousEndDate = trip.EndDate;
 
@@ -100,9 +105,14 @@ public static class TripEndpoints
         return app;
     }
 
+    /// <summary>Stores blank optional text as <c>null</c>, avoiding meaningless whitespace values.</summary>
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>
+    /// Preserves an itinerary's relative schedule when the trip moves without becoming shorter;
+    /// otherwise removes dates that no longer fall within the trip. Returns the number unscheduled.
+    /// </summary>
     private static async Task<int> ApplyItineraryDateChanges(
         Trip trip,
         DateOnly? previousStartDate,
@@ -158,6 +168,7 @@ public static class TripEndpoints
         return unscheduledCount;
     }
 
+    /// <summary>Projects a database entity into the API shape, including calculated display values.</summary>
     private static TripResponse ToResponse(Trip trip, int unscheduledActivityCount = 0)
     {
         var status = GetStatus(trip, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -178,6 +189,7 @@ public static class TripEndpoints
             unscheduledActivityCount);
     }
 
+    /// <summary>Derives the dashboard status from the trip's completeness and date range.</summary>
     private static TripLifecycleStatus GetStatus(Trip trip, DateOnly today)
     {
         if (string.IsNullOrWhiteSpace(trip.Destination) || trip.StartDate is null || trip.EndDate is null)

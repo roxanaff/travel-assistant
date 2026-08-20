@@ -24,6 +24,7 @@ type PendingDeletion = {
   cost: PlannedCost;
 };
 
+/** Returns today's calendar date in the browser's local time for a newly recorded expense. */
 const localToday = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -33,7 +34,9 @@ const localToday = () => {
   return `${year}-${month}-${day}`;
 };
 
-/** Displays and manages the trip's planned spending by category. */
+/**
+ * Manages estimated spending by category and can copy one plan into actual expenses exactly once.
+ */
 export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: PlannedBudgetProps) {
   const [costs, setCosts] = useState<PlannedCost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +83,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     else setNewCost(update);
   };
 
+  /** Converts browser form strings into the API payload shape. */
   const toRequest = (cost: PlannedCostForm) => ({
     name: cost.name.trim() || null,
     category: cost.category || null,
@@ -223,6 +227,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     deleteTimerRef.current = null;
   };
 
+  /** Creates an actual expense from a plan, then asks the sibling expense section to reload. */
   const copyToExpenses = async (cost: PlannedCost) => {
     setCopyingCostId(cost.id);
     setError(null);
@@ -252,6 +257,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     }
   };
 
+  /** Shared inline form used by the add and edit flows. */
   const form = (
     cost: PlannedCostForm,
     submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,

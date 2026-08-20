@@ -1,5 +1,8 @@
 namespace TravelAssistant.Models;
 
+/// <summary>
+/// Represents a budgeted cost before it has been spent; it may later link to one actual expense.
+/// </summary>
 public class PlannedCost
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -19,6 +22,7 @@ public class PlannedCost
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>Categories used when planning a trip's expected costs.</summary>
 public enum PlannedCostCategory
 {
     TravelToFrom,

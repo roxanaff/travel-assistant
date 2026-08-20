@@ -2,6 +2,7 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;
 
+/// <summary>Payload accepted when the frontend creates or updates an itinerary activity.</summary>
 public record CreateItineraryItemRequest(
     string Name,
     DateOnly? Date,

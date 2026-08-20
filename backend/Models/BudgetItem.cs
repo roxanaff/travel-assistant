@@ -1,5 +1,8 @@
 namespace TravelAssistant.Models;
 
+/// <summary>
+/// Represents one actual expense recorded against a trip, optionally linked to the plan it fulfils.
+/// </summary>
 public class BudgetItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();

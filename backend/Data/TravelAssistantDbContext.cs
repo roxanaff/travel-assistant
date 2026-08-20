@@ -3,8 +3,13 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Data;
 
+/// <summary>
+/// The application's unit of work for PostgreSQL. Entity Framework uses this class to translate
+/// the model classes and relationships below into database tables and constraints.
+/// </summary>
 public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options) : DbContext(options)
 {
+    // Each DbSet represents a queryable table and the collection used to add or remove its rows.
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
     public DbSet<PlannedCost> PlannedCosts => Set<PlannedCost>();
@@ -15,6 +20,8 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     {
         base.OnModelCreating(modelBuilder);
 
+        // These database rules mirror the validation layer and protect data even if an API client
+        // bypasses the frontend.
         modelBuilder.Entity<Trip>(trip =>
         {
             trip.Property(item => item.Name).HasMaxLength(150).IsRequired();
@@ -31,15 +38,16 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             budgetItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
             budgetItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             budgetItem.Property(item => item.Amount).HasPrecision(12, 2);
+            // An actual expense can represent at most one planned cost.
             budgetItem.HasIndex(item => item.PlannedCostId).IsUnique();
             budgetItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.BudgetItems)
                 .HasForeignKey(item => item.TripId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade); // Deleting a trip removes its child records.
             budgetItem.HasOne(item => item.PlannedCost)
                 .WithOne(cost => cost.Expense)
                 .HasForeignKey<BudgetItem>(item => item.PlannedCostId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull); // Keep an expense if its linked plan is removed.
         });
 
         modelBuilder.Entity<PlannedCost>(plannedCost =>
@@ -70,6 +78,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
 
         modelBuilder.Entity<PackingItem>(packingItem =>
         {
+            // Database-level guard for data written outside the normal request validation flow.
             packingItem.ToTable(item => item.HasCheckConstraint(
                 "CK_PackingItems_Quantity_Positive",
                 "\"Quantity\" > 0"));

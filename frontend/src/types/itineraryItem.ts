@@ -31,6 +31,7 @@ export type ItineraryItemForm = {
   note: string;
 };
 
+/** Returns a fresh form object so separate create/edit panels never share mutable state. */
 export const createEmptyItineraryItemForm = (): ItineraryItemForm => ({
   name: "",
   date: "",

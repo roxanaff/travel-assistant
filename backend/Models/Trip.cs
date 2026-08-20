@@ -1,5 +1,9 @@
 namespace TravelAssistant.Models;
 
+/// <summary>
+/// The aggregate root for a journey. Its child collections hold the itinerary, packing, planned-cost,
+/// and actual-expense data that belongs to it.
+/// </summary>
 public class Trip
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -38,6 +42,7 @@ public class Trip
     public List<PackingItem> PackingItems { get; set; } = [];
 }
 
+/// <summary>High-level trip styles selected during setup.</summary>
 public enum TripType
 {
     CityBreak,
@@ -47,6 +52,7 @@ public enum TripType
     Other
 }
 
+/// <summary>Categories used when recording actual expenses.</summary>
 public enum BudgetCategory
 {
     TravelToFrom,
