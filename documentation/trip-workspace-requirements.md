@@ -1,8 +1,8 @@
 # Trip Workspace / Details Page — Requirements and Task List
 
-This document defines the page opened from a dashboard trip card. It is the workspace for one trip, not a single long details page.
+This document records the page opened from a dashboard trip card. It is the workspace for one trip, not a single long details page.
 
-## Agreed structure
+## Current structure
 
 Clicking a dashboard card opens the trip workspace on **Itinerary**.
 
@@ -20,7 +20,7 @@ Trip workspace header
 
 There is no Overview section initially. The dashboard provides cross-trip overview; an Overview section can be added later for shared-trip and progress summaries.
 
-Keep a compact persistent header above the tabs. Do not use a permanent side panel; it reduces working space on desktop and does not adapt well to mobile.
+A compact persistent header is kept above the tabs. A permanent side panel is not used because it reduces working space on desktop and does not adapt well to mobile.
 
 ## Current implementation — complete or already available
 
@@ -43,7 +43,7 @@ Keep a compact persistent header above the tabs. Do not use a permanent side pan
 
 ### C. Details section
 
-- [ ] Apply the agreed trip-date change rules to itinerary activities when dates are edited.
+- [ ] Apply the documented trip-date change rules to itinerary activities when dates are edited.
 
 ### D. Section ownership
 

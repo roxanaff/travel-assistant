@@ -1,12 +1,17 @@
 # Deploying the Travel Assistant for free
 
-This guide deploys the React frontend to Cloudflare Pages, the ASP.NET Core API to Render, and the PostgreSQL database to Neon. It is suitable for personal testing, not a production service with guaranteed availability.
+This guide deploys the React frontend to Cloudflare Pages, the ASP.NET Core API to Render, and the PostgreSQL database to Neon.
+It is suitable for personal testing, not a production service with guaranteed availability.
 
 ## Before you start
 
-Create free accounts with GitHub, Cloudflare, Render, and Neon. Push this repository to a private GitHub repository before connecting the hosting services. Do not commit `.env` files or database connection strings.
+Create free accounts with GitHub, Cloudflare, Render, and Neon. 
+Push this repository to a private GitHub repository before connecting the hosting services. 
+Do not commit `.env` files or database connection strings.
 
-The hosted app intentionally has shared data until authentication is added. Anyone with the app link can currently read, create, edit, and delete all test trips. Only share it with trusted testers.
+The hosted app intentionally has shared data until authentication is added. 
+Anyone with the app link can currently read, create, edit, and delete all test trips. 
+Only share it with trusted testers.
 
 ## 1. Create the database in Neon
 

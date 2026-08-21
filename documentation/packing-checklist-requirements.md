@@ -2,7 +2,7 @@
 
 This document covers the first-stage manual Packing section of a trip workspace.
 
-## Agreed first-stage behaviour
+## Current product behavior
 
 - Packing works for Draft, Upcoming, Ongoing, and Past trips.
 - Each item has a required name, optional category, optional quantity, packed state, and saved manual order.

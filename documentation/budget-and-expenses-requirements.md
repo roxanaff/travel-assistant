@@ -1,8 +1,9 @@
 # Budget and Expenses — Requirements and Task List
 
-This document covers the Budget & expenses workspace section. Planned costs and recorded expenses are separate datasets that use the same optional Target budget.
+This document covers the Budget & expenses workspace section. 
+Planned costs and recorded expenses are separate datasets that use the same optional Target budget.
 
-## Agreed behaviour
+## Current product behavior
 
 ### Target budget
 
@@ -86,11 +87,13 @@ All planned-budget UI tasks are complete.
 
 ### A. Expense model and form
 
-All expense model and form tasks are complete. `BudgetItem` remains the internal backend type for now, while the UI and API behavior use the user-facing term Expenses.
+All expense model and form tasks are complete. `BudgetItem` remains the internal backend type for now, while the UI and 
+API behavior use the user-facing term Expenses.
 
 ### B. Expenses view and calculations
 
-All expense-view and calculation tasks are complete. Planned costs and expenses remain separate and are not linked to itinerary activity costs.
+All expense-view and calculation tasks are complete. Planned costs and expenses remain separate and are not linked to 
+itinerary activity costs.
 
 ### C. Phase 3 verification
 

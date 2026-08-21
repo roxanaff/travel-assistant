@@ -1,8 +1,9 @@
 # Dashboard Cards — Requirements and Task List
 
-This document covers the cards on the trip dashboard only. It is based on the agreed first-stage product plan and the current codebase.
+This document records requirements for the cards on the trip dashboard.
+It reflects the current product plan and codebase.
 
-## Agreed first-stage behaviour
+## Current behavior
 
 Each dashboard card represents one trip.
 
@@ -17,13 +18,14 @@ Each dashboard card represents one trip.
 ### Card content and visual order
 
 1. Trip name and lifecycle-status pill
-2. Primary destination
+2. Destination
 3. Travel dates
 4. Trip type(s), when set
 5. Total target budget, when set
 6. Truncated notes preview, when set
 
-For a Draft, show a useful missing-information prompt such as `Destination not set` or `Dates not set` instead of leaving the central card content empty.
+For a Draft, show a useful missing-information prompt such as `Destination not set` or `Dates not set` instead of 
+leaving the central card content empty.
 
 ## Current implementation — complete or already available
 
@@ -47,14 +49,22 @@ For a Draft, show a useful missing-information prompt such as `Destination not s
 
 - [ ] Update database migrations and verify that existing trips can be migrated safely.
 
+### Dashboard UX improvements
+
+- [ ] On desktop widths that support it, use a stable three-column grid: a single trip should occupy one third of a row rather than stretching across the full row. Use responsive one- and two-column layouts at narrower breakpoints.
+- [ ] When a trip is edited from a card, the card is replaced by the edit form in the same grid position. A duplicate visible card is not left behind.
+- [ ] The edit form should visually read as the card opened into editing mode and retain the surrounding grid context.
+
 ### B. Navigation and actions menu
 
-- [ ] Ensure the menu works with keyboard navigation, focus management, Escape, and accessible labels.
+- [ ] Verify keyboard navigation, focus management, Escape behavior, and accessible labels for the menu.
 
 ### C. Verification
 
 - [ ] Test one card for each status: Draft, Upcoming, Ongoing, and Past.
 - [ ] Test a draft with no destination, no dates, and no optional fields.
+- [ ] Test one-, two-, and three-or-more-card layouts at desktop and responsive widths.
+- [ ] Test that editing a card replaces that same card and cancelling restores it in its original position.
 - [ ] Test long trip names and long notes on narrow and wide screens.
 - [ ] Test that clicking the card navigates, while clicking the actions button/menu does not navigate.
 - [ ] Test edit and delete error states when the backend is unavailable.

@@ -2,7 +2,7 @@
 
 This document covers manual itinerary activities and the Itinerary section of a trip workspace.
 
-## Agreed first-stage behaviour
+## Current product behavior
 
 - Only the activity name is required.
 - Activities may be scheduled or unscheduled.
@@ -16,18 +16,18 @@ This document covers manual itinerary activities and the Itinerary section of a 
 
 ### Activity fields
 
-| Field | First stage behaviour |
-|---|---|
-| Name | Required |
-| Category | Optional; Museum, Tour, Event, Food, Beach, Bar, Attraction, Other |
-| Date | Optional; must be within the trip when dates exist |
-| Start time | Optional; requires a date |
-| Estimated duration | Optional; entered as `HH:MM`, stored as total minutes |
-| Opening/closing hours | Optional; manual hours for the planned visit day |
-| Entry cost | Optional; independent of the budget in this stage |
-| Location / external link | Optional |
-| Priority | Must-do, Would-like-to-do, Optional; default is Would-like-to-do |
-| Notes | Optional |
+| Field                    | First stage behaviour                                              |
+|--------------------------|--------------------------------------------------------------------|
+| Name                     | Required                                                           |
+| Category                 | Optional; Museum, Tour, Event, Food, Beach, Bar, Attraction, Other |
+| Date                     | Optional; must be within the trip when dates exist                 |
+| Start time               | Optional; requires a date                                          |
+| Estimated duration       | Optional; entered as `HH:MM`, stored as total minutes              |
+| Opening/closing hours    | Optional; manual hours for the planned visit day                   |
+| Entry cost               | Optional; independent of the budget in this stage                  |
+| Location / external link | Optional                                                           |
+| Priority                 | Must-do, Would-like-to-do, Optional; default is Would-like-to-do   |
+| Notes                    | Optional                                                           |
 
 Opening hours may run past midnight, such as `18:00–02:00`.
 

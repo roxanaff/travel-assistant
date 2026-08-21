@@ -5,15 +5,21 @@ This document collects intentionally deferred improvements that span more than o
 ## Trip arrival and departure times
 
 - [ ] Decide whether arrival and departure times belong to the trip setup, the itinerary, or both. The current trip model has an arrival-time field, but it is not yet used in the itinerary and has no matching departure-time field.
-- [ ] Allow an arrival time on the first trip day and a departure time on the last trip day.
-- [ ] Show those values in the related itinerary-day headings, for example `5 Sept (arrival: 10:00)` and `10 Sept (departure: 17:35)`.
+- [ ] Support an arrival time on the first trip day and a departure time on the last trip day.
+- [ ] Display those values in the related itinerary-day headings, for example `5 Sept (arrival: 10:00)` and `10 Sept (departure: 17:35)`.
 - [ ] Define how these times interact with activities on the first and last day, including any warnings or scheduling hints.
 
 ## Accessibility and keyboard interaction
 
 - [ ] Audit keyboard interaction across the app: Tab and Shift+Tab order, Enter submission, Escape behavior, visible focus styles, and focus return after menus or dialogs close.
-- [ ] Let Escape close or cancel an open form when it is safe to do so, without discarding work unexpectedly.
-- [ ] Ensure every icon-only control has an accessible label and can be used with a keyboard.
+- [ ] In forms, let Enter submit when focus is not in a multiline field and the form is valid; do not override normal textarea Enter behavior.
+- [ ] Let Escape exit an open add/edit mode when it is safe to do so. If the form contains unsaved changes, warn before discarding them.
+- [ ] Provide every icon-only control with an accessible label and keyboard operation.
+
+## Form language and typography
+
+- [ ] Replace remaining serif text with the product’s sans-serif typeface, including the `No trips yet` empty state.
+- [ ] Standardise forms on `*` for required fields and remove routine `(optional)` markers. See `trip-setup-requirements.md` for the trip-form rule.
 
 ## Visual design refresh
 
@@ -24,8 +30,8 @@ This document collects intentionally deferred improvements that span more than o
 
 ## Itinerary usability
 
-- [ ] When an Add or Edit form opens, move focus to it and scroll it into view so the active form is fully usable without manual scrolling.
-- [ ] Add an itinerary control to expand all activity details or collapse all activity details.
+- [ ] When an Add or Edit form opens, focus is moved to it and the form is scrolled into view so it can be used without manual scrolling.
+- [ ] Provide an itinerary control for expanding or collapsing all activity details.
 
 ## List and card controls
 

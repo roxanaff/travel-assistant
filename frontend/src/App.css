@@ -2,12 +2,12 @@
 @import "./styles/shared.css";
 
 .app-shell {
-  min-height: 100vh;
-  padding: 0 clamp(20px, 5vw, 72px) 72px;
+    min-height: 100vh;
+    padding: 0 clamp(20px, 5vw, 72px) 72px;
 }
 
 @media (max-width: 700px) {
-  .app-shell {
-    padding-inline: 20px;
-  }
+    .app-shell {
+        padding-inline: 20px;
+    }
 }
