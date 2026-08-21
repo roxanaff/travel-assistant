@@ -55,5 +55,5 @@ Shared-trip capabilities, external-data integrations, and proactive/smart assist
 ## Documentation rules
 
 - This file records product direction and sequencing only.
-- Feature-specific requirements, acceptance criteria, implementation tasks, and verification checklists live in the individual `*-requirements.md` files.
-- Deferred cross-cutting UX and engineering work is kept in `future-requirements.md` until it is scheduled into a feature area.
+- Feature-specific requirements, acceptance criteria, implementation tasks, and verification checklists live in [requirements/](requirements/).
+- Deferred cross-cutting UX and engineering work is kept in [requirements/future-requirements.md](requirements/future-requirements.md) until it is scheduled into a feature area.

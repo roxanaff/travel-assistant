@@ -17,4 +17,10 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     </ItemGroup>
 
+    <!-- Keep the nested test project out of the web application's default compile glob. -->
+    <ItemGroup>
+        <Compile Remove="TravelAssistant.Tests\**\*.cs" />
+        <Content Remove="TravelAssistant.Tests\**" />
+    </ItemGroup>
+
 </Project>
