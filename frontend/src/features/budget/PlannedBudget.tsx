@@ -7,7 +7,7 @@ import {
     getPlannedCosts,
     updatePlannedCost,
 } from "../../api/plannedCostsApi";
-import { createBudgetItem } from "../../api/budgetItemsApi";
+import { createExpense } from "../../api/expensesApi";
 import type { Trip } from "../../types/trip";
 import {
     createEmptyPlannedCostForm,
@@ -215,7 +215,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
         setCopyingCostId(cost.id);
         setError(null);
         try {
-            await createBudgetItem(trip.id, {
+            await createExpense(trip.id, {
                 name: cost.name,
                 category: cost.category === "EmergencyBuffer" ? null : cost.category,
                 amount: cost.amount,

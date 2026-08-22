@@ -10,13 +10,13 @@ public class BudgetValidationTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void BudgetItemValidate_ReturnsError_WhenAmountIsNotPositive(decimal amount) =>
-        Assert.Equal("Budget item amount must be greater than zero.",
-            BudgetItemValidation.Validate(new CreateBudgetItemRequest(null, null, amount, null, null)));
+    public void ExpenseValidate_ReturnsError_WhenAmountIsNotPositive(decimal amount) =>
+        Assert.Equal("Expense amount must be greater than zero.",
+            ExpenseValidation.Validate(new CreateExpenseRequest(null, null, amount, null, null)));
 
     [Fact]
-    public void BudgetItemValidate_ReturnsNull_WhenAmountIsPositive() =>
-        Assert.Null(BudgetItemValidation.Validate(new CreateBudgetItemRequest("Hotel", BudgetCategory.Accommodation, 1, null, null)));
+    public void ExpenseValidate_ReturnsNull_WhenAmountIsPositive() =>
+        Assert.Null(ExpenseValidation.Validate(new CreateExpenseRequest("Hotel", ExpenseCategory.Accommodation, 1, null, null)));
 
     [Fact]
     public void PlannedCostValidate_ReturnsError_WhenCategoryIsMissing() =>

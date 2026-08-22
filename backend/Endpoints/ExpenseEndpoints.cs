@@ -9,12 +9,12 @@ namespace TravelAssistant.Endpoints;
 /// <summary>
 /// Defines the API workflow for actual expenses: list a trip's expenses, create one, edit it, or delete it.
 /// </summary>
-public static class BudgetItemEndpoints
+public static class ExpenseEndpoints
 {
     /// <summary>Maps all routes whose resource is an actual expense recorded for a trip.</summary>
-    public static IEndpointRouteBuilder MapBudgetItemEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapExpenseEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/trips/{tripId:guid}/budget-items", async (Guid tripId, TravelAssistantDbContext database) =>
+        app.MapGet("/api/trips/{tripId:guid}/expenses", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
             if (!tripExists)
@@ -22,17 +22,17 @@ public static class BudgetItemEndpoints
                 return Results.NotFound();
             }
 
-            var budgetItems = await database.BudgetItems
+            var expenses = await database.Expenses
                 .Where(item => item.TripId == tripId)
                 .OrderBy(item => item.CreatedAtUtc)
                 .ToListAsync();
 
-            return Results.Ok(budgetItems);
-        }).WithName("GetBudgetItems");
+            return Results.Ok(expenses);
+        }).WithName("GetExpenses");
 
-        app.MapPost("/api/trips/{tripId:guid}/budget-items", async (Guid tripId, CreateBudgetItemRequest request, TravelAssistantDbContext database) =>
+        app.MapPost("/api/trips/{tripId:guid}/expenses", async (Guid tripId, CreateExpenseRequest request, TravelAssistantDbContext database) =>
         {
-            var validationError = BudgetItemValidation.Validate(request);
+            var validationError = ExpenseValidation.Validate(request);
             if (validationError is not null)
             {
                 return Results.BadRequest(validationError);
@@ -49,7 +49,7 @@ public static class BudgetItemEndpoints
             {
                 var plannedCostExists = await database.PlannedCosts.AnyAsync(cost =>
                     cost.Id == request.PlannedCostId && cost.TripId == tripId);
-                var expenseAlreadyAdded = await database.BudgetItems.AnyAsync(item =>
+                var expenseAlreadyAdded = await database.Expenses.AnyAsync(item =>
                     item.PlannedCostId == request.PlannedCostId);
                 if (!plannedCostExists || expenseAlreadyAdded)
                 {
@@ -57,7 +57,7 @@ public static class BudgetItemEndpoints
                 }
             }
 
-            var budgetItem = new BudgetItem
+            var expense = new Expense
             {
                 TripId = tripId,
                 Name = NormalizeName(request.Name),
@@ -67,52 +67,52 @@ public static class BudgetItemEndpoints
                 ExpenseDate = request.ExpenseDate
             };
 
-            database.BudgetItems.Add(budgetItem);
+            database.Expenses.Add(expense);
             await database.SaveChangesAsync();
-            return Results.Created($"/api/trips/{tripId}/budget-items/{budgetItem.Id}", budgetItem);
-        }).WithName("CreateBudgetItem");
+            return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", expense);
+        }).WithName("CreateExpense");
 
-        app.MapPut("/api/trips/{tripId:guid}/budget-items/{id:guid}", async (Guid tripId, Guid id, CreateBudgetItemRequest request, TravelAssistantDbContext database) =>
+        app.MapPut("/api/trips/{tripId:guid}/expenses/{id:guid}", async (Guid tripId, Guid id, CreateExpenseRequest request, TravelAssistantDbContext database) =>
         {
-            var validationError = BudgetItemValidation.Validate(request);
+            var validationError = ExpenseValidation.Validate(request);
             if (validationError is not null)
             {
                 return Results.BadRequest(validationError);
             }
 
-            var budgetItem = await database.BudgetItems.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
-            if (budgetItem is null)
+            var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            if (expense is null)
             {
                 return Results.NotFound();
             }
 
             // Relinking would make expense/planned-cost tracking ambiguous; delete and recreate instead.
-            if (request.PlannedCostId != budgetItem.PlannedCostId)
+            if (request.PlannedCostId != expense.PlannedCostId)
             {
                 return Results.BadRequest("A linked planned cost cannot be changed.");
             }
 
-            budgetItem.Name = NormalizeName(request.Name);
-            budgetItem.Category = request.Category;
-            budgetItem.Amount = request.Amount;
-            budgetItem.ExpenseDate = request.ExpenseDate;
+            expense.Name = NormalizeName(request.Name);
+            expense.Category = request.Category;
+            expense.Amount = request.Amount;
+            expense.ExpenseDate = request.ExpenseDate;
 
             await database.SaveChangesAsync();
-            return Results.Ok(budgetItem);
-        }).WithName("UpdateBudgetItem");
+            return Results.Ok(expense);
+        }).WithName("UpdateExpense");
 
-        app.MapDelete("/api/trips/{tripId:guid}/budget-items/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
+        app.MapDelete("/api/trips/{tripId:guid}/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
-            var budgetItem = await database.BudgetItems.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
-            if (budgetItem is null)
+            var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            if (expense is null)
             {
                 return Results.NotFound();
             }
 
-            database.BudgetItems.Remove(budgetItem);
+            database.Expenses.Remove(expense);
             await database.SaveChangesAsync();
             return Results.NoContent();
-        }).WithName("DeleteBudgetItem");
+        }).WithName("DeleteExpense");
 
         return app;
     }

@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExpenseTracking } from "./ExpenseTracking";
 import type { Trip } from "../../types/trip";
 
-const api = vi.hoisted(() => ({ getBudgetItems: vi.fn(), createBudgetItem: vi.fn(), deleteBudgetItem: vi.fn(), updateBudgetItem: vi.fn() }));
-vi.mock("../../api/budgetItemsApi", () => api);
+const api = vi.hoisted(() => ({ getExpenses: vi.fn(), createExpense: vi.fn(), deleteExpense: vi.fn(), updateExpense: vi.fn() }));
+vi.mock("../../api/expensesApi", () => api);
 
 const trip: Trip = {
     id: "trip-1", name: "Rome", destination: "Rome", startDate: null, endDate: null,
@@ -22,7 +22,7 @@ describe("ExpenseTracking", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        api.getBudgetItems.mockResolvedValue([hotel]);
+        api.getExpenses.mockResolvedValue([hotel]);
     });
 
     it("shows the loaded expense and recalculates the remaining budget", async () => {
@@ -40,7 +40,7 @@ describe("ExpenseTracking", () => {
         await user.type(screen.getByLabelText(/Amount/), "0");
         fireEvent.submit(screen.getByRole("button", { name: "Save" }).closest("form")!);
         expect(await screen.findByText("Enter an amount greater than zero.")).toBeTruthy();
-        expect(api.createBudgetItem).not.toHaveBeenCalled();
+        expect(api.createExpense).not.toHaveBeenCalled();
     });
 
     it("restores an expense when Undo is selected", async () => {
@@ -51,6 +51,6 @@ describe("ExpenseTracking", () => {
         expect(screen.queryByText("Hotel")).toBeNull();
         await user.click(screen.getByRole("button", { name: /Undo/ }));
         expect(await screen.findByText("Hotel")).toBeTruthy();
-        expect(api.deleteBudgetItem).not.toHaveBeenCalled();
+        expect(api.deleteExpense).not.toHaveBeenCalled();
     });
 });

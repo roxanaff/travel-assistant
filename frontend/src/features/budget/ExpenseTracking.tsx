@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
-    createBudgetItem,
-    deleteBudgetItem,
-    getBudgetItems,
-    updateBudgetItem,
-} from "../../api/budgetItemsApi";
-import type { BudgetItem, NewBudgetItemForm } from "../../types/budgetItem";
+    createExpense,
+    deleteExpense as deleteExpenseApi,
+    getExpenses,
+    updateExpense,
+} from "../../api/expensesApi";
+import type { Expense, NewExpenseForm } from "../../types/expense";
 import { formatDate, formatMoney } from "../../utils/format";
 import type { Trip } from "../../types/trip";
 
@@ -32,7 +32,7 @@ type ExpenseTrackingProps = {
 };
 
 type PendingDeletion = {
-    item: BudgetItem;
+    item: Expense;
 };
 
 type ExpenseGrouping = "category" | "day";
@@ -47,7 +47,7 @@ const localToday = () => {
     return `${year}-${month}-${day}`;
 };
 
-const createEmptyExpenseForm = (): NewBudgetItemForm => ({
+const createEmptyExpenseForm = (): NewExpenseForm => ({
     name: "",
     category: "",
     amount: "",
@@ -56,7 +56,7 @@ const createEmptyExpenseForm = (): NewBudgetItemForm => ({
 });
 
 /** Sorts dated expenses newest first, with undated entries after them. */
-const sortExpenses = (expenses: BudgetItem[]) =>
+const sortExpenses = (expenses: Expense[]) =>
     [...expenses].sort(
         (first, second) =>
             Number(Boolean(second.expenseDate)) - Number(Boolean(first.expenseDate)) ||
@@ -69,15 +69,15 @@ const sortExpenses = (expenses: BudgetItem[]) =>
  * It reloads when PlannedBudget converts an estimated cost into an expense.
  */
 export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
-    const [expenses, setExpenses] = useState<BudgetItem[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [newExpense, setNewExpense] = useState<NewBudgetItemForm>(createEmptyExpenseForm());
+    const [newExpense, setNewExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-    const [editingExpense, setEditingExpense] = useState<NewBudgetItemForm>(createEmptyExpenseForm());
+    const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [grouping, setGrouping] = useState<ExpenseGrouping>("category");
     const deleteTimerRef = useRef<number | null>(null);
@@ -90,7 +90,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     useEffect(() => {
         const loadExpenses = async () => {
             try {
-                setExpenses(await getBudgetItems(trip.id));
+                setExpenses(await getExpenses(trip.id));
             } catch {
                 setError("Could not load expenses.");
             } finally {
@@ -102,17 +102,17 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     }, [refreshKey, trip.id]);
 
     const updateForm = (
-        field: keyof NewBudgetItemForm,
+        field: keyof NewExpenseForm,
         value: string,
         editing = false,
     ) => {
-        const update = (current: NewBudgetItemForm) => ({ ...current, [field]: value });
+        const update = (current: NewExpenseForm) => ({ ...current, [field]: value });
         if (editing) setEditingExpense(update);
         else setNewExpense(update);
     };
 
     /** Converts editable browser strings into the API's expense payload. */
-    const toRequest = (expense: NewBudgetItemForm) => ({
+    const toRequest = (expense: NewExpenseForm) => ({
         name: expense.name.trim(),
         category: expense.category || null,
         amount: Number(expense.amount),
@@ -120,7 +120,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         plannedCostId: expense.plannedCostId,
     });
 
-    const validate = (expense: NewBudgetItemForm) => {
+    const validate = (expense: NewExpenseForm) => {
         if (!expense.amount || Number(expense.amount) <= 0) return "Enter an amount greater than zero.";
         return null;
     };
@@ -141,7 +141,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         setIsSaving(true);
         setFormError(null);
         try {
-            const created = await createBudgetItem(trip.id, toRequest(newExpense));
+            const created = await createExpense(trip.id, toRequest(newExpense));
             setExpenses((current) => [...current, created]);
             setNewExpense(createEmptyExpenseForm());
             setIsAdding(false);
@@ -156,7 +156,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         }
     };
 
-    const startEditing = (expense: BudgetItem) => {
+    const startEditing = (expense: Expense) => {
         setIsAdding(false);
         setEditingExpenseId(expense.id);
         setEditingExpense({
@@ -181,7 +181,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updateBudgetItem(trip.id, editingExpenseId, toRequest(editingExpense));
+            const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense));
             setExpenses((current) => current.map((expense) => expense.id === updated.id ? updated : expense));
             setEditingExpenseId(null);
         } catch (exception) {
@@ -196,9 +196,9 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     };
 
     /** Permanently deletes an expense once its Undo window has elapsed. */
-    const commitDelete = async (expense: BudgetItem) => {
+    const commitDelete = async (expense: Expense) => {
         try {
-            await deleteBudgetItem(trip.id, expense.id);
+            await deleteExpenseApi(trip.id, expense.id);
         } catch {
             setExpenses((current) => [...current, expense]);
             setError("Could not delete this expense. It was restored.");
@@ -208,7 +208,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     };
 
     /** Removes an expense optimistically and holds its data locally until the Undo timer ends. */
-    const deleteExpense = (expense: BudgetItem) => {
+    const deleteExpense = (expense: Expense) => {
         if (pendingDeletion) {
             if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
             void commitDelete(pendingDeletion.item);
@@ -232,7 +232,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
 
     /** Shared inline form used by the create and edit flows. */
     const form = (
-        expense: NewBudgetItemForm,
+        expense: NewExpenseForm,
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (

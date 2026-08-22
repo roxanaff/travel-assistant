@@ -17,4 +17,4 @@ This folder contains the ASP.NET Core API used by the React frontend. Each brows
 
 ## Data relationships
 
-`Trip` is the parent record. Deleting it cascades to its planned costs, actual expenses, itinerary items, and packing items. A `PlannedCost` can have at most one linked `BudgetItem` (an actual expense); removing the plan keeps that recorded expense, but removes its link.
+`Trip` is the parent record. Deleting it cascades to its planned costs, actual expenses, itinerary items, and packing items. A `PlannedCost` can have at most one linked `Expense` (an actual expense); removing the plan keeps that recorded expense, but removes its link.

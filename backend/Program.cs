@@ -71,7 +71,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 // Each feature owns its route definitions; prevents Program.cs growing into one large list of request handlers.
 app.MapTripEndpoints();
-app.MapBudgetItemEndpoints();
+app.MapExpenseEndpoints();
 app.MapPlannedCostEndpoints();
 app.MapItineraryEndpoints();
 app.MapPackingItemEndpoints();

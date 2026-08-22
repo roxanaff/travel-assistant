@@ -3,7 +3,7 @@ namespace TravelAssistant.Models;
 /// <summary>
 /// Represents one actual expense recorded against a trip, optionally linked to the plan it fulfils.
 /// </summary>
-public class BudgetItem
+public class Expense
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -17,7 +17,7 @@ public class BudgetItem
 
     public PlannedCost? PlannedCost { get; set; }
 
-    public BudgetCategory? Category { get; set; }
+    public ExpenseCategory? Category { get; set; }
 
     public decimal Amount { get; set; }
 

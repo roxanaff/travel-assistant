@@ -1,7 +1,7 @@
-import type { BudgetItem } from "../types/budgetItem";
+import type { Expense } from "../types/expense";
 import { apiBaseUrl } from "./travelAssistantApi";
 
-export type BudgetItemRequest = { 
+export type ExpenseRequest = { 
     name: string; 
     category: string | null; 
     amount: number; 
@@ -9,18 +9,18 @@ export type BudgetItemRequest = {
     plannedCostId: string | null 
 };
 
-const budgetItemsUrl = (tripId: string) => `${apiBaseUrl}/api/trips/${tripId}/budget-items`;
+const expensesUrl = (tripId: string) => `${apiBaseUrl}/api/trips/${tripId}/expenses`;
 
-export async function getBudgetItems(tripId: string): Promise<BudgetItem[]> { 
-    const response = await fetch(budgetItemsUrl(tripId)); 
+export async function getExpenses(tripId: string): Promise<Expense[]> { 
+    const response = await fetch(expensesUrl(tripId)); 
     if (!response.ok) 
         throw new Error("Could not load expenses."); 
     return response.json(); 
 }
 
-export async function createBudgetItem(tripId: string, request: BudgetItemRequest): Promise<BudgetItem> { 
+export async function createExpense(tripId: string, request: ExpenseRequest): Promise<Expense> { 
     const response = await fetch(
-        budgetItemsUrl(tripId), 
+        expensesUrl(tripId), 
         { 
             method: "POST", 
             headers: { "Content-Type": "application/json" }, 
@@ -33,9 +33,9 @@ export async function createBudgetItem(tripId: string, request: BudgetItemReques
     return response.json(); 
 }
 
-export async function updateBudgetItem(tripId: string, itemId: string, request: BudgetItemRequest): Promise<BudgetItem> { 
+export async function updateExpense(tripId: string, itemId: string, request: ExpenseRequest): Promise<Expense> { 
     const response = await fetch(
-        `${budgetItemsUrl(tripId)}/${itemId}`, 
+        `${expensesUrl(tripId)}/${itemId}`, 
         { 
             method: "PUT", 
             headers: { "Content-Type": "application/json" }, 
@@ -48,9 +48,9 @@ export async function updateBudgetItem(tripId: string, itemId: string, request: 
     return response.json(); 
 }
 
-export async function deleteBudgetItem(tripId: string, itemId: string): Promise<void> { 
+export async function deleteExpense(tripId: string, itemId: string): Promise<void> { 
     const response = await fetch(
-        `${budgetItemsUrl(tripId)}/${itemId}`, 
+        `${expensesUrl(tripId)}/${itemId}`, 
         { method: "DELETE" }
     ); 
     if (!response.ok) 

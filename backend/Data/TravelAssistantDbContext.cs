@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Models;
 
@@ -7,11 +8,12 @@ namespace TravelAssistant.Data;
 /// The application's unit of work for PostgreSQL. Entity Framework uses this class to translate
 /// the model classes and relationships below into database tables and constraints.
 /// </summary>
-public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options) : DbContext(options)
+public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options)
+    : IdentityUserContext<User, Guid>(options)
 {
     // Each DbSet represents a queryable table and the collection used to add or remove its rows.
     public DbSet<Trip> Trips => Set<Trip>();
-    public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
+    public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<PlannedCost> PlannedCosts => Set<PlannedCost>();
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
@@ -24,6 +26,10 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         // bypasses the frontend.
         modelBuilder.Entity<Trip>(trip =>
         {
+            trip.HasOne(item => item.User)
+                .WithMany(user => user.Trips)
+                .HasForeignKey(item => item.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
             trip.Property(item => item.Name).HasMaxLength(150).IsRequired();
             trip.Property(item => item.Destination).HasMaxLength(200);
             trip.Property(item => item.Type).HasConversion<string>().HasMaxLength(30);
@@ -33,20 +39,25 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             trip.Property(item => item.HasStartedPackingList).HasDefaultValue(false);
         });
 
-        modelBuilder.Entity<BudgetItem>(budgetItem =>
+        modelBuilder.Entity<User>(user =>
         {
-            budgetItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
-            budgetItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
-            budgetItem.Property(item => item.Amount).HasPrecision(12, 2);
+            user.Property(item => item.DisplayName).HasMaxLength(100).IsRequired();
+        });
+
+        modelBuilder.Entity<Expense>(expense =>
+        {
+            expense.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            expense.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
+            expense.Property(item => item.Amount).HasPrecision(12, 2);
             // An actual expense can represent at most one planned cost.
-            budgetItem.HasIndex(item => item.PlannedCostId).IsUnique();
-            budgetItem.HasOne(item => item.Trip)
-                .WithMany(trip => trip.BudgetItems)
+            expense.HasIndex(item => item.PlannedCostId).IsUnique();
+            expense.HasOne(item => item.Trip)
+                .WithMany(trip => trip.Expenses)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade); // Deleting a trip removes its child records.
-            budgetItem.HasOne(item => item.PlannedCost)
+            expense.HasOne(item => item.PlannedCost)
                 .WithOne(cost => cost.Expense)
-                .HasForeignKey<BudgetItem>(item => item.PlannedCostId)
+                .HasForeignKey<Expense>(item => item.PlannedCostId)
                 .OnDelete(DeleteBehavior.SetNull); // Keep an expense if its linked plan is removed.
         });
 

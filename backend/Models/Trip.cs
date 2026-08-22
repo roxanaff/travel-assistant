@@ -7,6 +7,14 @@ namespace TravelAssistant.Models;
 public class Trip
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// The account that owns this trip. It remains nullable while the pre-account trips are migrated
+    /// to the configured initial account.
+    /// </summary>
+    public Guid? UserId { get; set; }
+
+    public User? User { get; set; }
     
     public string Name { get; set; } = string.Empty;
 
@@ -33,7 +41,7 @@ public class Trip
 
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
-    public List<BudgetItem> BudgetItems { get; set; } = [];
+    public List<Expense> Expenses { get; set; } = [];
 
     public List<PlannedCost> PlannedCosts { get; set; } = [];
 
@@ -53,7 +61,7 @@ public enum TripType
 }
 
 /// <summary>Categories used when recording actual expenses.</summary>
-public enum BudgetCategory
+public enum ExpenseCategory
 {
     TravelToFrom,
     Accommodation,

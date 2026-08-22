@@ -1,4 +1,4 @@
-﻿export type BudgetItem = {
+export type Expense = {
     id: string;
     tripId: string;
     name: string;
@@ -9,7 +9,7 @@
     createdAtUtc: string;
 };
 
-export type NewBudgetItemForm = {
+export type NewExpenseForm = {
     name: string;
     category: string;
     amount: string;
@@ -17,7 +17,7 @@ export type NewBudgetItemForm = {
     plannedCostId: string | null;
 };
 
-export const initialNewBudgetItemForm: NewBudgetItemForm = {
+export const initialNewExpenseForm: NewExpenseForm = {
     name: "",
     category: "",
     amount: "",

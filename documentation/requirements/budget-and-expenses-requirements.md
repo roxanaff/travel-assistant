@@ -55,7 +55,7 @@ Expenses use the same list except **Emergency buffer**. Entries without a catego
 
 ## Current implementation — complete or already available
 
-- [x] The API supports listing, creating, updating, and deleting the current `BudgetItem` records.
+- [x] The API supports listing, creating, updating, and deleting the current `Expense` records.
 - [x] The existing UI supports add, inline edit, and delete for those records.
 - [x] The existing record has name, amount, category, and optional expense date fields.
 - [x] The current page calculates one total spent/remaining value against the trip budget.
@@ -87,7 +87,7 @@ All planned-budget UI tasks are complete.
 
 ### A. Expense model and form
 
-All expense model and form tasks are complete. `BudgetItem` remains the internal backend type for now, while the UI and 
+All expense model and form tasks are complete. `Expense` remains the internal backend type for now, while the UI and 
 API behavior use the user-facing term Expenses.
 
 ### B. Expenses view and calculations
@@ -117,10 +117,10 @@ itinerary activity costs.
 - Budget page: `frontend/src/pages/TripBudgetPage.tsx`
 - Planned-budget UI: `frontend/src/components/PlannedBudget.tsx`
 - Expense UI: `frontend/src/components/ExpenseTracking.tsx`
-- Expense types: `frontend/src/types/budgetItem.ts`
-- Backend model: `backend/Models/BudgetItem.cs`
-- Expense API endpoints: `backend/Endpoints/BudgetItemEndpoints.cs`
+- Expense types: `frontend/src/types/expense.ts`
+- Backend model: `backend/Models/Expense.cs`
+- Expense API endpoints: `backend/Endpoints/ExpenseEndpoints.cs`
 - Planned-cost API endpoints: `backend/Endpoints/PlannedCostEndpoints.cs`
 - Planned-cost contract and validation: `backend/Contracts/CreatePlannedCostRequest.cs`, `backend/Validation/PlannedCostValidation.cs`
-- Expense contract and validation: `backend/Contracts/CreateBudgetItemRequest.cs`, `backend/Validation/BudgetItemValidation.cs`
+- Expense contract and validation: `backend/Contracts/CreateExpenseRequest.cs`, `backend/Validation/ExpenseValidation.cs`
 - Data migrations: `backend/Migrations/20260819083911_AddPlannedCosts.cs`, `backend/Migrations/20260819095049_LinkExpensesToPlannedCosts.cs`

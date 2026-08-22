@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TravelAssistant.Data;
@@ -11,9 +12,11 @@ using TravelAssistant.Data;
 namespace TravelAssistant.Migrations
 {
     [DbContext(typeof(TravelAssistantDbContext))]
-    partial class TravelAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260822100633_AddIdentityUsersAndTripOwnership")]
+    partial class AddIdentityUsersAndTripOwnership
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -86,7 +89,80 @@ namespace TravelAssistant.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("TravelAssistant.Models.Expense", b =>
+            modelBuilder.Entity("TravelAssistant.Models.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.BudgetItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -124,7 +200,7 @@ namespace TravelAssistant.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("Expenses");
+                    b.ToTable("BudgetItems");
                 });
 
             modelBuilder.Entity("TravelAssistant.Models.ItineraryItem", b =>
@@ -329,79 +405,6 @@ namespace TravelAssistant.Migrations
                     b.ToTable("Trips");
                 });
 
-            modelBuilder.Entity("TravelAssistant.Models.User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.HasOne("TravelAssistant.Models.User", null)
@@ -429,15 +432,15 @@ namespace TravelAssistant.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("TravelAssistant.Models.Expense", b =>
+            modelBuilder.Entity("TravelAssistant.Models.BudgetItem", b =>
                 {
                     b.HasOne("TravelAssistant.Models.PlannedCost", "PlannedCost")
                         .WithOne("Expense")
-                        .HasForeignKey("TravelAssistant.Models.Expense", "PlannedCostId")
+                        .HasForeignKey("TravelAssistant.Models.BudgetItem", "PlannedCostId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("TravelAssistant.Models.Trip", "Trip")
-                        .WithMany("Expenses")
+                        .WithMany("BudgetItems")
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -490,6 +493,11 @@ namespace TravelAssistant.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TravelAssistant.Models.User", b =>
+                {
+                    b.Navigation("Trips");
+                });
+
             modelBuilder.Entity("TravelAssistant.Models.PlannedCost", b =>
                 {
                     b.Navigation("Expense");
@@ -497,18 +505,13 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.Trip", b =>
                 {
-                    b.Navigation("Expenses");
+                    b.Navigation("BudgetItems");
 
                     b.Navigation("ItineraryItems");
 
                     b.Navigation("PackingItems");
 
                     b.Navigation("PlannedCosts");
-                });
-
-            modelBuilder.Entity("TravelAssistant.Models.User", b =>
-                {
-                    b.Navigation("Trips");
                 });
 #pragma warning restore 612, 618
         }

@@ -3,9 +3,9 @@ using TravelAssistant.Models;
 namespace TravelAssistant.Contracts;
 
 /// <summary>Payload accepted when the frontend creates or updates an actual trip expense.</summary>
-public record CreateBudgetItemRequest(
+public record CreateExpenseRequest(
     string? Name,
-    BudgetCategory? Category,
+    ExpenseCategory? Category,
     decimal Amount,
     DateOnly? ExpenseDate,
     Guid? PlannedCostId
