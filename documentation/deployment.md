@@ -4,7 +4,7 @@ Travel Assistant is deployed as three independent services:
 
 | Component | Platform | Role |
 | --- | --- | --- |
-| Frontend | Cloudflare Pages | Hosts the Vite/React single-page application. |
+| Frontend | Cloudflare Pages | Hosts the Vite/React single-page application and proxies same-origin `/api/*` requests. |
 | API | Render | Runs the ASP.NET Core API in the backend Docker image. |
 | Database | Neon | Provides the managed PostgreSQL database. |
 
@@ -41,9 +41,9 @@ Cloudflare Pages builds and hosts the `frontend/` directory. Its deployment conf
 | --- | --- |
 | Build command | `npm ci && npm run build` |
 | Build output directory | `dist` |
-| Runtime configuration | `VITE_API_BASE_URL` |
+| Runtime configuration | `API_ORIGIN` |
 
-`VITE_API_BASE_URL` is the public Render API URL without a trailing slash. The `frontend/public/_redirects` file supports direct navigation to client-side routes, including individual trip workspace URLs.
+`API_ORIGIN` is the public Render API URL without a trailing slash, for example `https://travel-assistant-api-ab0p.onrender.com`. It is a server-side Cloudflare Pages variable read by `frontend/functions/api/[[path]].js`; do not prefix it with `VITE_`. The function proxies browser requests from `/api/*` to Render, keeping production API calls same-origin for authentication cookies. The `frontend/public/_redirects` file supports direct navigation to client-side routes, including individual trip workspace URLs.
 
 ## Deployment flow
 

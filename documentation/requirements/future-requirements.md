@@ -2,6 +2,14 @@
 
 This document collects intentionally deferred improvements that span more than one feature. Items here are not part of the current implementation queue unless they are moved into a feature-specific requirements document.
 
+## Account recovery and session management
+
+- [ ] Add a forgot-password flow that sends a single-use reset link by email with a one-hour expiry.
+- [ ] Choose and configure a transactional email provider and sending address for account recovery.
+- [ ] Let users view and revoke active sessions/devices.
+- [ ] Add device/session management: list each browser or device currently signed in, with controls to sign out of an individual device or sign out everywhere.
+- [ ] Add rate limits to registration, login, and account-recovery requests to reduce automated abuse and password guessing.
+
 ## Trip arrival and departure times
 
 - [ ] Decide whether arrival and departure times belong to the trip setup, the itinerary, or both. The current trip model has an arrival-time field, but it is not yet used in the itinerary and has no matching departure-time field.

@@ -1,12 +1,9 @@
-// Central API address. 
-// Local development uses the .NET launch port; deployed builds must supply it.
+// Local development calls the .NET server directly. 
+// Production calls the same-origin Pages proxy at /api, so browser authentication cookies stay first-party.
 const configuredApiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL ??
-    (import.meta.env.DEV ? "http://localhost:5263" : undefined);
-
-if (!configuredApiBaseUrl) {
-    throw new Error("VITE_API_BASE_URL is not configured.");
-}
+    import.meta.env.DEV
+        ? (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5263")
+        : "";
 
 // Normalising avoids accidental double slashes as feature API modules append their own paths.
 export const apiBaseUrl = configuredApiBaseUrl.replace(/\/$/, "");

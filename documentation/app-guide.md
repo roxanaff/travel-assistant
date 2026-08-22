@@ -19,7 +19,7 @@ The currently deployed app has shared data. Authentication and per-user trips ar
 | `backend/` | ASP.NET Core Minimal API, EF Core | HTTP endpoints, validation, and business rules. |
 | PostgreSQL | Neon in deployment; Docker locally | Persistent trip, itinerary, budget, and packing data. |
 
-The API starts by applying pending Entity Framework migrations. The frontend reads `VITE_API_BASE_URL` to find that API.
+The API starts by applying pending Entity Framework migrations. During local development, the frontend reads `VITE_API_BASE_URL` to find the API. In production, a Cloudflare Pages Function proxies same-origin `/api/*` requests to Render.
 
 ## Local development
 
