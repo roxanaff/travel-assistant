@@ -146,7 +146,6 @@
 }
 .empty-state h3 {
     margin: 0 0 6px;
-    font-family: Georgia, sans-serif;
 }
 @media (max-width: 700px) {
     .section-heading {

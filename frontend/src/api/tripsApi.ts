@@ -1,5 +1,5 @@
 import type { Trip, TripRequest } from "../types/trip";
-import { apiBaseUrl } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
 // HTTP client for the top-level trip resource. 
 // Pages use these named operations instead of owning URLs.
@@ -7,7 +7,7 @@ const tripsUrl = `${apiBaseUrl}/api/trips`;
 
 /** Loads every trip shown on the dashboard. */
 export async function getTrips(): Promise<Trip[]> {
-    const response = await fetch(tripsUrl);
+    const response = await apiFetch(tripsUrl);
     if (!response.ok) {
         throw new Error("Could not load trips.");
     }
@@ -17,7 +17,7 @@ export async function getTrips(): Promise<Trip[]> {
 
 /** Loads one trip for its workspace, returning <c>null</c> when it no longer exists. */
 export async function getTrip(id: string): Promise<Trip | null> {
-    const response = await fetch(`${tripsUrl}/${id}`);
+    const response = await apiFetch(`${tripsUrl}/${id}`);
     if (response.status === 404) {
         return null;
     }
@@ -30,7 +30,7 @@ export async function getTrip(id: string): Promise<Trip | null> {
 
 /** Creates a trip from the dashboard form. */
 export async function createTrip(request: TripRequest): Promise<Trip> {
-    const response = await fetch(tripsUrl, {
+    const response = await apiFetch(tripsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -44,7 +44,7 @@ export async function createTrip(request: TripRequest): Promise<Trip> {
 
 /** Updates an existing trip and returns its recalculated status and itinerary warning count. */
 export async function updateTrip(id: string, request: TripRequest): Promise<Trip> {
-    const response = await fetch(`${tripsUrl}/${id}`, {
+    const response = await apiFetch(`${tripsUrl}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -58,7 +58,7 @@ export async function updateTrip(id: string, request: TripRequest): Promise<Trip
 
 /** Deletes a trip and all backend records that belong to it. */
 export async function deleteTrip(id: string): Promise<void> {
-    const response = await fetch(`${tripsUrl}/${id}`, { method: "DELETE" });
+    const response = await apiFetch(`${tripsUrl}/${id}`, { method: "DELETE" });
     if (!response.ok) {
         throw new Error("Could not delete this trip.");
     }

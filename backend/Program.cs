@@ -69,16 +69,33 @@ builder.Services.AddDataProtection()
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddIdentityCookies();
 builder.Services.AddAuthorization();
+// Check the security stamp on each authenticated request. This lets a password change invalidate
+// other browsers immediately; RefreshSignInAsync keeps the current browser signed in.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.Zero);
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
     options.SlidingExpiration = true;
-    options.Cookie.Name = "__Host-TravelAssistant.Auth";
+    // Browsers accept the stricter __Host- name only on HTTPS. Local development uses HTTP.
+    options.Cookie.Name = builder.Environment.IsDevelopment()
+        ? "TravelAssistant.Auth"
+        : "__Host-TravelAssistant.Auth";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
         ? CookieSecurePolicy.SameAsRequest
         : CookieSecurePolicy.Always;
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
 });
 
 var app = builder.Build();

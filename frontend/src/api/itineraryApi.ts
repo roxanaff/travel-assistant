@@ -1,5 +1,5 @@
 import type { ItineraryItem } from "../types/itineraryItem";
-import { apiBaseUrl } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
 /** Payload accepted by the itinerary endpoints when creating or editing an activity. */
 export type ItineraryItemRequest = {
@@ -22,7 +22,7 @@ const itineraryUrl = (tripId: string) =>
 
 /** Loads every itinerary activity for one trip. */
 export async function getItineraryItems(tripId: string): Promise<ItineraryItem[]> {
-    const response = await fetch(itineraryUrl(tripId));
+    const response = await apiFetch(itineraryUrl(tripId));
     if (!response.ok) throw new Error("Could not load itinerary items.");
 
     return response.json();
@@ -33,7 +33,7 @@ export async function createItineraryItem(
     tripId: string,
     request: ItineraryItemRequest,
 ): Promise<ItineraryItem> {
-    const response = await fetch(itineraryUrl(tripId), {
+    const response = await apiFetch(itineraryUrl(tripId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -49,7 +49,7 @@ export async function updateItineraryItem(
     itemId: string,
     request: ItineraryItemRequest,
 ): Promise<ItineraryItem> {
-    const response = await fetch(`${itineraryUrl(tripId)}/${itemId}`, {
+    const response = await apiFetch(`${itineraryUrl(tripId)}/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -61,6 +61,6 @@ export async function updateItineraryItem(
 
 /** Permanently deletes one itinerary activity. */
 export async function deleteItineraryItem(tripId: string, itemId: string): Promise<void> {
-    const response = await fetch(`${itineraryUrl(tripId)}/${itemId}`, { method: "DELETE" });
+    const response = await apiFetch(`${itineraryUrl(tripId)}/${itemId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not delete this itinerary item.");
 }

@@ -31,7 +31,8 @@ public static class PackingItemEndpoints
     /// <summary>Maps routes for starting, editing, ordering, and resetting a trip's packing checklist.</summary>
     public static IEndpointRouteBuilder MapPackingItemEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/trips/{tripId:guid}/packing-items", async (Guid tripId, TravelAssistantDbContext database) =>
+        var routes = app.MapOwnedTripGroup();
+        routes.MapGet("/packing-items", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
             if (!tripExists)
@@ -48,7 +49,7 @@ public static class PackingItemEndpoints
             return Results.Ok(packingItems.Select(ToResponse));
         }).WithName("GetPackingItems");
 
-        app.MapPost("/api/trips/{tripId:guid}/packing-items/start-empty", async (Guid tripId, TravelAssistantDbContext database) =>
+        routes.MapPost("/packing-items/start-empty", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(tripId);
             if (trip is null)
@@ -67,7 +68,7 @@ public static class PackingItemEndpoints
             return Results.NoContent();
         }).WithName("StartEmptyPackingList");
 
-        app.MapPost("/api/trips/{tripId:guid}/packing-items/default-list", async (Guid tripId, TravelAssistantDbContext database) =>
+        routes.MapPost("/packing-items/default-list", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(tripId);
             if (trip is null)
@@ -95,7 +96,7 @@ public static class PackingItemEndpoints
             return Results.Ok(packingItems.Select(ToResponse));
         }).WithName("CreateDefaultPackingList");
 
-        app.MapPost("/api/trips/{tripId:guid}/packing-items", async (Guid tripId, CreatePackingItemRequest request, TravelAssistantDbContext database) =>
+        routes.MapPost("/packing-items", async (Guid tripId, CreatePackingItemRequest request, TravelAssistantDbContext database) =>
         {
             var validationError = PackingItemValidation.Validate(request.Name, request.Quantity);
             if (validationError is not null)
@@ -129,7 +130,7 @@ public static class PackingItemEndpoints
             return Results.Created($"/api/trips/{tripId}/packing-items/{packingItem.Id}", ToResponse(packingItem));
         }).WithName("CreatePackingItem");
 
-        app.MapPut("/api/trips/{tripId:guid}/packing-items/{id:guid}", async (Guid tripId, Guid id, UpdatePackingItemRequest request, TravelAssistantDbContext database) =>
+        routes.MapPut("/packing-items/{id:guid}", async (Guid tripId, Guid id, UpdatePackingItemRequest request, TravelAssistantDbContext database) =>
         {
             var validationError = PackingItemValidation.Validate(request.Name, request.Quantity);
             if (validationError is not null)
@@ -151,7 +152,7 @@ public static class PackingItemEndpoints
             return Results.Ok(ToResponse(packingItem));
         }).WithName("UpdatePackingItem");
 
-        app.MapPut("/api/trips/{tripId:guid}/packing-items/{id:guid}/packed", async (Guid tripId, Guid id, UpdatePackingItemPackedStateRequest request, TravelAssistantDbContext database) =>
+        routes.MapPut("/packing-items/{id:guid}/packed", async (Guid tripId, Guid id, UpdatePackingItemPackedStateRequest request, TravelAssistantDbContext database) =>
         {
             var packingItem = await FindPackingItem(tripId, id, database);
             if (packingItem is null)
@@ -164,7 +165,7 @@ public static class PackingItemEndpoints
             return Results.Ok(ToResponse(packingItem));
         }).WithName("UpdatePackingItemPackedState");
 
-        app.MapPut("/api/trips/{tripId:guid}/packing-items/reorder", async (Guid tripId, ReorderPackingItemsRequest request, TravelAssistantDbContext database) =>
+        routes.MapPut("/packing-items/reorder", async (Guid tripId, ReorderPackingItemsRequest request, TravelAssistantDbContext database) =>
         {
             var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
             if (!tripExists)
@@ -197,7 +198,7 @@ public static class PackingItemEndpoints
             return Results.NoContent();
         }).WithName("ReorderPackingItems");
 
-        app.MapDelete("/api/trips/{tripId:guid}/packing-items/reset", async (Guid tripId, TravelAssistantDbContext database) =>
+        routes.MapDelete("/packing-items/reset", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(tripId);
             if (trip is null)
@@ -215,7 +216,7 @@ public static class PackingItemEndpoints
             return Results.NoContent();
         }).WithName("ResetPackingList");
 
-        app.MapDelete("/api/trips/{tripId:guid}/packing-items/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
+        routes.MapDelete("/packing-items/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var packingItem = await FindPackingItem(tripId, id, database);
             if (packingItem is null)

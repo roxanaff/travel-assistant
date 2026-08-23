@@ -1,5 +1,5 @@
 import type { Expense } from "../types/expense";
-import { apiBaseUrl } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
 export type ExpenseRequest = { 
     name: string; 
@@ -12,14 +12,14 @@ export type ExpenseRequest = {
 const expensesUrl = (tripId: string) => `${apiBaseUrl}/api/trips/${tripId}/expenses`;
 
 export async function getExpenses(tripId: string): Promise<Expense[]> { 
-    const response = await fetch(expensesUrl(tripId)); 
+    const response = await apiFetch(expensesUrl(tripId)); 
     if (!response.ok) 
         throw new Error("Could not load expenses."); 
     return response.json(); 
 }
 
 export async function createExpense(tripId: string, request: ExpenseRequest): Promise<Expense> { 
-    const response = await fetch(
+    const response = await apiFetch(
         expensesUrl(tripId), 
         { 
             method: "POST", 
@@ -34,7 +34,7 @@ export async function createExpense(tripId: string, request: ExpenseRequest): Pr
 }
 
 export async function updateExpense(tripId: string, itemId: string, request: ExpenseRequest): Promise<Expense> { 
-    const response = await fetch(
+    const response = await apiFetch(
         `${expensesUrl(tripId)}/${itemId}`, 
         { 
             method: "PUT", 
@@ -49,7 +49,7 @@ export async function updateExpense(tripId: string, itemId: string, request: Exp
 }
 
 export async function deleteExpense(tripId: string, itemId: string): Promise<void> { 
-    const response = await fetch(
+    const response = await apiFetch(
         `${expensesUrl(tripId)}/${itemId}`, 
         { method: "DELETE" }
     ); 

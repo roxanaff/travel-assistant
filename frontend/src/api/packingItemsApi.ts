@@ -1,6 +1,6 @@
 import type { PackingItem, PackingItemForm } from "../types/packingItem";
 
-import { apiBaseUrl } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
 /** Builds the common nested resource route for one trip's packing items. */
 const packingItemsUrl = (tripId: string) =>
@@ -8,7 +8,7 @@ const packingItemsUrl = (tripId: string) =>
 
 /** Loads the manual checklist stored for a trip. */
 export async function getPackingItems(tripId: string): Promise<PackingItem[]> {
-    const response = await fetch(packingItemsUrl(tripId));
+    const response = await apiFetch(packingItemsUrl(tripId));
     if (!response.ok) {
         throw new Error("Could not load packing items.");
     }
@@ -18,7 +18,7 @@ export async function getPackingItems(tripId: string): Promise<PackingItem[]> {
 
 /** Records that the user wants a blank manual checklist. */
 export async function startEmptyPackingList(tripId: string): Promise<void> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/start-empty`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/start-empty`, {
         method: "POST",
     });
     if (!response.ok) {
@@ -28,7 +28,7 @@ export async function startEmptyPackingList(tripId: string): Promise<void> {
 
 /** Creates editable copies of the agreed standard packing items. */
 export async function createDefaultPackingList(tripId: string): Promise<PackingItem[]> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/default-list`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/default-list`, {
         method: "POST",
     });
     if (!response.ok) {
@@ -44,7 +44,7 @@ export async function updatePackingItemPackedState(
     itemId: string,
     isPacked: boolean,
 ): Promise<PackingItem> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/${itemId}/packed`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/${itemId}/packed`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPacked }),
@@ -61,7 +61,7 @@ export async function createPackingItem(
     tripId: string,
     item: PackingItemForm,
 ): Promise<PackingItem> {
-    const response = await fetch(packingItemsUrl(tripId), {
+    const response = await apiFetch(packingItemsUrl(tripId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -83,7 +83,7 @@ export async function updatePackingItem(
     itemId: string,
     item: PackingItemForm,
 ): Promise<PackingItem> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/${itemId}`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -101,7 +101,7 @@ export async function updatePackingItem(
 
 /** Permanently removes one checklist item after its Undo period ends. */
 export async function deletePackingItem(tripId: string, itemId: string): Promise<void> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/${itemId}`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/${itemId}`, {
         method: "DELETE",
     });
     if (!response.ok) {
@@ -111,7 +111,7 @@ export async function deletePackingItem(tripId: string, itemId: string): Promise
 
 /** Clears every checklist item and makes the initial setup choice available again. */
 export async function resetPackingList(tripId: string): Promise<void> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/reset`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/reset`, {
         method: "DELETE",
     });
     if (!response.ok) {
@@ -124,7 +124,7 @@ export async function reorderPackingItems(
     tripId: string,
     itemIds: string[],
 ): Promise<void> {
-    const response = await fetch(`${packingItemsUrl(tripId)}/reorder`, {
+    const response = await apiFetch(`${packingItemsUrl(tripId)}/reorder`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemIds }),

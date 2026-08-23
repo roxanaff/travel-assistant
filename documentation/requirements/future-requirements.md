@@ -10,6 +10,10 @@ This document collects intentionally deferred improvements that span more than o
 - [ ] Add device/session management: list each browser or device currently signed in, with controls to sign out of an individual device or sign out everywhere.
 - [ ] Add rate limits to registration, login, and account-recovery requests to reduce automated abuse and password guessing.
 
+## Trip-date validation
+
+- [x] Do not allow a trip's end date to be before its start date. This is already enforced by the API; add frontend validation when the trip form is next improved.
+
 ## Trip arrival and departure times
 
 - [ ] Decide whether arrival and departure times belong to the trip setup, the itinerary, or both. The current trip model has an arrival-time field, but it is not yet used in the itinerary and has no matching departure-time field.
@@ -40,6 +44,9 @@ This document collects intentionally deferred improvements that span more than o
 
 - [ ] When an Add or Edit form opens, focus is moved to it and the form is scrolled into view so it can be used without manual scrolling.
 - [ ] Provide an itinerary control for expanding or collapsing all activity details.
+- [ ] Add an Activity or Sport category for items such as skiing during a skiing holiday.
+- [ ] Decide which activity categories can have opening hours. Hiking, a beach day, and walking around a city should not show opening-hours inputs.
+- [ ] Design category-specific itinerary forms so the inputs fit the selected activity type; defer implementation until the category decision is made.
 
 ## List and card controls
 

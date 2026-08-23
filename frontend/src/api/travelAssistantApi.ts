@@ -7,3 +7,8 @@ const configuredApiBaseUrl =
 
 // Normalising avoids accidental double slashes as feature API modules append their own paths.
 export const apiBaseUrl = configuredApiBaseUrl.replace(/\/$/, "");
+
+/** Every API call explicitly includes the browser's same-origin authentication cookie. */
+export function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+    return fetch(input, { ...init, credentials: "include" });
+}

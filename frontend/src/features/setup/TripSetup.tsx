@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TripForm } from "../trips/TripForm";
 import { deleteTrip, updateTrip } from "../../api/tripsApi";
 import { formatDate, formatMoney } from "../../utils/format";
+import { useDismissibleMenu } from "../../utils/useDismissibleMenu";
 import { tripToFormValues, type TripRequest } from "../../types/trip";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import "./TripSetup.css";
@@ -12,10 +13,13 @@ import "./TripSetup.css";
 export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
+
+    useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
 
     // An open trip form should be protected from accidental tab changes.
     useEffect(() => {
@@ -67,7 +71,7 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
         <section className="detail-section trip-setup">
             <div className="section-title-row">
                 <h2>Trip details</h2>
-                <div className="trip-details-menu">
+                <div className="trip-details-menu" ref={menuRef}>
                     <button
                         className="icon-button"
                         type="button"
@@ -88,7 +92,10 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                             >
                                 Edit trip
                             </button>
-                            <button type="button" onClick={() => void remove()}>
+                            <button type="button" onClick={() => {
+                                setMenuOpen(false);
+                                void remove();
+                            }}>
                                 Delete trip
                             </button>
                         </div>

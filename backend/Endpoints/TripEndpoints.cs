@@ -14,18 +14,23 @@ public static class TripEndpoints
     /// <summary>Maps routes for listing, reading, creating, editing, and deleting trips.</summary>
     public static IEndpointRouteBuilder MapTripEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/trips", async (TravelAssistantDbContext database) =>
-            (await database.Trips.ToListAsync()).Select(ToResponse)
-        ).WithName("GetTrips");
-
-        app.MapGet("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
+        app.MapGet("/api/trips", async (System.Security.Claims.ClaimsPrincipal principal, TravelAssistantDbContext database) =>
         {
-            var trip = await database.Trips.FindAsync(id);
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var trips = await database.Trips.Where(trip => trip.UserId == userId).ToListAsync();
+            return Results.Ok(trips.Select(ToResponse));
+        }).RequireAuthorization().WithName("GetTrips");
+
+        app.MapGet("/api/trips/{id:guid}", async (Guid id, System.Security.Claims.ClaimsPrincipal principal, TravelAssistantDbContext database) =>
+        {
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var trip = await database.Trips.SingleOrDefaultAsync(item => item.Id == id && item.UserId == userId);
             return trip is null ? Results.NotFound() : Results.Ok(ToResponse(trip));
-        }).WithName("GetTrip");
+        }).RequireAuthorization().WithName("GetTrip");
 
-        app.MapPost("/api/trips", async (CreateTripRequest request, TravelAssistantDbContext database) =>
+        app.MapPost("/api/trips", async (CreateTripRequest request, System.Security.Claims.ClaimsPrincipal principal, TravelAssistantDbContext database) =>
         {
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
             var validationError = TripValidation.Validate(request);
             if (validationError is not null)
             {
@@ -34,6 +39,7 @@ public static class TripEndpoints
 
             var trip = new Trip
             {
+                UserId = userId,
                 Name = request.Name.Trim(),
                 Destination = NormalizeOptionalText(request.Destination),
                 StartDate = request.StartDate,
@@ -49,17 +55,18 @@ public static class TripEndpoints
             await database.SaveChangesAsync();
 
             return Results.Created($"/api/trips/{trip.Id}", ToResponse(trip));
-        }).WithName("CreateTrip");
+        }).RequireAuthorization().WithName("CreateTrip");
 
-        app.MapPut("/api/trips/{id:guid}", async (Guid id, CreateTripRequest request, TravelAssistantDbContext database) =>
+        app.MapPut("/api/trips/{id:guid}", async (Guid id, CreateTripRequest request, System.Security.Claims.ClaimsPrincipal principal, TravelAssistantDbContext database) =>
         {
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
             var validationError = TripValidation.Validate(request);
             if (validationError is not null)
             {
                 return Results.BadRequest(validationError);
             }
 
-            var trip = await database.Trips.FindAsync(id);
+            var trip = await database.Trips.SingleOrDefaultAsync(item => item.Id == id && item.UserId == userId);
             if (trip is null)
             {
                 return Results.NotFound();
@@ -87,11 +94,12 @@ public static class TripEndpoints
 
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(trip, unscheduledActivityCount));
-        }).WithName("UpdateTrip");
+        }).RequireAuthorization().WithName("UpdateTrip");
 
-        app.MapDelete("/api/trips/{id:guid}", async (Guid id, TravelAssistantDbContext database) =>
+        app.MapDelete("/api/trips/{id:guid}", async (Guid id, System.Security.Claims.ClaimsPrincipal principal, TravelAssistantDbContext database) =>
         {
-            var trip = await database.Trips.FindAsync(id);
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var trip = await database.Trips.SingleOrDefaultAsync(item => item.Id == id && item.UserId == userId);
             if (trip is null)
             {
                 return Results.NotFound();
@@ -100,7 +108,7 @@ public static class TripEndpoints
             database.Trips.Remove(trip);
             await database.SaveChangesAsync();
             return Results.NoContent();
-        }).WithName("DeleteTrip");
+        }).RequireAuthorization().WithName("DeleteTrip");
 
         return app;
     }

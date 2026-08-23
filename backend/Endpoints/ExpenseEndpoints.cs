@@ -14,7 +14,8 @@ public static class ExpenseEndpoints
     /// <summary>Maps all routes whose resource is an actual expense recorded for a trip.</summary>
     public static IEndpointRouteBuilder MapExpenseEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/trips/{tripId:guid}/expenses", async (Guid tripId, TravelAssistantDbContext database) =>
+        var routes = app.MapOwnedTripGroup();
+        routes.MapGet("/expenses", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
             if (!tripExists)
@@ -30,7 +31,7 @@ public static class ExpenseEndpoints
             return Results.Ok(expenses);
         }).WithName("GetExpenses");
 
-        app.MapPost("/api/trips/{tripId:guid}/expenses", async (Guid tripId, CreateExpenseRequest request, TravelAssistantDbContext database) =>
+        routes.MapPost("/expenses", async (Guid tripId, CreateExpenseRequest request, TravelAssistantDbContext database) =>
         {
             var validationError = ExpenseValidation.Validate(request);
             if (validationError is not null)
@@ -72,7 +73,7 @@ public static class ExpenseEndpoints
             return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", expense);
         }).WithName("CreateExpense");
 
-        app.MapPut("/api/trips/{tripId:guid}/expenses/{id:guid}", async (Guid tripId, Guid id, CreateExpenseRequest request, TravelAssistantDbContext database) =>
+        routes.MapPut("/expenses/{id:guid}", async (Guid tripId, Guid id, CreateExpenseRequest request, TravelAssistantDbContext database) =>
         {
             var validationError = ExpenseValidation.Validate(request);
             if (validationError is not null)
@@ -101,7 +102,7 @@ public static class ExpenseEndpoints
             return Results.Ok(expense);
         }).WithName("UpdateExpense");
 
-        app.MapDelete("/api/trips/{tripId:guid}/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
+        routes.MapDelete("/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)

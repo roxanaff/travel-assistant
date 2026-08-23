@@ -10,6 +10,7 @@ This document records trip-creation and editing requirements, including trip typ
 - `*` marks required fields. In the current trip form, Trip name is required.
 - Optional fields do not use `(optional)` markers. Help text can explain a necessary conditional rule, such as a date requirement for a non-Draft trip.
 - The same required-marker convention will be used in every form as it is updated.
+- When dates are entered, both a start date and an end date are required, and the end date cannot be before the start date.
 
 ### Trip types
 

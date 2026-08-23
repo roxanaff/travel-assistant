@@ -72,6 +72,8 @@ Opening hours may run past midnight, such as `18:00–02:00`.
 - [ ] Expanded activity details and recommendations.
 - [ ] Custom categories and category ordering based on trip type.
 - [ ] Link activity costs to budget-planner entries.
+- [ ] Add an Activity or Sport category, for activities such as skiing.
+- [ ] Make opening-hours inputs available only for categories where they make sense, and design category-specific input forms. Hiking, beach time, and city walks should not ask for opening hours.
 
 ## Relevant current files
 

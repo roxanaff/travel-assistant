@@ -14,7 +14,8 @@ public static class ItineraryEndpoints
     /// <summary>Maps routes that list, create, change, and delete itinerary activities.</summary>
     public static IEndpointRouteBuilder MapItineraryEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/trips/{tripId:guid}/itinerary-items", async (Guid tripId, TravelAssistantDbContext database) =>
+        var routes = app.MapOwnedTripGroup();
+        routes.MapGet("/itinerary-items", async (Guid tripId, TravelAssistantDbContext database) =>
         {
             var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
             if (!tripExists)
@@ -34,7 +35,7 @@ public static class ItineraryEndpoints
             return Results.Ok(itineraryItems.Select(ToResponse));
         }).WithName("GetItineraryItems");
 
-        app.MapPost("/api/trips/{tripId:guid}/itinerary-items", async (Guid tripId, CreateItineraryItemRequest request, TravelAssistantDbContext database) =>
+        routes.MapPost("/itinerary-items", async (Guid tripId, CreateItineraryItemRequest request, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(tripId);
             if (trip is null)
@@ -70,7 +71,7 @@ public static class ItineraryEndpoints
             return Results.Created($"/api/trips/{tripId}/itinerary-items/{itineraryItem.Id}", ToResponse(itineraryItem));
         }).WithName("CreateItineraryItem");
 
-        app.MapPut("/api/trips/{tripId:guid}/itinerary-items/{id:guid}", async (Guid tripId, Guid id, CreateItineraryItemRequest request, TravelAssistantDbContext database) =>
+        routes.MapPut("/itinerary-items/{id:guid}", async (Guid tripId, Guid id, CreateItineraryItemRequest request, TravelAssistantDbContext database) =>
         {
             var trip = await database.Trips.FindAsync(tripId);
             if (trip is null)
@@ -107,7 +108,7 @@ public static class ItineraryEndpoints
             return Results.Ok(ToResponse(itineraryItem));
         }).WithName("UpdateItineraryItem");
 
-        app.MapDelete("/api/trips/{tripId:guid}/itinerary-items/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
+        routes.MapDelete("/itinerary-items/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var itineraryItem = await database.ItineraryItems.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (itineraryItem is null)

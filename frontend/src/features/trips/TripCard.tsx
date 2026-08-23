@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect } from "react";
+import { useRef } from "react";
 import { formatDate, formatMoney } from "../../utils/format";
+import { useDismissibleMenu } from "../../utils/useDismissibleMenu";
 import type { Trip } from "../../types/trip";
 
 type Props = {
@@ -24,19 +25,12 @@ export function TripCard({
                              onEdit,
                              onDelete,
                          }: Props) {
+    const menuRef = useRef<HTMLDivElement>(null);
     const prompts = [
         !trip.destination && "Destination not set",
         (!trip.startDate || !trip.endDate) && "Dates not set",
     ].filter(Boolean);
-    // Escape closes an open actions menu for keyboard users.
-    useEffect(() => {
-        if (!isMenuOpen) return;
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onToggleMenu();
-        };
-        window.addEventListener("keydown", closeOnEscape);
-        return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [isMenuOpen, onToggleMenu]);
+    useDismissibleMenu(isMenuOpen, menuRef, onToggleMenu);
     return (
         <article
             className={`trip-card ${trip.status === "Past" ? "trip-card-past" : ""}`}
@@ -75,7 +69,7 @@ export function TripCard({
                     </div>
                 )}
             </div>
-            <div className="card-menu">
+            <div className="card-menu" ref={menuRef}>
                 <button
                     className="icon-button"
                     type="button"
