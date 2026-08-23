@@ -28,12 +28,7 @@ The data model will leave room for later shared trips without implementing colla
 
 ## One-time existing-trip migration
 
-The two pre-account trips must be attached to the intended first account before trip ownership becomes mandatory in the database.
-
-1. Set `InitialTripOwnerEmail` to your first account's email in local development and in Render.
-2. Sign in with that account once. The API assigns every currently unowned trip to that account.
-3. Verify that account can see the two old trips and a newly registered account sees an empty dashboard.
-4. Create a final migration that makes `Trips.UserId` required, deploy it, then remove `InitialTripOwnerEmail`. From that point no trip can exist without an owner.
+Completed: the two pre-account trips were assigned to the intended first account in local development and production. The final database migration now makes `Trips.UserId` required, so every future trip must have an owner.
 
 ## Explicitly later
 

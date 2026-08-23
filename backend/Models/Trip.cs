@@ -8,13 +8,10 @@ public class Trip
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// <summary>
-    /// The account that owns this trip. It remains nullable while the pre-account trips are migrated
-    /// to the configured initial account.
-    /// </summary>
-    public Guid? UserId { get; set; }
+    /// <summary>The account that owns this trip.</summary>
+    public Guid UserId { get; set; }
 
-    public User? User { get; set; }
+    public User User { get; set; } = null!;
     
     public string Name { get; set; } = string.Empty;
 

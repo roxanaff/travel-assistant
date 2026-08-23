@@ -1,8 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
-using TravelAssistant.Data;
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Endpoints;
@@ -25,9 +23,7 @@ public static class AuthEndpoints
     private static async Task<IResult> Register(
         RegisterRequest request,
         UserManager<User> userManager,
-        SignInManager<User> signInManager,
-        TravelAssistantDbContext database,
-        IConfiguration configuration)
+        SignInManager<User> signInManager)
     {
         var displayName = request.DisplayName?.Trim();
         var email = request.Email?.Trim();
@@ -67,7 +63,6 @@ public static class AuthEndpoints
             return Results.BadRequest("Could not create an account with those details.");
         }
 
-        await AssignExistingTripsToInitialOwner(user, userManager, database, configuration);
         await signInManager.SignInAsync(user, isPersistent: true);
 
         return Results.Created("/api/auth/me", ToResponse(user));
@@ -76,9 +71,7 @@ public static class AuthEndpoints
     private static async Task<IResult> Login(
         LoginRequest request,
         UserManager<User> userManager,
-        SignInManager<User> signInManager,
-        TravelAssistantDbContext database,
-        IConfiguration configuration)
+        SignInManager<User> signInManager)
     {
         var email = request.Email?.Trim();
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(request.Password))
@@ -103,9 +96,6 @@ public static class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        // This also lets the intended first user claim legacy trips if they registered before the
-        // InitialTripOwnerEmail setting was added to the environment.
-        await AssignExistingTripsToInitialOwner(user, userManager, database, configuration);
         return Results.Ok(ToResponse(user));
     }
 
@@ -178,28 +168,6 @@ public static class AuthEndpoints
         // The database cascade removes the user's trips and their trip-related records.
         await signInManager.SignOutAsync();
         return Results.NoContent();
-    }
-
-    /// <summary>
-    /// Gives the current pre-account trips to the configured initial account. Once assigned, they
-    /// no longer have a null UserId and therefore cannot be assigned again.
-    /// </summary>
-    private static async Task AssignExistingTripsToInitialOwner(
-        User user,
-        UserManager<User> userManager,
-        TravelAssistantDbContext database,
-        IConfiguration configuration)
-    {
-        var initialOwnerEmail = configuration["InitialTripOwnerEmail"]?.Trim();
-        if (string.IsNullOrWhiteSpace(initialOwnerEmail)
-            || !string.Equals(user.NormalizedEmail, userManager.NormalizeEmail(initialOwnerEmail), StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        await database.Trips
-            .Where(trip => trip.UserId == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(trip => trip.UserId, user.Id));
     }
 
     private static CurrentUserResponse ToResponse(User user) =>
