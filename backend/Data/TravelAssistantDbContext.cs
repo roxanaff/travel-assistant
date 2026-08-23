@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Models;
@@ -9,7 +10,7 @@ namespace TravelAssistant.Data;
 /// the model classes and relationships below into database tables and constraints.
 /// </summary>
 public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext> options)
-    : IdentityUserContext<User, Guid>(options)
+    : IdentityUserContext<User, Guid>(options), IDataProtectionKeyContext
 {
     // Each DbSet represents a queryable table and the collection used to add or remove its rows.
     public DbSet<Trip> Trips => Set<Trip>();
@@ -17,6 +18,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<PlannedCost> PlannedCosts => Set<PlannedCost>();
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

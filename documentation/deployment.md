@@ -30,6 +30,7 @@ The API requires the following environment variables:
 | --- | --- |
 | `ConnectionStrings__TravelAssistant` | Private Neon PostgreSQL connection string. |
 | `Cors__AllowedOrigins__0` | Exact Cloudflare Pages frontend origin allowed to call the API. |
+| `InitialTripOwnerEmail` | Optional email address of the first account that should receive the existing pre-account trips. |
 
 Additional preview or custom frontend origins can be configured by adding subsequent array indexes, for example `Cors__AllowedOrigins__1`.
 

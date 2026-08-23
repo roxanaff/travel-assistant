@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Text.Json.Serialization;
 using TravelAssistant.Data;
 using TravelAssistant.Endpoints;
+using TravelAssistant.Models;
 
 // `builder` collects every service the API needs before the HTTP pipeline is created.
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +29,7 @@ builder.Services.AddCors(options =>
             .Get<string[]>()
             ?? throw new InvalidOperationException("At least one CORS allowed origin must be configured.");
 
-        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     })
 );
 
@@ -39,6 +42,44 @@ builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
             ?? throw new InvalidOperationException("Connection string 'TravelAssistant' was not found."))
     )
 );
+
+// Identity owns password hashing and account security. Its database records use the same PostgreSQL
+// context as the rest of the app, while no roles or administrator permissions are introduced.
+builder.Services.AddIdentityCore<User>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedEmail = false;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredUniqueChars = 1;
+    })
+    .AddEntityFrameworkStores<TravelAssistantDbContext>()
+    .AddSignInManager()
+    .AddDefaultTokenProviders();
+
+// Persistent cookie sessions are created by the login endpoint added next. A database-backed Data
+// Protection key ring lets those cookies remain valid through Render restarts and redeployments.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<TravelAssistantDbContext>()
+    .SetApplicationName("TravelAssistant");
+
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddIdentityCookies();
+builder.Services.AddAuthorization();
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.SlidingExpiration = true;
+    options.Cookie.Name = "__Host-TravelAssistant.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
 
 var app = builder.Build();
 
@@ -65,6 +106,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("frontend");
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Hosting providers call this lightweight route to confirm that the API is running.
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
@@ -75,6 +118,7 @@ app.MapExpenseEndpoints();
 app.MapPlannedCostEndpoints();
 app.MapItineraryEndpoints();
 app.MapPackingItemEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 
