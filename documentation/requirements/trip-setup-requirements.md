@@ -1,43 +1,38 @@
-# Trip Setup — Requirements and Task List
+# Trip Setup — Stage 1 Requirements
 
-This document records trip-creation and editing requirements, including trip types. Dashboard-card layout and behavior are documented separately in `dashboard-card-requirements.md`.
+## Purpose
 
-## Current requirements
+Trip setup creates and updates the information that defines a trip and its lifecycle status.
 
-### Field language and required-field markers
+## Product behavior
 
-- The field is called **Destination**, not “Primary destination”, throughout the product.
-- `*` marks required fields. In the current trip form, Trip name is required.
-- Optional fields do not use `(optional)` markers. Help text can explain a necessary conditional rule, such as a date requirement for a non-Draft trip.
-- The same required-marker convention will be used in every form as it is updated.
-- When dates are entered, both a start date and an end date are required, and the end date cannot be before the start date.
+- Trip name is required. Destination, dates, trip type, currency, target budget, and notes are optional.
+- A trip without a destination or complete dates is a Draft. With those fields complete, its status is calculated as Upcoming, Ongoing, or Past from its dates.
+- When dates are provided, both a start date and end date are required. The end date cannot be before the start date.
+- The field is named **Destination** throughout the product.
+- Required fields use `*`. Routine `(optional)` markers are not used.
+- Trip type supports more than one selection.
 
-### Trip types
+## Open Stage 1 work
 
-- Trip type is optional and supports selecting more than one type.
-- The current candidate types are: Beach; City break; Hiking & trekking; Skiing & winter sports; Work trip; Visiting friends & family; Road trip; Cabin stay; Camping; Cruise; All-inclusive resort; and Mountaineering & climbing.
-- Hiking & trekking is kept distinct from Mountaineering & climbing: the former covers walks and multi-day hikes, while the latter covers technical or summit-focused trips.
-- The labels and any additional types remain subject to a final product decision before implementation.
-
-## Candidate additions to review
-
-- Culture & sightseeing
-- Wellness & spa
-- Adventure & sports
-- Festival or event trip
-- Nature & wildlife
-
-These will be added only if they help users find a meaningful match; a long list of near-duplicates should be avoided.
+Cross-cutting form behavior, required-field presentation, and frontend date validation are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
 
 ## Verification
 
-- [ ] Test field labels and required markers for create and edit states.
-- [ ] Test keyboard form completion, submission, cancellation, validation, and responsive layouts.
-- [ ] Test trip-type selection, display, and persistence after the final type list is agreed.
+- [ ] Verify create and edit states with Draft, Upcoming, Ongoing, and Past trips.
+- [ ] Verify field labels, required markers, date validation, keyboard behavior, and responsive layouts.
+- [ ] Verify selected trip types persist and display correctly once the final list is decided.
 
-## Later features
+## Open decisions
 
-- Multiple destinations, including country/city structure and arrival/departure dates.
-- Destination search and validation.
-- Number of travellers.
-- Arrival and departure time handling; see `future-requirements.md`.
+The final trip-type list remains open. Current candidates are Beach; City break; Hiking & trekking; Skiing & winter sports; Work trip; Visiting friends & family; Road trip; Cabin stay; Camping; Cruise; All-inclusive resort; and Mountaineering & climbing.
+
+Candidate additions are Culture & sightseeing, Wellness & spa, Adventure & sports, Festival or event trip, and Nature & wildlife. A long list of near-duplicates should be avoided.
+
+## Constraints
+
+Hiking & trekking is distinct from Mountaineering & climbing: the former covers walks and multi-day hikes, while the latter covers technical or summit-focused trips.
+
+## Beyond Stage 1
+
+Future trip-setup directions are recorded in [personal trip planning](../future/personal-trip-planning.md).

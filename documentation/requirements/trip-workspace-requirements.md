@@ -1,73 +1,40 @@
-# Trip Workspace / Details Page — Requirements and Task List
+# Trip Workspace — Stage 1 Requirements
 
-This document records the page opened from a dashboard trip card. It is the workspace for one trip, not a single long details page.
+## Purpose
 
-## Current structure
+The trip workspace is the working area for one trip. It separates planning tasks into focused sections rather than placing every feature on one long page.
 
-Clicking a dashboard card opens the trip workspace on **Itinerary**.
+## Product behavior
 
-```text
-Trip workspace header
-  [ Itinerary ] [ Budget & expenses ] [ Packing ] [ Details ]
-```
+- Opening a dashboard trip opens the workspace on **Itinerary**.
+- A compact header shows the trip name, destination, dates, and lifecycle status above the section navigation.
+- The workspace sections and routes are:
 
-| Section | Route | Purpose |
-|---|---|---|
-| Itinerary | `/trips/:id` | Default section for activities and planning |
-| Budget & expenses | `/trips/:id/budget` | Budget summary, then planned categories and expenses as they are implemented |
-| Packing | `/trips/:id/packing` | Manual packing checklist in the first stage |
-| Details | `/trips/:id/details` | View and edit trip setup information |
+  | Section | Route | Purpose |
+  | --- | --- | --- |
+  | Itinerary | `/trips/:id` | Activities and planning |
+  | Budget & expenses | `/trips/:id/budget` | Planned costs and actual spending |
+  | Packing | `/trips/:id/packing` | Manual packing checklist |
+  | Details | `/trips/:id/details` | Trip setup information |
 
-There is no Overview section initially. The dashboard provides cross-trip overview; an Overview section can be added later for shared-trip and progress summaries.
+- A return link takes the user to the dashboard.
+- Loading, not-found, and API-error states are handled for a trip workspace.
+- Switching sections warns before an open add/edit form with unsaved changes is discarded.
 
-A compact persistent header is kept above the tabs. A permanent side panel is not used because it reduces working space on desktop and does not adapt well to mobile.
+## Open Stage 1 work
 
-## Current implementation — complete or already available
+Cross-cutting workspace header, tab, and keyboard improvements are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
 
-- [x] Dashboard cards link to `/trips/:id`.
-- [x] The existing trip details page loads a trip and handles loading/not-found/API errors.
-- [x] The page has a return link to the dashboard.
-- [x] A shared workspace header displays the trip name, destination, dates, and calculated status.
-- [x] Itinerary, Budget & expenses, Packing, and Details have separate routes beneath the workspace.
-- [x] The Details page displays the complete trip setup and reuses the trip form for editing.
-- [x] The Itinerary and Budget & expenses implementations each render only in their own workspace route.
-- [x] Switching tabs warns before discarding an open Add/Edit form.
+## Verification
 
-## First-stage implementation tasks
+- [ ] Verify direct navigation to every workspace route and returning to the dashboard.
+- [ ] Verify the workspace with Draft, Upcoming, Ongoing, and Past trips.
+- [ ] Verify narrow/mobile navigation, keyboard tab navigation, not-found states, and API-error states.
 
-### A. Routing and navigation
+## Constraints
 
+A permanent side panel is not used because it reduces working space on desktop and does not adapt well to mobile.
 
-### B. Persistent workspace header
+## Beyond Stage 1
 
-
-### C. Details section
-
-- [ ] Apply the documented trip-date change rules to itinerary activities when dates are edited.
-
-### D. Section ownership
-
-- [ ] Add the manual packing checklist to the Packing route.
-
-### E. Verification
-
-- [ ] Test direct navigation to every route and returning to the dashboard.
-- [ ] Test the workspace with Draft, Upcoming, Ongoing, and Past trips.
-- [ ] Test narrow/mobile navigation and keyboard tab navigation.
-- [ ] Test not-found and API-error states for each route.
-
-## Later-stage workspace features
-
-- [ ] Overview section for progress, upcoming reminders, shared travellers, and budget status.
-- [ ] Shared-trip actions and collaborator indicators.
-- [ ] Archive/history treatment for Past trips.
-- [ ] Advanced section permissions and sharing controls.
-
-## Relevant current files
-
-- Workspace layout: `frontend/src/pages/TripWorkspace.tsx`
-- Workspace styles: `frontend/src/pages/TripWorkspace.css`
-- Budget page: `frontend/src/pages/TripBudgetPage.tsx`
-- Details page: `frontend/src/pages/TripSetupPage.tsx`
-- Router configuration: `frontend/src/App.tsx`
-- Itinerary section: `frontend/src/components/Itinerary.tsx`
+Future workspace directions are recorded in [personal trip planning](../future/personal-trip-planning.md) and [accounts and collaboration](../future/accounts-and-collaboration.md).

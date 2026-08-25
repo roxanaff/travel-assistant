@@ -1,34 +1,26 @@
-# Packing Checklist — Requirements and Task List
+# Packing Checklist — Stage 1 Requirements
 
-This document covers the first-stage manual Packing section of a trip workspace.
+## Purpose
 
-## Current product behavior
+The packing checklist is a manual, trip-specific list that works for Draft, Upcoming, Ongoing, and Past trips.
 
-- Packing works for Draft, Upcoming, Ongoing, and Past trips.
+## Product behavior
+
 - Each item has a required name, optional category, optional quantity, packed state, and saved manual order.
-- Quantity defaults to one; only quantities greater than one are displayed, e.g. `10 × T-shirts`.
+- Quantity defaults to one and is displayed only when greater than one.
 - Categories are Documents & money, Toiletries, Clothing, Electronics, Health, and Other.
-- The checklist has one underlying list but two displayed sections:
-  - **To pack** for unpacked items
-  - **Packed** for packed items, visually muted
-- Ticking or unticking an item moves it between displayed sections without changing its saved manual order.
-- Progress is based on checklist rows, e.g. `8 of 15 packed`, not the sum of quantities.
-- The normal display keeps each section in manual order and shows an optional category label on the right.
-- A display option groups To pack and Packed items by category.
-- Users may drag-and-drop reorder items within the To pack and Packed sections.
-- Users can add, edit, rename, and delete items. Delete has no confirmation dialog and includes a short-lived Undo action.
+- One underlying checklist is displayed as **To pack** and **Packed** sections. Toggling packed state moves an item between sections without changing its saved order.
+- Progress is based on checklist-item count rather than the sum of quantities.
+- The standard display preserves manual order and shows an optional category label. A grouping option groups each section by category.
+- Items can be reordered within To pack and Packed using drag and drop or keyboard-accessible Move up/Move down controls.
+- Items can be added, edited, and deleted. Deletion is optimistic, has a five-second Undo period, and restores the item if the API deletion fails.
 
-## Default-list behaviour
+### Empty checklist
 
-For an empty checklist, offer the user:
-
-- **Use default list**
-- **Start empty**
-
-Using the default list creates independent copies inside the trip checklist. Users may freely edit or delete those copies.
+An empty checklist offers **Use default list** or **Start empty**. Default items are copied into the trip and remain fully editable:
 
 | Category | Default items |
-|---|---|
+| --- | --- |
 | Documents & money | Passport/ID, Wallet/cards/cash, Tickets/reservations, Keys |
 | Toiletries | Toothbrush, Toothpaste, Deodorant |
 | Clothing | Underwear, Socks, Sleepwear |
@@ -37,74 +29,16 @@ Using the default list creates independent copies inside the trip checklist. Use
 
 The default list deliberately does not include a phone.
 
-Later, users may add default items after starting empty. Duplicate prevention should compare normalized item names, ignoring case and surrounding whitespace.
+## Open Stage 1 work
 
-## Current implementation
+Cross-cutting keyboard and responsive improvements are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
 
-- [x] The workspace includes the Packing checklist route at `/trips/:id/packing`.
-- [x] The packing-item database model and migration are in place.
-- [x] The packing API supports loading, creating, editing, toggling, reordering, and deleting checklist items.
-- [x] The Packing route offers the initial default-list or empty-list choice and displays the basic two-section checklist.
+## Verification
 
-## First-stage implementation tasks
+- [ ] Verify Draft and dated trips, default-list creation, and starting empty.
+- [ ] Verify quantities of one and greater than one; check/uncheck behavior; progress; ordering; and grouping.
+- [ ] Verify editing, deletion, Undo expiry, API failure recovery, narrow/mobile layouts, and keyboard interaction.
 
-### A. Data model and API
+## Beyond Stage 1
 
-- [x] Create a packing-item model with trip ID, name, optional category, quantity, packed state, sort order, and creation timestamp.
-- [x] Store quantity as a positive integer with a default of one.
-- [x] Add the agreed fixed categories and allow a null category.
-- [x] Add list, create, update, reorder, and delete API endpoints scoped to a trip.
-- [x] Add frontend types, request contracts, validation, and database migrations.
-- [x] Preserve packing items when trip dates or status change.
-
-### B. Packing route and checklist UI
-
-- [x] Add the Packing section at `/trips/:id/packing` in the trip workspace.
-- [x] Render the To pack and Packed lists from one set of packing items.
-- [x] Toggle packed state directly from the checklist row.
-- [x] Keep manual order stable when an item is packed or unpacked.
-- [x] Show item quantity only when greater than one.
-- [x] Show progress as packed checklist rows divided by all checklist rows.
-- [x] Render optional category labels in the standard, ungrouped display.
-- [x] Add a view control for grouping list items by category.
-- [x] Support drag-and-drop ordering within To pack and Packed lists, with Move up / Move down controls for keyboard users.
-
-### C. Item management and recovery
-
-- [x] Provide quick Add item flow with fields for name, optional quantity, and optional category.
-- [x] Add edit/rename controls for every item.
-- [x] Delete immediately, remove the row optimistically, and display a short-lived Undo action.
-- [x] Delay the API delete until the Undo window ends so Undo restores the same item.
-- [x] Report errors if saving or deferred deletion fails. Reordering errors will be added with drag-and-drop.
-
-### D. Default-list flow
-
-- [x] Show the Use default list / Start empty choice only for a truly empty checklist.
-- [x] Copy the agreed default items into the trip checklist when Use default list is selected.
-- [x] Ensure copied default items are normal editable trip items, not template links.
-
-### E. Verification
-
-- [ ] Test Draft and dated trips.
-- [ ] Test default-list creation and starting empty.
-- [ ] Test quantities of one and greater than one.
-- [ ] Test check/uncheck, progress, ordering, grouping, editing, delete, Undo expiry, and API failure.
-- [ ] Test narrow/mobile layouts and keyboard interaction.
-
-## Later features
-
-- [ ] Add default items after the initial empty-state choice, with duplicate prevention using normalized names.
-- [ ] Custom categories and free-text category names when Other is selected.
-- [ ] User-customizable default templates.
-- [ ] Rule-based suggestions based on trip type, activities, destination, duration, and laundry access.
-- [ ] Weather-aware suggestions.
-- [ ] Shared and personal packing lists for group trips.
-
-## Relevant implementation locations
-
-- Trip workspace routing: `frontend/src/App.tsx`
-- Trip workspace layout: `frontend/src/pages/TripWorkspace.tsx`
-- Packing page: `frontend/src/pages/TripPackingPage.tsx`
-- Packing API helper: `frontend/src/api/packingItemsApi.ts`
-- Backend model folder: `backend/Models`
-- Packing API endpoints: `backend/Endpoints/PackingItemEndpoints.cs`
+Future packing directions are recorded in [budget and packing](../future/budget-and-packing.md).
