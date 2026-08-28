@@ -3,21 +3,28 @@ import { MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TripForm } from "../trips/TripForm";
 import { deleteTrip, updateTrip } from "../../api/tripsApi";
-import { formatDate, formatMoney } from "../../utils/format";
+import { formatDateRange, formatMoney } from "../../utils/format";
+import { formatTripType } from "../../utils/tripType";
 import { useDismissibleMenu } from "../../utils/useDismissibleMenu";
 import { tripToFormValues, type TripRequest } from "../../types/trip";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import "./TripSetup.css";
 
 /** Displays the complete trip setup and provides the edit/delete actions. */
-export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
+export function TripSetup({
+    trip,
+    setTrip,
+    setHasUnsavedForm,
+}: TripWorkspaceContext) {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
+    const [itineraryMessage, setItineraryMessage] = useState<string | null>(
+        null,
+    );
 
     useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
 
@@ -77,12 +84,14 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                         type="button"
                         aria-label="Trip actions"
                         aria-expanded={menuOpen}
+                        aria-haspopup="menu"
+                        data-menu-trigger
                         onClick={() => setMenuOpen((current) => !current)}
                     >
                         <MoreHorizontal size={20} />
                     </button>
                     {menuOpen && (
-                        <div className="trip-details-menu-popover">
+                        <div className="action-menu-popover">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -92,10 +101,13 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                             >
                                 Edit trip
                             </button>
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                void remove();
-                            }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    void remove();
+                                }}
+                            >
                                 Delete trip
                             </button>
                         </div>
@@ -103,7 +115,9 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                 </div>
             </div>
             {error && <p className="form-error">{error}</p>}
-            {itineraryMessage && <p className="detail-message">{itineraryMessage}</p>}
+            {itineraryMessage && (
+                <p className="detail-message">{itineraryMessage}</p>
+            )}
             {editing ? (
                 <TripForm
                     heading="Edit trip"
@@ -124,15 +138,13 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                         <dt>Dates</dt>
                         <dd>
                             {trip.startDate && trip.endDate
-                                ? `${formatDate(trip.startDate)} – ${formatDate(trip.endDate)}`
+                                ? formatDateRange(trip.startDate, trip.endDate)
                                 : "Not set"}
                         </dd>
                     </div>
                     <div>
                         <dt>Trip type</dt>
-                        <dd>
-                            {trip.type?.replace(/([A-Z])/g, " $1").trim() ?? "Not specified"}
-                        </dd>
+                        <dd>{formatTripType(trip.type)}</dd>
                     </div>
                     <div>
                         <dt>Target budget</dt>
@@ -143,12 +155,10 @@ export function TripSetup({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceCon
                         </dd>
                     </div>
                     <div>
-                        <dt>Currency</dt>
-                        <dd>{trip.currency}</dd>
-                    </div>
-                    <div>
                         <dt>Notes</dt>
-                        <dd className="trip-setup-note">{trip.note ?? "No notes"}</dd>
+                        <dd className="trip-setup-note">
+                            {trip.note ?? "No notes"}
+                        </dd>
                     </div>
                 </dl>
             )}

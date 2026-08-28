@@ -17,14 +17,22 @@ function App() {
         <AuthProvider>
             <Routes>
                 <Route path="/login" element={<AuthPage mode="login" />} />
-                <Route path="/register" element={<AuthPage mode="register" />} />
+                <Route
+                    path="/register"
+                    element={<AuthPage mode="register" />}
+                />
                 <Route element={<ProtectedApp />}>
                     <Route path="/" element={<TripDashboard />} />
                     {/* TripWorkspace loads the selected trip and renders the nested feature page via Outlet. */}
                     <Route path="/trips/:id" element={<TripWorkspace />}>
-                        <Route index element={<TripItineraryPage />} />
+                        <Route index element={<TripSetupPage />} />
+                        <Route
+                            path="itinerary"
+                            element={<TripItineraryPage />}
+                        />
                         <Route path="budget" element={<TripBudgetPage />} />
                         <Route path="packing" element={<TripPackingPage />} />
+                        {/* Retained for links created before Details became the workspace default. */}
                         <Route path="details" element={<TripSetupPage />} />
                     </Route>
                 </Route>
@@ -39,7 +47,12 @@ function ProtectedApp() {
     if (isLoading) return <AuthLoading />;
     if (!user) return <Navigate to="/login" replace />;
 
-    return <main className="app-shell"><Header /><Outlet /></main>;
+    return (
+        <main className="app-shell">
+            <Header />
+            <Outlet />
+        </main>
+    );
 }
 
 export default App;

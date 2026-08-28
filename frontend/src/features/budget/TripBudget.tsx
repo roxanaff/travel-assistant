@@ -22,7 +22,9 @@ export function TripBudget({ trip, setHasUnsavedForm }: TripWorkspaceContext) {
             <PlannedBudget
                 trip={trip}
                 onFormOpenChange={setHasPlannedCostForm}
-                onExpenseAdded={() => setExpenseRefreshKey((current) => current + 1)}
+                onExpenseAdded={() =>
+                    setExpenseRefreshKey((current) => current + 1)
+                }
             />
             <ExpenseTracking
                 trip={trip}

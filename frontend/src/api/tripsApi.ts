@@ -1,7 +1,7 @@
 import type { Trip, TripRequest } from "../types/trip";
 import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
-// HTTP client for the top-level trip resource. 
+// HTTP client for the top-level trip resource.
 // Pages use these named operations instead of owning URLs.
 const tripsUrl = `${apiBaseUrl}/api/trips`;
 
@@ -43,7 +43,10 @@ export async function createTrip(request: TripRequest): Promise<Trip> {
 }
 
 /** Updates an existing trip and returns its recalculated status and itinerary warning count. */
-export async function updateTrip(id: string, request: TripRequest): Promise<Trip> {
+export async function updateTrip(
+    id: string,
+    request: TripRequest,
+): Promise<Trip> {
     const response = await apiFetch(`${tripsUrl}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

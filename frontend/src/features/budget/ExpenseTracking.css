@@ -1,79 +1,25 @@
-/* Layout and presentation for actual-expense tracking, including its grouping controls and Undo message. */
-.expense-section {
-    margin-top: 0;
-}
-.expense-overview {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 16px;
-}
 .expense-header-actions {
     display: flex;
-    align-items: end;
+    align-items: center;
     gap: 12px;
 }
-.expense-header-actions label {
-    display: grid;
-    gap: 4px;
-    color: var(--color-blue-700);
-    font-size: 0.8rem;
-    font-weight: 700;
+.expense-grouping-control {
+    display: flex;
+    margin-top: 16px;
 }
-.expense-header-actions select {
-    padding: 7px 10px;
+.expense-grouping-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-blue-700);
+    /*font-weight: 700;*/
+    font-size: 0.9rem;
+}
+.expense-grouping-control select {
+    padding: 6px 8px;
     border: 1px solid var(--color-gray-200);
     border-radius: 8px;
     background: var(--color-white);
-    color: inherit;
+    color: var(--color-ink);
     font: inherit;
-}
-.expense-overview > div {
-    display: grid;
-    gap: 5px;
-    padding: 14px;
-    border-radius: 12px;
-    background: var(--color-gray-100);
-    color: var(--color-blue-700);
-}
-.expense-overview strong {
-    font-size: 1.15rem;
-}
-.expense-overview .over-budget {
-    background: var(--color-red-100);
-    color: var(--color-red-700);
-}
-.expense-category {
-    margin-top: 24px;
-}
-.expense-category-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-.expense-category-title {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.expense-category-heading h4 {
-    margin: 0;
-    color: var(--color-pink-700);
-}
-.expense-description {
-    display: grid;
-    gap: 2px;
-}
-.expense-description span {
-    color: var(--color-gray-500);
-    font-size: 0.85rem;
-}
-.expense-editing .expense-form {
-    margin-top: 0;
-}
-@media (max-width: 700px) {
-    .expense-overview {
-        grid-template-columns: 1fr;
-    }
 }

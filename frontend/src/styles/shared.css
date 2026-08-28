@@ -56,9 +56,33 @@
     flex-wrap: wrap;
     gap: 10px;
 }
+.action-menu-popover {
+    position: absolute;
+    z-index: 2;
+    top: 38px;
+    right: 0;
+    display: grid;
+    min-width: 110px;
+    padding: 6px;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 9px;
+    background: var(--color-white);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+.action-menu-popover button {
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.action-menu-popover button:hover {
+    background: var(--color-gray-100);
+}
 .list-items {
     display: grid;
-    gap: 8px;
+    gap: 2px;
     margin: 8px 0 0;
     padding: 0;
     list-style: none;
@@ -68,8 +92,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--color-gray-200);
+    padding: 6px 0;
+    /*border-bottom: 1px solid var(--color-gray-200);*/
 }
 .item-card {
     display: grid;
@@ -77,7 +101,7 @@
     padding: 14px;
     border: 1px solid var(--color-gray-200);
     border-radius: 12px;
-    background: var(--color-gray-100);
+    background: var(--color-surface-items);
 }
 .trip-type,
 .status-pill {
@@ -106,8 +130,8 @@
     white-space: nowrap;
     cursor: pointer;
     transition:
-            background-color 160ms ease,
-            transform 160ms ease;
+        background-color 160ms ease,
+        transform 160ms ease;
 }
 .primary-button:not(:disabled):hover {
     background: var(--color-blue-700);
@@ -129,6 +153,13 @@
 .field-label {
     display: flex;
     gap: 4px;
+    font-weight: 400;
+}
+.field-label-required {
+    font-weight: 700;
+}
+.field-label-required::after {
+    content: "*";
 }
 .form-row {
     display: flex;
@@ -161,7 +192,7 @@
     gap: 7px;
     color: var(--color-blue-700);
     font-size: 0.9rem;
-    font-weight: 700;
+    font-weight: 400;
 }
 .form-surface input,
 .form-surface select,
@@ -171,7 +202,7 @@
     border: 1px solid var(--color-gray-200);
     border-radius: 9px;
     background: var(--color-white);
-    color: inherit;
+    color: var(--color-ink);
     font: inherit;
     font-weight: 400;
 }

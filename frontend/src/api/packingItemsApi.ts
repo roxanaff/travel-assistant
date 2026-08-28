@@ -1,6 +1,10 @@
 import type { PackingItem, PackingItemForm } from "../types/packingItem";
 
-import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
+import {
+    apiBaseUrl,
+    apiFetch,
+    throwIfApiError,
+} from "./travelAssistantApi";
 
 /** Builds the common nested resource route for one trip's packing items. */
 const packingItemsUrl = (tripId: string) =>
@@ -9,9 +13,7 @@ const packingItemsUrl = (tripId: string) =>
 /** Loads the manual checklist stored for a trip. */
 export async function getPackingItems(tripId: string): Promise<PackingItem[]> {
     const response = await apiFetch(packingItemsUrl(tripId));
-    if (!response.ok) {
-        throw new Error("Could not load packing items.");
-    }
+    await throwIfApiError(response, "Could not load packing items.");
 
     return response.json();
 }
@@ -21,19 +23,17 @@ export async function startEmptyPackingList(tripId: string): Promise<void> {
     const response = await apiFetch(`${packingItemsUrl(tripId)}/start-empty`, {
         method: "POST",
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not start an empty packing list.");
 }
 
 /** Creates editable copies of the agreed standard packing items. */
-export async function createDefaultPackingList(tripId: string): Promise<PackingItem[]> {
+export async function createDefaultPackingList(
+    tripId: string,
+): Promise<PackingItem[]> {
     const response = await apiFetch(`${packingItemsUrl(tripId)}/default-list`, {
         method: "POST",
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not create the default packing list.");
 
     return response.json();
 }
@@ -44,14 +44,15 @@ export async function updatePackingItemPackedState(
     itemId: string,
     isPacked: boolean,
 ): Promise<PackingItem> {
-    const response = await apiFetch(`${packingItemsUrl(tripId)}/${itemId}/packed`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPacked }),
-    });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    const response = await apiFetch(
+        `${packingItemsUrl(tripId)}/${itemId}/packed`,
+        {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isPacked }),
+        },
+    );
+    await throwIfApiError(response, "Could not update this packing item.");
 
     return response.json();
 }
@@ -70,9 +71,7 @@ export async function createPackingItem(
             quantity: item.quantity ? Number(item.quantity) : null,
         }),
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not save this packing item.");
 
     return response.json();
 }
@@ -92,21 +91,20 @@ export async function updatePackingItem(
             quantity: item.quantity ? Number(item.quantity) : null,
         }),
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not save these changes.");
 
     return response.json();
 }
 
 /** Permanently removes one checklist item after its Undo period ends. */
-export async function deletePackingItem(tripId: string, itemId: string): Promise<void> {
+export async function deletePackingItem(
+    tripId: string,
+    itemId: string,
+): Promise<void> {
     const response = await apiFetch(`${packingItemsUrl(tripId)}/${itemId}`, {
         method: "DELETE",
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not delete this packing item.");
 }
 
 /** Clears every checklist item and makes the initial setup choice available again. */
@@ -114,9 +112,7 @@ export async function resetPackingList(tripId: string): Promise<void> {
     const response = await apiFetch(`${packingItemsUrl(tripId)}/reset`, {
         method: "DELETE",
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not reset the packing list.");
 }
 
 /** Persists the manual order of all items in a trip's checklist. */
@@ -129,7 +125,5 @@ export async function reorderPackingItems(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemIds }),
     });
-    if (!response.ok) {
-        throw new Error(await response.text());
-    }
+    await throwIfApiError(response, "Could not reorder packing items.");
 }

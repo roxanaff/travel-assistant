@@ -1,7 +1,10 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
+// Vite and Vitest share this configuration so browser smoke tests remain separate from unit tests.
 export default defineConfig({
-  plugins: [react()],
-})
+    plugins: [react()],
+    test: {
+        exclude: ["tests/e2e/**", "**/node_modules/**", "**/dist/**"],
+    },
+});

@@ -33,6 +33,11 @@ public static class TripValidation
             return "Target budget cannot be negative.";
         }
 
+        if (request.Budget > MoneyValidation.MaximumAmount)
+        {
+            return "Target budget exceeds the supported maximum.";
+        }
+
         if (string.IsNullOrWhiteSpace(request.Currency) || request.Currency.Trim().Length != 3)
         {
             return "Currency must be a three-letter code, such as EUR.";

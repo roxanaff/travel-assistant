@@ -35,7 +35,8 @@ public static class PlannedCostEndpoints
                     cost.Amount,
                     cost.CreatedAtUtc,
                     // The UI uses this derived flag to show whether a planned cost has been spent.
-                    ExpenseAdded = cost.Expense != null
+                    ExpenseAdded = cost.Expense != null,
+                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null
                 })
                 .ToListAsync();
 

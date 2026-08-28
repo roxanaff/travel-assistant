@@ -36,6 +36,11 @@ public static class ItineraryItemValidation
             return "Cost cannot be negative.";
         }
 
+        if (request.Cost > MoneyValidation.MaximumAmount)
+        {
+            return "Cost exceeds the supported maximum.";
+        }
+
         return null;
     }
 }

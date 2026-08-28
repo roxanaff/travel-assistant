@@ -21,7 +21,9 @@ const itineraryUrl = (tripId: string) =>
     `${apiBaseUrl}/api/trips/${tripId}/itinerary-items`;
 
 /** Loads every itinerary activity for one trip. */
-export async function getItineraryItems(tripId: string): Promise<ItineraryItem[]> {
+export async function getItineraryItems(
+    tripId: string,
+): Promise<ItineraryItem[]> {
     const response = await apiFetch(itineraryUrl(tripId));
     if (!response.ok) throw new Error("Could not load itinerary items.");
 
@@ -38,7 +40,10 @@ export async function createItineraryItem(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok) throw new Error((await response.text()) || "Could not save this itinerary item.");
+    if (!response.ok)
+        throw new Error(
+            (await response.text()) || "Could not save this itinerary item.",
+        );
 
     return response.json();
 }
@@ -54,13 +59,21 @@ export async function updateItineraryItem(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok) throw new Error((await response.text()) || "Could not save these changes.");
+    if (!response.ok)
+        throw new Error(
+            (await response.text()) || "Could not save these changes.",
+        );
 
     return response.json();
 }
 
 /** Permanently deletes one itinerary activity. */
-export async function deleteItineraryItem(tripId: string, itemId: string): Promise<void> {
-    const response = await apiFetch(`${itineraryUrl(tripId)}/${itemId}`, { method: "DELETE" });
+export async function deleteItineraryItem(
+    tripId: string,
+    itemId: string,
+): Promise<void> {
+    const response = await apiFetch(`${itineraryUrl(tripId)}/${itemId}`, {
+        method: "DELETE",
+    });
     if (!response.ok) throw new Error("Could not delete this itinerary item.");
 }

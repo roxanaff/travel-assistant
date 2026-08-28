@@ -1,0 +1,92 @@
+﻿/* Category, total, form, and action styling for trip budget - planned and expenses. */
+.budget-section {
+    margin-top: 0;
+}
+.budget-category h4 {
+    margin: 0;
+    color: var(--color-pink-700);
+}
+.section-title-row h3 {
+    margin: 0;
+    color: var(--color-ink);
+}
+.section-overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+}
+.section-overview > div {
+    display: grid;
+    gap: 5px;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--color-gray-100);
+    color: var(--color-blue-700);
+}
+.section-overview strong {
+    font-size: 1.15rem;
+}
+.section-overview .over-budget {
+    background: var(--color-red-100);
+    color: var(--color-red-700);
+}
+.budget-category {
+    margin-top: 16px;
+}
+.budget-category-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+.budget-category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.budget-category-title h4 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.budget-category-heading > strong {
+    white-space: nowrap;
+}
+.budget-item-description {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.budget-section .list-row {
+    gap: 28px;
+}
+.budget-item-primary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+.budget-item-primary > strong:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.budget-item-amount {
+    flex: 0 0 auto;
+    color: var(--color-ink);
+    font-size: 1.1rem;
+}
+.budget-item-description span {
+    color: var(--color-gray-500);
+    font-size: 0.85rem;
+}
+.budget-item-editing .budget-item-form {
+    margin-top: 0;
+}
+@media (max-width: 700px) {
+    .section-overview {
+        grid-template-columns: 1fr;
+    }
+}

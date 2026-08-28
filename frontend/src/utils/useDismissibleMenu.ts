@@ -10,20 +10,34 @@ export function useDismissibleMenu(
         if (!isOpen) return;
 
         const closeWhenClickedElsewhere = (event: PointerEvent) => {
-            if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+            if (
+                event.target instanceof Node &&
+                !menuRef.current?.contains(event.target)
+            ) {
                 onClose();
             }
         };
 
         const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onClose();
+            if (event.key !== "Escape") return;
+
+            event.preventDefault();
+            onClose();
+            window.requestAnimationFrame(() =>
+                menuRef.current
+                    ?.querySelector<HTMLElement>("[data-menu-trigger]")
+                    ?.focus(),
+            );
         };
 
         document.addEventListener("pointerdown", closeWhenClickedElsewhere);
         document.addEventListener("keydown", closeOnEscape);
 
         return () => {
-            document.removeEventListener("pointerdown", closeWhenClickedElsewhere);
+            document.removeEventListener(
+                "pointerdown",
+                closeWhenClickedElsewhere,
+            );
             document.removeEventListener("keydown", closeOnEscape);
         };
     }, [isOpen, menuRef, onClose]);

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { TripCard } from "./TripCard";
 import { TripForm } from "./TripForm";
-import { createTrip, deleteTrip as deleteTripRequest, getTrips, updateTrip } from "../../api/tripsApi";
+import {
+    createTrip,
+    deleteTrip as deleteTripRequest,
+    getTrips,
+    updateTrip,
+} from "../../api/tripsApi";
 import {
     initialTripFormValues,
     tripToFormValues,
@@ -15,7 +20,7 @@ const statusOrder = {
     Ongoing: 0,
     Upcoming: 1,
     Draft: 2,
-    Past: 3
+    Past: 3,
 } as const;
 
 /** Keeps the most relevant trips at the top while retaining useful chronological ordering within each status. */
@@ -23,8 +28,7 @@ const sortTrips = (trips: Trip[]) =>
     [...trips].sort((a, b) => {
         const statusDifference = statusOrder[a.status] - statusOrder[b.status];
 
-        if (statusDifference)
-            return statusDifference;
+        if (statusDifference) return statusDifference;
 
         if (a.status === "Upcoming")
             return (a.startDate ?? "").localeCompare(b.startDate ?? "");
@@ -41,7 +45,9 @@ export function TripsDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
-    const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(undefined);
+    const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(
+        undefined,
+    );
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -75,7 +81,9 @@ export function TripsDashboard() {
 
             setTrips((current) =>
                 isEditing
-                    ? current.map((trip) => (trip.id === saved.id ? saved : trip))
+                    ? current.map((trip) =>
+                          trip.id === saved.id ? saved : trip,
+                      )
                     : [...current, saved],
             );
 
@@ -103,7 +111,8 @@ export function TripsDashboard() {
             await deleteTripRequest(trip.id);
 
             setTrips((current) =>
-                current.filter((currentTrip) => currentTrip.id !== trip.id));
+                current.filter((currentTrip) => currentTrip.id !== trip.id),
+            );
             setOpenMenuId(null);
         } catch {
             setActionError("Could not delete this trip. Please try again.");
@@ -130,11 +139,11 @@ export function TripsDashboard() {
                 </button>
                 {/*<span className="trip-count">{trips.length} total</span>*/}
             </div>
-            {editingTrip !== undefined && (
+            {editingTrip === null && (
                 <TripForm
-                    heading={editingTrip ? "Edit trip" : "New trip"}
-                    submitLabel={editingTrip ? "Save changes" : "Save trip"}
-                    initialValues={editingTrip ? tripToFormValues(editingTrip) : initialTripFormValues}
+                    heading="New trip"
+                    submitLabel="Save trip"
+                    initialValues={initialTripFormValues}
                     isSaving={isSaving}
                     error={formError}
                     onCancel={() => setEditingTrip(undefined)}
@@ -154,25 +163,39 @@ export function TripsDashboard() {
             )}
             {!isLoading && !error && trips.length > 0 && (
                 <div className="trip-grid">
-                    {orderedTrips.map((trip) => (
-                        <TripCard
-                            key={trip.id}
-                            trip={trip}
-                            isMenuOpen={openMenuId === trip.id}
-                            isDeleting={deletingId === trip.id}
-                            onToggleMenu={() =>
-                                setOpenMenuId((current) =>
-                                    current === trip.id ? null : trip.id,
-                                )
-                            }
-                            onEdit={() => {
-                                setFormError(null);
-                                setOpenMenuId(null);
-                                setEditingTrip(trip);
-                            }}
-                            onDelete={() => void deleteTrip(trip)}
-                        />
-                    ))}
+                    {orderedTrips.map((trip) =>
+                        editingTrip?.id === trip.id ? (
+                            <TripForm
+                                key={trip.id}
+                                className="trip-card-edit-form"
+                                heading="Edit trip"
+                                submitLabel="Save changes"
+                                initialValues={tripToFormValues(trip)}
+                                isSaving={isSaving}
+                                error={formError}
+                                onCancel={() => setEditingTrip(undefined)}
+                                onSubmit={saveTrip}
+                            />
+                        ) : (
+                            <TripCard
+                                key={trip.id}
+                                trip={trip}
+                                isMenuOpen={openMenuId === trip.id}
+                                isDeleting={deletingId === trip.id}
+                                onToggleMenu={() =>
+                                    setOpenMenuId((current) =>
+                                        current === trip.id ? null : trip.id,
+                                    )
+                                }
+                                onEdit={() => {
+                                    setFormError(null);
+                                    setOpenMenuId(null);
+                                    setEditingTrip(trip);
+                                }}
+                                onDelete={() => void deleteTrip(trip)}
+                            />
+                        ),
+                    )}
                 </div>
             )}
         </section>

@@ -6,6 +6,7 @@ export type PlannedCost = {
     amount: number;
     createdAtUtc: string;
     expenseAdded?: boolean;
+    expenseId?: string | null;
 };
 
 export type PlannedCostCategory =

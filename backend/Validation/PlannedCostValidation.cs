@@ -18,6 +18,11 @@ public static class PlannedCostValidation
             return "Planned cost amount must be greater than zero.";
         }
 
+        if (request.Amount > MoneyValidation.MaximumAmount)
+        {
+            return "Planned cost amount exceeds the supported maximum.";
+        }
+
         return null;
     }
 }

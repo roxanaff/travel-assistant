@@ -12,12 +12,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let isMounted = true;
 
-        void authApi.getCurrentUser()
+        void authApi
+            .getCurrentUser()
             .then((currentUser) => {
                 if (isMounted) setUser(currentUser);
             })
             .catch(() => {
-                if (isMounted) setError("Could not connect to your account. Please try again.");
+                if (isMounted)
+                    setError(
+                        "Could not connect to your account. Please try again.",
+                    );
             })
             .finally(() => {
                 if (isMounted) setIsLoading(false);
@@ -28,32 +32,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const value = useMemo<AuthContextValue>(() => ({
-        user,
-        isLoading,
-        error,
-        async login(email, password) {
-            const currentUser = await authApi.login({ email, password });
-            setUser(currentUser);
-            setError(null);
-        },
-        async register(displayName, email, password) {
-            const currentUser = await authApi.register({ displayName, email, password });
-            setUser(currentUser);
-            setError(null);
-        },
-        async logout() {
-            await authApi.logout();
-            setUser(null);
-        },
-        async changePassword(currentPassword, newPassword) {
-            await authApi.changePassword(currentPassword, newPassword);
-        },
-        async deleteAccount(password) {
-            await authApi.deleteAccount(password);
-            setUser(null);
-        },
-    }), [error, isLoading, user]);
+    const value = useMemo<AuthContextValue>(
+        () => ({
+            user,
+            isLoading,
+            error,
+            async login(email, password) {
+                const currentUser = await authApi.login({ email, password });
+                setUser(currentUser);
+                setError(null);
+            },
+            async register(displayName, email, password) {
+                const currentUser = await authApi.register({
+                    displayName,
+                    email,
+                    password,
+                });
+                setUser(currentUser);
+                setError(null);
+            },
+            async logout() {
+                await authApi.logout();
+                setUser(null);
+            },
+            async changePassword(currentPassword, newPassword) {
+                await authApi.changePassword(currentPassword, newPassword);
+            },
+            async deleteAccount(password) {
+                await authApi.deleteAccount(password);
+                setUser(null);
+            },
+        }),
+        [error, isLoading, user],
+    );
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    );
 }

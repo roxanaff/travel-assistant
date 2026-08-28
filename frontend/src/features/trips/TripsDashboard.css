@@ -1,5 +1,5 @@
 /* Dashboard grid, trip-card, and create/edit trip form styling. */
-.new-trip-form {
+.trip-form:not(.trip-card-edit-form) {
     max-width: 680px;
     margin-top: 24px;
 }
@@ -26,7 +26,7 @@
 }
 .trip-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
     margin-top: 24px;
 }
@@ -39,7 +39,7 @@
     box-shadow: 0 12px 30px rgba(33, 74, 59, 0.06);
 }
 .trip-card h3 {
-    margin: 14px 0 7px; /* font-family: Georgia, sans-serif; */
+    margin: 14px 0 7px;
     font-size: 1.5rem;
 }
 .trip-name-link {
@@ -48,10 +48,10 @@
 }
 .trip-card {
     transition:
-            transform 160ms ease,
-            border-color 160ms ease,
-            box-shadow 160ms ease,
-            background-color 160ms ease;
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        background-color 160ms ease;
 }
 .trip-card:has(.trip-name-link:hover),
 .trip-card:has(.trip-name-link:focus-visible) {
@@ -90,37 +90,25 @@
     margin: 16px 0 0;
     color: var(--color-gray-500);
 }
+.draft-prompts {
+    display: grid;
+    gap: 4px;
+    margin-top: 16px;
+    color: var(--color-gray-500);
+}
 .trip-card-past {
     opacity: 0.7;
+}
+.trip-form.trip-card-edit-form {
+    align-self: stretch;
+    margin-top: 0;
+    padding: 24px;
+    border-radius: 18px;
 }
 .card-menu {
     position: absolute;
     top: 16px;
     right: 16px;
-}
-.card-menu-popover {
-    position: absolute;
-    z-index: 2;
-    top: 38px;
-    right: 0;
-    display: grid;
-    min-width: 110px;
-    padding: 6px;
-    border: 1px solid var(--color-gray-200);
-    border-radius: 9px;
-    background: var(--color-white);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-.card-menu-popover button {
-    padding: 8px;
-    border: 0;
-    background: transparent;
-    text-align: left;
-    font: inherit;
-    cursor: pointer;
-}
-.card-menu-popover button:hover {
-    background: var(--color-gray-100);
 }
 .budget-row {
     margin-top: 16px;
@@ -147,8 +135,16 @@
 .empty-state h3 {
     margin: 0 0 6px;
 }
+@media (max-width: 960px) {
+    .trip-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
 @media (max-width: 700px) {
     .section-heading {
         align-items: end;
+    }
+    .trip-grid {
+        grid-template-columns: 1fr;
     }
 }

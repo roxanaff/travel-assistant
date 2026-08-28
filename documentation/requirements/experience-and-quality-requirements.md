@@ -4,47 +4,35 @@ This document records the cross-cutting work that remains within Stage 1. It cov
 
 ## Product behavior
 
-- Forms should use consistent labels, required-field markers, keyboard behavior, and cancellation behavior.
+- Forms use consistent labels: required fields are bold and marked with `*`; routine optional labels are omitted. Input text uses ink rather than emphasis blue.
+- Date ranges are validated in the browser before a trip is saved.
+- Quantity accepts positive whole digits only. Money inputs accept up to `999,999,999.99`, with digits and one decimal separator only; impossible characters and excessive values are silently ignored while typing.
+- Forms should use consistent keyboard behavior and cancellation behavior.
+- A single-line form can be submitted with Enter; textarea fields retain Enter for new lines. Open add/edit forms focus their first field and can be cancelled with Escape or Cancel. Changed forms ask before their values are discarded.
+- Popup menus close on Escape and return focus to their trigger. Account dialogs focus their first field, retain keyboard focus while open, and return focus to the account control when closed. Icon-only controls have accessible names and visible keyboard focus.
 - The dashboard and workspace should remain usable and understandable across supported screen sizes and input methods.
-- The visual system should use typography, colour, spacing, and controls consistently.
+- The visual system uses sans-serif text, a warm-neutral surface for list items, and consistent typography, colour, spacing, and controls.
 
 ## Open Stage 1 work
 
-### Form behavior and language
-
-- [ ] Use `*` for required fields and remove routine `(optional)` markers across forms. The trip form is the reference implementation.
-- [ ] Use **Destination** rather than “Primary destination” throughout the product.
-- [ ] When dates are supplied, validate in the frontend that both dates are present and that the end date is not before the start date.
-- [ ] Submit a valid single-line form with Enter. Enter remains available for new lines in a textarea.
-- [ ] Exit an open add/edit mode with Escape when there are no unsaved changes. If there are unsaved changes, confirm before they are discarded.
-- [ ] Move focus to an opened add/edit form and scroll it into view.
-
 ### Dashboard and workspace usability
 
-- [ ] Use a stable three-column dashboard grid on desktop, with one- and two-column layouts at narrower breakpoints.
-- [ ] Replace a dashboard card with its edit form in the same grid position. The edit form should read as that card in an editing state, without a duplicate card remaining visible.
-- [ ] Ensure keyboard navigation, focus return, Escape behavior, and accessible labels work for menus, dialogs, tabs, and icon-only controls.
-- [ ] Keep the workspace header compact while retaining trip context and navigation.
+- [ ] Complete responsive and keyboard-only manual checks across the dashboard and workspace.
 
 ### Visual consistency
 
-- [ ] Replace remaining serif text with the product sans-serif typeface, including the `No trips yet` empty state.
 - [ ] Apply the current colour system consistently: blue is reserved for emphasis, pink is used intentionally, and ink is used for neutral text and controls.
-- [ ] Improve the opening-hours input and display, with a compact control that works consistently across browsers.
-- [ ] Make budget category headings and grouping controls less cramped and easier to scan.
 
 ### Engineering consistency
 
-- [ ] Consolidate repeated UI styles and components, starting with the duplicated dashboard and workspace status pills.
-- [ ] Identify repeated API, form, and action-menu patterns that can be shared without obscuring feature behavior.
+Shared status presentation, trip-type labels, form keyboard behavior, and action-menu presentation are used where the behavior is common. Feature-specific API and form workflows remain explicit when their behavior differs.
 
 ## Verification
 
-- [ ] Add frontend coverage for dashboard lifecycle states, actions, in-place editing, and error states.
-- [ ] Add frontend coverage for trip setup, including field validation, keyboard behavior, and responsive states.
-- [ ] Add frontend coverage for planned costs and remaining-budget calculations.
-- [ ] Add backend integration coverage for authentication, account ownership, and trip-scoped endpoints.
-- [ ] Add end-to-end smoke coverage for registration, sign-in, creating a trip, adding an itinerary item, recording an expense, and adding a packing item.
+- [x] Add frontend coverage for the dashboard empty state and trip creation, the trip form's date validation and type options, Trip Details display and editing, and planned-cost totals and Add expense/Undo behavior.
+- [x] Add backend integration coverage for registration, authenticated trip creation, and account ownership when reading a trip. The tests use a disposable SQLite database and ephemeral data-protection keys; production remains PostgreSQL with database-backed key protection.
+- [ ] Extend frontend coverage to dashboard lifecycle/action error states and keyboard behavior, and to Trip Details responsive states.
+- [x] Add Chromium smoke coverage for registration, sign-in, creating a trip, adding an itinerary item, recording an expense, and adding a packing item. It starts a test-only API host with an in-memory database and never uses local or deployed trip data.
 - [ ] Complete the feature-specific verification checklists in the Stage 1 requirement files.
 
 ## Constraints

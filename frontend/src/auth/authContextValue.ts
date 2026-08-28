@@ -6,9 +6,16 @@ export type AuthContextValue = {
     isLoading: boolean;
     error: string | null;
     login: (email: string, password: string) => Promise<void>;
-    register: (displayName: string, email: string, password: string) => Promise<void>;
+    register: (
+        displayName: string,
+        email: string,
+        password: string,
+    ) => Promise<void>;
     logout: () => Promise<void>;
-    changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+    changePassword: (
+        currentPassword: string,
+        newPassword: string,
+    ) => Promise<void>;
     deleteAccount: (password: string) => Promise<void>;
 };
 

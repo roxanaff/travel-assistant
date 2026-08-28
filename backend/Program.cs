@@ -11,6 +11,12 @@ using TravelAssistant.Models;
 // `builder` collects every service the API needs before the HTTP pipeline is created.
 var builder = WebApplication.CreateBuilder(args);
 
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+}
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -33,15 +39,33 @@ builder.Services.AddCors(options =>
     })
 );
 
-// Register one database context per request; the actual connection string comes from local
-// configuration or Render's environment variables.
-builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
-    options.UseNpgsql(
-        NormalizeConnectionString(
-            builder.Configuration.GetConnectionString("TravelAssistant")
-            ?? throw new InvalidOperationException("Connection string 'TravelAssistant' was not found."))
-    )
-);
+// The browser smoke suite starts an isolated SQLite database. Normal development and deployment
+// continue to use PostgreSQL from local configuration or Render's environment variables.
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    if (builder.Configuration.GetValue<bool>("Testing:UseInMemoryDatabase"))
+    {
+        builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
+            options.UseInMemoryDatabase("travel-assistant-browser-smoke"));
+    }
+    else
+    {
+        var databasePath = builder.Configuration["Testing:DatabasePath"]
+            ?? Path.Combine(Path.GetTempPath(), "travel-assistant-tests.db");
+        builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
+            options.UseSqlite($"Data Source={databasePath}"));
+    }
+}
+else
+{
+    builder.Services.AddDbContext<TravelAssistantDbContext>(options =>
+        options.UseNpgsql(
+            NormalizeConnectionString(
+                builder.Configuration.GetConnectionString("TravelAssistant")
+                ?? throw new InvalidOperationException("Connection string 'TravelAssistant' was not found."))
+        )
+    );
+}
 
 // Identity owns password hashing and account security. Its database records use the same PostgreSQL
 // context as the rest of the app, while no roles or administrator permissions are introduced.
@@ -62,9 +86,16 @@ builder.Services.AddIdentityCore<User>(options =>
 
 // Persistent cookie sessions are created by the login endpoint added next. A database-backed Data
 // Protection key ring lets those cookies remain valid through Render restarts and redeployments.
-builder.Services.AddDataProtection()
-    .PersistKeysToDbContext<TravelAssistantDbContext>()
-    .SetApplicationName("TravelAssistant");
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+}
+else
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToDbContext<TravelAssistantDbContext>()
+        .SetApplicationName("TravelAssistant");
+}
 
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddIdentityCookies();
@@ -109,8 +140,19 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 // Bring a newly-created Neon database up to the latest schema before serving any requests.
-await using (var scope = app.Services.CreateAsyncScope())
+if (app.Environment.IsEnvironment("Testing"))
 {
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+    if (builder.Configuration.GetValue<bool>("Testing:ResetDatabase"))
+    {
+        await db.Database.EnsureDeletedAsync();
+    }
+    await db.Database.EnsureCreatedAsync();
+}
+else
+{
+    await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
     await db.Database.MigrateAsync();
 }
@@ -163,3 +205,5 @@ static string NormalizeConnectionString(string connectionString)
         SslMode = SslMode.Require,
     }.ConnectionString;
 }
+
+public partial class Program;

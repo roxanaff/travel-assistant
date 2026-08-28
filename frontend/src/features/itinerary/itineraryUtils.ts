@@ -17,7 +17,7 @@ export const formatCategory = (category: string) =>
 export const formatPriority = (priority: string) =>
     ({
         MustDo: "Must do",
-        WouldLikeToDo: "Would like to do",
+        WouldLikeToDo: "Want to do",
         Optional: "Optional",
     })[priority] ?? priority;
 
@@ -43,7 +43,10 @@ export const getOpeningHoursWarning = (item: ItineraryItem) => {
 
     if (closingMinutes <= startMinutes) closingMinutes += 24 * 60;
 
-    if (item.durationMinutes !== null && startMinutes + item.durationMinutes > closingMinutes) {
+    if (
+        item.durationMinutes !== null &&
+        startMinutes + item.durationMinutes > closingMinutes
+    ) {
         return "This activity ends after the entered closing time.";
     }
 
@@ -77,7 +80,8 @@ export const getTripDays = (trip: Trip) => {
 export const sortDatedItems = (items: ItineraryItem[]) =>
     [...items].sort(
         (first, second) =>
-            Number(Boolean(second.startTime)) - Number(Boolean(first.startTime)) ||
+            Number(Boolean(second.startTime)) -
+                Number(Boolean(first.startTime)) ||
             (first.startTime ?? "").localeCompare(second.startTime ?? "") ||
             first.createdAtUtc.localeCompare(second.createdAtUtc),
     );
@@ -92,6 +96,7 @@ const priorityOrder: Record<string, number> = {
 export const sortUnscheduledItems = (items: ItineraryItem[]) =>
     [...items].sort(
         (first, second) =>
-            (priorityOrder[first.priority] ?? 3) - (priorityOrder[second.priority] ?? 3) ||
+            (priorityOrder[first.priority] ?? 3) -
+                (priorityOrder[second.priority] ?? 3) ||
             first.createdAtUtc.localeCompare(second.createdAtUtc),
     );

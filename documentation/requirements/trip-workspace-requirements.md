@@ -6,24 +6,26 @@ The trip workspace is the working area for one trip. It separates planning tasks
 
 ## Product behavior
 
-- Opening a dashboard trip opens the workspace on **Itinerary**.
-- A compact header shows the trip name, destination, dates, and lifecycle status above the section navigation.
+- Opening a dashboard trip opens the workspace on **Details**.
+- On desktop, the compact header uses two aligned columns: the return link and trip name on the left; lifecycle status, dates, and destination on the right. The metadata begins level with the return link.
+- Section tabs remain full width beneath the header.
 - The workspace sections and routes are:
 
   | Section | Route | Purpose |
   | --- | --- | --- |
-  | Itinerary | `/trips/:id` | Activities and planning |
+  | Details | `/trips/:id` | Trip setup information |
+  | Itinerary | `/trips/:id/itinerary` | Activities and planning |
   | Budget & expenses | `/trips/:id/budget` | Planned costs and actual spending |
   | Packing | `/trips/:id/packing` | Manual packing checklist |
-  | Details | `/trips/:id/details` | Trip setup information |
 
 - A return link takes the user to the dashboard.
 - Loading, not-found, and API-error states are handled for a trip workspace.
 - Switching sections warns before an open add/edit form with unsaved changes is discarded.
+- `/trips/:id/details` remains available as a compatible Details URL.
 
 ## Open Stage 1 work
 
-Cross-cutting workspace header, tab, and keyboard improvements are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
+- Cross-cutting tab and keyboard improvements are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
 
 ## Verification
 

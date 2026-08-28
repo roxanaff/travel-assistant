@@ -5,17 +5,38 @@
 }
 .back-link {
     display: inline-block;
-    margin-bottom: 28px;
     color: var(--color-pink-700);
     font-weight: 700;
     text-decoration: none;
 }
 .workspace-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 24px;
     margin-bottom: 20px;
 }
+.workspace-primary {
+    display: grid;
+    justify-items: start;
+    gap: 16px;
+}
 .workspace-header h1 {
-    margin: 12px 0 6px;
+    margin: 0;
     font-size: clamp(2.25rem, 5vw, 2.5rem);
+}
+.workspace-meta {
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+    text-align: right;
+}
+.workspace-meta .status-pill {
+    margin-bottom: 2px;
+}
+.workspace-meta .trip-dates,
+.workspace-meta .draft-prompt {
+    margin: 0;
 }
 .workspace-destination {
     margin: 0;
@@ -40,4 +61,14 @@
 .workspace-tabs a.active {
     border-color: var(--color-blue-500);
     color: var(--color-blue-700);
+}
+@media (max-width: 600px) {
+    .workspace-header {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .workspace-meta {
+        justify-items: start;
+        text-align: left;
+    }
 }

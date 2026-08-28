@@ -54,6 +54,15 @@ public enum TripType
     Beach,
     Hiking,
     Skiing,
+    WorkTrip,
+    VisitingFriendsAndFamily,
+    RoadTrip,
+    CabinStay,
+    Camping,
+    Cruise,
+    AllInclusiveResort,
+    MountaineeringAndClimbing,
+    FestivalOrEvent,
     Other
 }
 

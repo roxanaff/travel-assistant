@@ -23,7 +23,8 @@ Budget and expenses provide separate views of expected and actual trip spending 
 
 - Each expense has a required amount, optional name, optional category, and optional date. Blank names are stored as `Cost item`.
 - The date starts as today and can be cleared. Pre-trip expenses are supported.
-- Expenses can be grouped by category or day. Categories use the fixed order below; Uncategorised and Undated appear last.
+- Expenses can be displayed ungrouped or grouped by category or date. Categories use the fixed order below; Uncategorised and Undated appear last. When grouped by category, each expense displays its date; when grouped by date, it displays its category; ungrouped expenses display both where available.
+- The `+` action in a category group starts an expense with that category selected. The same action in a date group starts an expense with that date selected; Undated starts one with no date.
 - Within a category, dated expenses are newest first and undated expenses are last.
 - Expenses can be edited or deleted. Deletion has a five-second Undo period.
 - Actual remaining is `target budget − total actual expenses` and is independent from theoretical remaining.
@@ -32,11 +33,13 @@ Budget and expenses provide separate views of expected and actual trip spending 
 
 Planned costs use: Travel to/from, Accommodation, Local transport, Food, Activities & museums, Bars & nightlife, Shopping, Emergency buffer, and Other.
 
-Expenses use the same list except Emergency buffer. Planned-cost rows can be copied to expenses with today's date; the source row cannot be copied twice.
+Expenses use the same list except Emergency buffer. Planned-cost rows can be copied to expenses with today's date. A linked row displays `Added · Undo`; Undo removes the linked expense and makes the planned cost available to add again. If the linked expense was already deleted from the expense list, the Undo action remains idempotent and completes without restoring stale expense data.
+
+Across both sections, each item places its name and a prominent, right-aligned amount on the first row. Applicable secondary information remains left-aligned below it.
 
 ## Open Stage 1 work
 
-Budget-heading and grouping-control improvements are recorded in [experience and quality requirements](experience-and-quality-requirements.md).
+No additional budget-specific UX work is currently planned for Stage 1.
 
 ## Verification
 

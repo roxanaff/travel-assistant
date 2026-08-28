@@ -4,6 +4,9 @@ import {
     type TripFormValues,
     type TripRequest,
 } from "../../types/trip";
+import { normalizeMoneyInput } from "../../utils/numberInput";
+import { tripTypeOptions } from "../../utils/tripType";
+import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 
 type Props = {
     initialValues?: TripFormValues;
@@ -13,25 +16,39 @@ type Props = {
     error: string | null;
     onCancel: () => void;
     onSubmit: (request: TripRequest) => Promise<void>;
+    className?: string;
 };
 
 /** Reusable trip setup form used when creating or editing a trip. */
 export function TripForm({
-                             initialValues = initialTripFormValues,
-                             heading,
-                             submitLabel,
-                             isSaving,
-                             error,
-                             onCancel,
-                             onSubmit,
-                         }: Props) {
+    initialValues = initialTripFormValues,
+    heading,
+    submitLabel,
+    isSaving,
+    error,
+    onCancel,
+    onSubmit,
+    className,
+}: Props) {
     // Local string values suit controlled HTML inputs; they are converted to API values only on submit.
     const [values, setValues] = useState(initialValues);
+    const [validationError, setValidationError] = useState<string | null>(null);
     useEffect(() => setValues(initialValues), [initialValues]);
+    const { formRef, onFormKeyDown, cancelForm } = useFormKeyboardInteraction(
+        true,
+        onCancel,
+    );
 
     // Keeps form values as strings for HTML controls until the request is submitted.
     /** Updates one field and provides a helpful next-day default when the user first chooses a start date. */
-    const update = (field: keyof TripFormValues, value: string) =>
+    const update = (field: keyof TripFormValues, value: string) => {
+        if (field === "budget") {
+            const normalized = normalizeMoneyInput(value);
+            if (normalized === null) return;
+            value = normalized;
+        }
+
+        setValidationError(null);
         setValues((current) => {
             const next = { ...current, [field]: value };
             if (field === "startDate" && value && !current.endDate) {
@@ -41,8 +58,8 @@ export function TripForm({
             }
             return next;
         });
+    };
 
-    // Convert optional blank form values to null so the API can store them as absent.
     // Convert optional blank form values to null so the API can store them as absent.
     const request: TripRequest = {
         name: values.name.trim(),
@@ -57,28 +74,49 @@ export function TripForm({
     };
     return (
         <form
-            className="new-trip-form form-surface"
+            ref={formRef}
+            className={`trip-form form-surface${className ? ` ${className}` : ""}`}
+            onKeyDown={onFormKeyDown}
             onSubmit={(event) => {
                 event.preventDefault();
+                const hasStartDate = Boolean(values.startDate);
+                const hasEndDate = Boolean(values.endDate);
+                if (hasStartDate !== hasEndDate) {
+                    setValidationError(
+                        "Enter both a start date and an end date, or leave both blank for a Draft trip.",
+                    );
+                    return;
+                }
+                if (
+                    values.startDate &&
+                    values.endDate &&
+                    values.endDate < values.startDate
+                ) {
+                    setValidationError(
+                        "The end date cannot be before the start date.",
+                    );
+                    return;
+                }
+                setValidationError(null);
                 void onSubmit(request);
             }}
         >
             <div className="form-heading">
                 <h3>{heading}</h3>
-                <button className="text-button" type="button" onClick={onCancel}>
-                    Cancel
-                </button>
             </div>
             <label>
-                Trip name
+                <span className="field-label field-label-required">
+                    Trip name
+                </span>
                 <input
                     value={values.name}
                     onChange={(e) => update("name", e.target.value)}
                     required
+                    maxLength={150}
                 />
             </label>
             <label>
-                <span className="field-label">Primary destination <span className="optional">(optional for drafts)</span></span>
+                <span className="field-label">Destination</span>
                 <input
                     value={values.destination}
                     onChange={(e) => update("destination", e.target.value)}
@@ -87,7 +125,7 @@ export function TripForm({
             </label>
             <div className="form-row">
                 <label>
-                    Start date
+                    <span className="field-label">Start date</span>
                     <input
                         type="date"
                         value={values.startDate}
@@ -95,7 +133,7 @@ export function TripForm({
                     />
                 </label>
                 <label>
-                    End date
+                    <span className="field-label">End date</span>
                     <input
                         type="date"
                         min={values.startDate || undefined}
@@ -106,31 +144,30 @@ export function TripForm({
             </div>
             <div className="form-row">
                 <label>
-                    Trip type
+                    <span className="field-label">Trip type</span>
                     <select
                         value={values.type}
                         onChange={(e) => update("type", e.target.value)}
                     >
                         <option value="">Not specified</option>
-                        <option value="CityBreak">City break</option>
-                        <option value="Beach">Beach</option>
-                        <option value="Hiking">Hiking</option>
-                        <option value="Skiing">Skiing</option>
-                        <option value="Other">Other</option>
+                        {tripTypeOptions.map((type) => (
+                            <option key={type.value} value={type.value}>
+                                {type.label}
+                            </option>
+                        ))}
                     </select>
                 </label>
                 <label>
-                    <span className="field-label">Target budget <span className="optional">(optional)</span></span>
+                    <span className="field-label">Target budget</span>
                     <input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={values.budget}
                         onChange={(e) => update("budget", e.target.value)}
                     />
                 </label>
                 <label>
-                    Currency
+                    <span className="field-label">Currency</span>
                     <select
                         value={values.currency}
                         onChange={(e) => update("currency", e.target.value)}
@@ -142,17 +179,32 @@ export function TripForm({
                 </label>
             </div>
             <label>
-                <span className="field-label">Notes <span className="optional">(optional)</span></span>
+                <span className="field-label">Notes</span>
                 <textarea
                     value={values.note}
                     onChange={(e) => update("note", e.target.value)}
                     rows={3}
                 />
             </label>
-            {error && <p className="form-error">{error}</p>}
-            <button className="primary-button" type="submit" disabled={isSaving}>
-                {isSaving ? "Saving…" : submitLabel}
-            </button>
+            {(validationError || error) && (
+                <p className="form-error">{validationError ?? error}</p>
+            )}
+            <div className="form-actions">
+                <button
+                    className="text-button"
+                    type="button"
+                    onClick={cancelForm}
+                >
+                    Cancel
+                </button>
+                <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={isSaving}
+                >
+                    {isSaving ? "Saving…" : submitLabel}
+                </button>
+            </div>
         </form>
     );
 }

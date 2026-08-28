@@ -35,6 +35,11 @@ public class ItineraryItemValidationTests
         Assert.Equal("Cost cannot be negative.", ItineraryItemValidation.Validate(CreateRequest(cost: -0.01m), DatedTrip));
 
     [Fact]
+    public void Validate_ReturnsError_WhenCostExceedsSupportedMaximum() =>
+        Assert.Equal("Cost exceeds the supported maximum.",
+            ItineraryItemValidation.Validate(CreateRequest(cost: 1_000_000_000m), DatedTrip));
+
+    [Fact]
     public void Validate_ReturnsNull_ForValidScheduledItem() =>
         Assert.Null(ItineraryItemValidation.Validate(CreateRequest(new DateOnly(2026, 9, 3), new TimeOnly(9, 0), 90, 20), DatedTrip));
 

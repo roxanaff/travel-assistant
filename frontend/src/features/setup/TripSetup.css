@@ -4,11 +4,34 @@
     gap: 16px;
     margin: 24px 0 0;
 }
-.trip-setup-list div { display: grid; gap: 4px; }
-.trip-setup-list dt { color: var(--color-gray-500); font-size: 0.85rem; font-weight: 700; }
-.trip-setup-list dd { margin: 0; }
-.trip-setup-note { white-space: pre-wrap; }
-.trip-details-menu { position: relative; margin-left: auto; }
-.trip-details-menu-popover { position: absolute; z-index: 2; top: 38px; right: 0; display: grid; min-width: 120px; padding: 6px; border: 1px solid var(--color-gray-200); border-radius: 9px; background: var(--color-white); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); }
-.trip-details-menu-popover button { padding: 8px; border: 0; background: transparent; text-align: left; font: inherit; cursor: pointer; }
-.trip-details-menu-popover button:hover { background: var(--color-gray-100); }
+.trip-setup-list div {
+    display: grid;
+    grid-template-columns: minmax(130px, 160px) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 16px;
+}
+.trip-setup-list dt {
+    color: var(--color-blue-500);
+    font-size: 1rem;
+    font-weight: bold;
+}
+.trip-setup-list dd {
+    margin: 0;
+    color: var(--color-ink);
+}
+.trip-setup-note {
+    white-space: pre-wrap;
+}
+.trip-details-menu {
+    position: relative;
+    margin-left: auto;
+}
+.trip-details-menu .action-menu-popover {
+    min-width: 120px;
+}
+@media (max-width: 600px) {
+    .trip-setup-list div {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}

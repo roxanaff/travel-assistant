@@ -1,7 +1,13 @@
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
-import { useEffect, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
+import {
+    useEffect,
+    useState,
+    type Dispatch,
+    type MouseEvent,
+    type SetStateAction,
+} from "react";
 import { getTrip } from "../api/tripsApi";
-import { formatDate } from "../utils/format";
+import { formatDateRange } from "../utils/format";
 import type { Trip } from "../types/trip";
 import "./Workspace.css";
 
@@ -81,21 +87,23 @@ export function TripWorkspace() {
 
     return (
         <section className="trip-workspace">
-            <Link className="back-link" to="/">
-                ← All trips
-            </Link>
             <header className="workspace-header">
-                <div>
-                    <div className="card-topline">
-                        <span className="status-pill">{trip.status}</span>
-                    </div>
+                <div className="workspace-primary">
+                    <Link className="back-link" to="/">
+                        ← All trips
+                    </Link>
                     <h1>{trip.name}</h1>
-                    {trip.destination && (
-                        <p className="workspace-destination">{trip.destination}</p>
-                    )}
+                </div>
+                <div className="workspace-meta">
+                    <span className="status-pill">{trip.status}</span>
                     {trip.startDate && trip.endDate && (
                         <p className="trip-dates">
-                            {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+                            {formatDateRange(trip.startDate, trip.endDate)}
+                        </p>
+                    )}
+                    {trip.destination && (
+                        <p className="workspace-destination">
+                            {trip.destination}
                         </p>
                     )}
                     {prompts.length > 0 && (
@@ -105,22 +113,39 @@ export function TripWorkspace() {
             </header>
             <nav className="workspace-tabs" aria-label="Trip sections">
                 {/* Do not silently discard a currently open Add/Edit form when changing tabs. */}
-                <NavLink end to={`/trips/${trip.id}`} onClick={confirmSectionChange}>
+                <NavLink
+                    end
+                    to={`/trips/${trip.id}`}
+                    onClick={confirmSectionChange}
+                >
+                    Details
+                </NavLink>
+                <NavLink
+                    to={`/trips/${trip.id}/itinerary`}
+                    onClick={confirmSectionChange}
+                >
                     Itinerary
                 </NavLink>
-                <NavLink to={`/trips/${trip.id}/budget`} onClick={confirmSectionChange}>
+                <NavLink
+                    to={`/trips/${trip.id}/budget`}
+                    onClick={confirmSectionChange}
+                >
                     Budget &amp; expenses
                 </NavLink>
-                <NavLink to={`/trips/${trip.id}/packing`} onClick={confirmSectionChange}>
+                <NavLink
+                    to={`/trips/${trip.id}/packing`}
+                    onClick={confirmSectionChange}
+                >
                     Packing
-                </NavLink>
-                <NavLink to={`/trips/${trip.id}/details`} onClick={confirmSectionChange}>
-                    Details
                 </NavLink>
             </nav>
             <Outlet
                 context={
-                    { trip, setTrip, setHasUnsavedForm } satisfies TripWorkspaceContext
+                    {
+                        trip,
+                        setTrip,
+                        setHasUnsavedForm,
+                    } satisfies TripWorkspaceContext
                 }
             />
         </section>

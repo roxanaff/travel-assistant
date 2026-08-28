@@ -20,7 +20,10 @@ type LoginRequest = {
 const authUrl = `${apiBaseUrl}/api/auth`;
 
 /** Reads a plain-text or JSON-string API error without showing JSON quotation marks to the user. */
-async function getErrorMessage(response: Response, fallback: string): Promise<string> {
+async function getErrorMessage(
+    response: Response,
+    fallback: string,
+): Promise<string> {
     const body = await response.text();
     if (!body) return fallback;
 
@@ -45,7 +48,10 @@ export async function register(request: RegisterRequest): Promise<CurrentUser> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok) throw new Error(await getErrorMessage(response, "Could not create your account."));
+    if (!response.ok)
+        throw new Error(
+            await getErrorMessage(response, "Could not create your account."),
+        );
     return response.json();
 }
 
@@ -55,23 +61,35 @@ export async function login(request: LoginRequest): Promise<CurrentUser> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (response.status === 401) throw new Error("Email or password is incorrect.");
-    if (!response.ok) throw new Error("Could not sign you in. Please try again.");
+    if (response.status === 401)
+        throw new Error("Email or password is incorrect.");
+    if (!response.ok)
+        throw new Error("Could not sign you in. Please try again.");
     return response.json();
 }
 
 export async function logout(): Promise<void> {
     const response = await apiFetch(`${authUrl}/logout`, { method: "POST" });
-    if (!response.ok) throw new Error("Could not sign you out. Please try again.");
+    if (!response.ok)
+        throw new Error("Could not sign you out. Please try again.");
 }
 
-export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+export async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+): Promise<void> {
     const response = await apiFetch(`${authUrl}/change-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword }),
     });
-    if (!response.ok) throw new Error(await getErrorMessage(response, "Could not change your password. Please try again."));
+    if (!response.ok)
+        throw new Error(
+            await getErrorMessage(
+                response,
+                "Could not change your password. Please try again.",
+            ),
+        );
 }
 
 export async function deleteAccount(password: string): Promise<void> {
@@ -80,5 +98,11 @@ export async function deleteAccount(password: string): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
     });
-    if (!response.ok) throw new Error(await getErrorMessage(response, "Could not delete your account. Please try again."));
+    if (!response.ok)
+        throw new Error(
+            await getErrorMessage(
+                response,
+                "Could not delete your account. Please try again.",
+            ),
+        );
 }

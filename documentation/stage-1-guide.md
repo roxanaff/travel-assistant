@@ -10,12 +10,12 @@ Future product directions are documented separately in [future/](future/). They 
 
 - Accounts support registration, sign-in, password change, sign-out, and permanent account deletion.
 - Each account sees and manages only its own trips and related data.
-- Trips include a destination, dates, trip type, currency, target budget, and notes.
-- The dashboard organises trips by lifecycle status and opens a workspace for each trip.
-- The workspace provides separate Itinerary, Budget & expenses, Packing, and Details sections.
-- The manual itinerary supports scheduled and unscheduled activities, priorities, opening-hours warnings, and deletion recovery.
-- Planned costs and actual expenses are tracked separately against an optional target budget.
-- Packing checklists support default or empty setup, categories, quantities, grouping, reordering, packed state, and deletion recovery.
+- Trips include a destination, dates, trip type, currency, target budget, and notes. Required fields use `*`; other fields have no routine optional marker, and incomplete or invalid date ranges are prevented in the browser.
+- The dashboard organises trips by lifecycle status in a stable responsive grid and opens a workspace for each trip. Editing replaces the selected card in place.
+- The workspace opens on Details and provides separate Details, Itinerary, Budget & expenses, and Packing sections.
+- The manual itinerary supports scheduled and unscheduled activities, priorities, opening-hours warnings, deletion recovery, and a compact activity-entry form.
+- Planned costs and actual expenses are tracked separately against an optional target budget. Expense lists support ungrouped, category, and date views; a copied planned cost can be undone at any time.
+- Packing checklists support default or empty setup, categories, quantities, grouping, grip-based reordering within each packed-state section, packed state, and deletion recovery.
 
 ## Architecture
 
@@ -65,10 +65,13 @@ Frontend tests and the production build are run from `frontend/`:
 
 ```powershell
 npm run test
+npm run test:e2e
 npm run build
 ```
 
-Current automated coverage includes backend validation rules and frontend formatting, itinerary helper, packing, expense, and itinerary component flows. Integration coverage for authentication and ownership, dashboard and trip-form coverage, planned-budget coverage, and end-to-end smoke tests remain Stage 1 work.
+Frontend tests live in `frontend/tests/`, mirroring the feature structure under `frontend/src/`. This keeps production source files separate from their tests.
+
+Current automated coverage includes backend validation rules plus isolated API coverage for registration, authenticated trip creation, and account ownership. Frontend coverage includes formatting and numeric input helpers; itinerary, packing, expense, planned-budget, dashboard, trip-form, and Trip Details component flows. The Chromium smoke test registers an account, creates a trip, and adds an itinerary item, expense, and packing item using an isolated in-memory API host. Remaining work is limited to deeper UI edge-case coverage and manual responsive and keyboard checks.
 
 ## Deployment
 

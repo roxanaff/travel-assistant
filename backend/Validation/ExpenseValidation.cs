@@ -13,6 +13,11 @@ public static class ExpenseValidation
             return "Expense amount must be greater than zero.";
         }
 
+        if (request.Amount > MoneyValidation.MaximumAmount)
+        {
+            return "Expense amount exceeds the supported maximum.";
+        }
+
         return null;
     }
 }

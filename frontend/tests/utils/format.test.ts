@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatMoney } from "./format";
+import { formatDate, formatDateRange, formatMoney } from "../../src/utils/format";
 
 describe("formatDate", () => {
     it("formats an ISO date without changing its calendar day", () => {
@@ -19,5 +19,14 @@ describe("formatMoney", () => {
 
     it("shows a dash for an unset amount", () => {
         expect(formatMoney(undefined, "EUR")).toBe("—");
+    });
+});
+
+describe("formatDateRange", () => {
+    it("formats complete ranges and uses a friendly unset fallback", () => {
+        expect(formatDateRange("2026-09-01", "2026-09-05")).toBe(
+            "1 Sept 2026 – 5 Sept 2026",
+        );
+        expect(formatDateRange(null, "2026-09-05")).toBe("Dates not set");
     });
 });

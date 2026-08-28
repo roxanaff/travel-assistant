@@ -1,67 +1,9 @@
-/* Category, total, form, and action styling for estimated trip costs. */
-.planned-budget-section {
-    margin-top: 0;
-}
-.section-title-row h3 {
-    margin: 0;
-    color: var(--color-ink);
-}
-.planned-cost-category h4 {
-    margin: 0;
-    color: var(--color-pink-700);
-}
-.planned-budget-overview {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 16px;
-}
-.planned-budget-overview > div {
-    display: grid;
-    gap: 5px;
-    padding: 14px;
-    border-radius: 12px;
-    background: var(--color-gray-100);
-    color: var(--color-blue-700);
-}
-.planned-budget-overview strong {
-    font-size: 1.15rem;
-}
-.planned-budget-overview .over-budget {
-    background: var(--color-red-100);
-    color: var(--color-red-700);
-}
-.planned-cost-category {
-    margin-top: 24px;
-}
-.planned-cost-category-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-.planned-cost-category-title {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.planned-cost-description {
-    display: grid;
-    gap: 2px;
-}
-.planned-cost-description span {
-    color: var(--color-gray-500);
-    font-size: 0.85rem;
-}
 .planned-cost-expense-added {
     color: var(--color-gray-500);
     font-size: 0.85rem;
 }
-.planned-cost-editing .planned-cost-form {
-    margin-top: 0;
-}
-@media (max-width: 700px) {
-    .planned-budget-overview {
-        grid-template-columns: 1fr;
-    }
+.text-button.planned-cost-expense-action {
+    justify-self: start;
+    padding: 0;
+    font-size: 0.85rem;
 }

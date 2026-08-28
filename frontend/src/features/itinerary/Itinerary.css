@@ -8,12 +8,66 @@
     justify-content: space-between;
     gap: 16px;
 }
-.itinerary-form .form-row > label {
-    flex: 1;
-}
-.itinerary-form .field-label {
+.itinerary-section-actions {
     display: flex;
-    gap: 4px;
+    align-items: center;
+    gap: 12px;
+}
+.itinerary-form {
+    gap: 10px;
+}
+.itinerary-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 20px;
+}
+.itinerary-form-row-essential {
+    grid-template-columns: minmax(15rem, 2fr) minmax(10rem, 1fr) minmax(12rem, 1fr);
+    max-width: 900px;
+}
+.itinerary-notes-field {
+    grid-column: 1 / -1;
+}
+.itinerary-more-details-toggle {
+    justify-self: start;
+    padding: 0;
+}
+.itinerary-form .itinerary-field {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    min-width: 0;
+}
+.itinerary-form .itinerary-field > .field-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+.itinerary-form-row-details .field-label {
+    color: var(--color-gray-700);
+}
+.itinerary-form .itinerary-field > input,
+.itinerary-form .itinerary-field > select,
+.itinerary-form .itinerary-field > textarea,
+.itinerary-form .itinerary-field > .opening-hours {
+    flex: 1 1 0;
+    min-width: 0;
+}
+.itinerary-form .itinerary-date-field > input,
+.itinerary-form .itinerary-time-field > input,
+.itinerary-form .itinerary-duration-field > input,
+.itinerary-form .itinerary-price-field > input,
+.itinerary-form .itinerary-priority-field > select {
+    max-width: 12rem;
+}
+.itinerary-form .itinerary-notes-field {
+    align-items: flex-start;
+}
+.itinerary-form .itinerary-notes-field textarea {
+    min-height: 48px;
+}
+.itinerary-form .form-field-error {
+    flex-basis: 100%;
 }
 .itinerary-form .opening-hours {
     display: flex;
@@ -22,10 +76,6 @@
 }
 .itinerary-form .opening-hours input {
     min-width: 0;
-}
-.optional {
-    color: var(--color-gray-500);
-    font-weight: 400;
 }
 .form-field-error {
     color: var(--color-red-500);
@@ -65,7 +115,7 @@
     /*border: 1px solid var(--color-gray-200);*/
 }
 .itinerary-day-add:hover {
-    background: var(--color-gray-200);
+    background: var(--color-gray-100);
 }
 .itinerary-item-summary {
     display: flex;
@@ -75,11 +125,39 @@
 }
 .itinerary-item-summary > div:first-child {
     display: grid;
-    gap: 2px;
+    gap: 6px;
+}
+.itinerary-item-title {
+    display: flex;
+    align-items: baseline;
+}
+.itinerary-item-title > strong {
+    font-size: 1.1rem;
+}
+.itinerary-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 18px;
+}
+.itinerary-item-category {
+    color: var(--color-gray-500);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.itinerary-item-priority {
+    color: var(--color-gray-500);
+    font-size: 0.9rem;
 }
 .itinerary-item-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
     color: var(--color-gray-500);
-    /*font-size: 0.85rem;*/
+}
+.itinerary-item-details strong {
+    color: var(--color-gray-700);
+    font-weight: 700;
 }
 .itinerary-warning {
     margin: 4px 0 0;
@@ -90,10 +168,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-.itinerary-details-toggle {
-    justify-self: start;
-    padding: 0;
 }
 .itinerary-expanded-details {
     display: grid;
@@ -113,10 +187,20 @@
 }
 .itinerary-expanded-details a {
     color: var(--color-blue-500);
+    overflow-wrap: anywhere;
 }
 .itinerary-section .danger-button {
     color: var(--color-red-500);
 }
 .itinerary-section .danger-button:hover {
     background: var(--color-red-100);
+}
+@media (max-width: 600px) {
+    .itinerary-form-row,
+    .itinerary-form-row-essential {
+        grid-template-columns: 1fr;
+    }
+    .itinerary-notes-field {
+        grid-column: auto;
+    }
 }

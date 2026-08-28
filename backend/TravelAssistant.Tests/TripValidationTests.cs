@@ -28,6 +28,11 @@ public class TripValidationTests
     public void Validate_ReturnsError_WhenBudgetIsNegative() =>
         Assert.Equal("Target budget cannot be negative.", TripValidation.Validate(CreateRequest(budget: -1)));
 
+    [Fact]
+    public void Validate_ReturnsError_WhenBudgetExceedsSupportedMaximum() =>
+        Assert.Equal("Target budget exceeds the supported maximum.",
+            TripValidation.Validate(CreateRequest(budget: 1_000_000_000m)));
+
     [Theory]
     [InlineData("")]
     [InlineData("EU")]

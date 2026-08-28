@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import {
+    useEffect,
+    useRef,
+    useState,
+    type Dispatch,
+    type SetStateAction,
+} from "react";
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
     createItineraryItem,
@@ -9,8 +15,13 @@ import {
     type ItineraryItemRequest,
 } from "../../api/itineraryApi";
 import { formatDate, formatMoney } from "../../utils/format";
+import { normalizeMoneyInput } from "../../utils/numberInput";
+import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import type { Trip } from "../../types/trip";
-import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
+import type {
+    ItineraryItem,
+    ItineraryItemForm,
+} from "../../types/itineraryItem";
 import { createEmptyItineraryItemForm } from "../../types/itineraryItem";
 import {
     formatCategory,
@@ -49,12 +60,20 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [formErrors, setFormErrors] = useState<ItineraryFormErrors>({});
-    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const [pendingDeletion, setPendingDeletion] =
+        useState<PendingDeletion | null>(null);
     const deleteTimerRef = useRef<number | null>(null);
-    const [newItem, setNewItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
+    const [newItem, setNewItem] = useState<ItineraryItemForm>(
+        createEmptyItineraryItemForm(),
+    );
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [editingItem, setEditingItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
-    const [expandedItemIds, setExpandedItemIds] = useState<Set<string>>(new Set());
+    const [editingItem, setEditingItem] = useState<ItineraryItemForm>(
+        createEmptyItineraryItemForm(),
+    );
+    const [expandedItemIds, setExpandedItemIds] = useState<Set<string>>(
+        new Set(),
+    );
+    const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
 
     useEffect(() => {
         setHasUnsavedForm?.(isAdding || editingItemId !== null);
@@ -64,9 +83,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     useEffect(() => {
         const loadItems = async () => {
             try {
-                setItems(
-                    await getItineraryItems(trip.id)
-                );
+                setItems(await getItineraryItems(trip.id));
             } catch {
                 setError("Could not load itinerary items.");
             } finally {
@@ -81,21 +98,28 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         value: string,
         editing = false,
     ) => {
+        if (field === "cost") {
+            const normalized = normalizeMoneyInput(value);
+            if (normalized === null) return;
+            value = normalized;
+        }
+
         const update = (current: ItineraryItemForm) => ({
             ...current,
             [field]: value,
         });
-        if (editing)
-            setEditingItem(update);
-        else
-            setNewItem(update);
+        if (editing) setEditingItem(update);
+        else setNewItem(update);
         setFormErrors((current) => ({ ...current, [field]: undefined }));
     };
 
     const toRequest = (item: ItineraryItemForm): ItineraryItemRequest => ({
         name: item.name.trim(),
         date: trip.startDate && trip.endDate ? item.date || null : null,
-        startTime: trip.startDate && trip.endDate && item.date ? item.startTime || null : null,
+        startTime:
+            trip.startDate && trip.endDate && item.date
+                ? item.startTime || null
+                : null,
         durationMinutes: getDurationInMinutes(item),
         openingTime: item.openingTime || null,
         closingTime: item.closingTime || null,
@@ -124,11 +148,13 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         if (item.startTime && !item.date) {
             errors.startTime = "Choose a date before setting a start time.";
         }
-        if (item.date && trip.startDate && trip.endDate && (item.date < trip.startDate || item.date > trip.endDate)) {
+        if (
+            item.date &&
+            trip.startDate &&
+            trip.endDate &&
+            (item.date < trip.startDate || item.date > trip.endDate)
+        ) {
             errors.date = "Choose a date within the trip dates.";
-        }
-        if (item.duration && !/^\d{1,3}:[0-5]\d$/.test(item.duration)) {
-            errors.duration = "Use HH:MM, for example 2:30.";
         }
         if (item.cost && Number(item.cost) < 0) {
             errors.cost = "Cost cannot be negative.";
@@ -140,7 +166,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     /** Maps known backend validation messages back to the corresponding browser form field. */
     const getResponseFormErrors = (message: string): ItineraryFormErrors => {
         if (message.includes("name is required")) return { name: message };
-        if (message.includes("start time requires")) return { startTime: message };
+        if (message.includes("start time requires"))
+            return { startTime: message };
         if (message.includes("date must fall")) return { date: message };
         if (message.includes("Duration")) return { duration: message };
         if (message.includes("Cost")) return { cost: message };
@@ -178,7 +205,10 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setFormError(null);
         setFormErrors({});
         try {
-            const created = await createItineraryItem(trip.id, toRequest(newItem));
+            const created = await createItineraryItem(
+                trip.id,
+                toRequest(newItem),
+            );
             setItems((current) =>
                 [...current, created].sort(
                     (a, b) =>
@@ -190,9 +220,13 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             setIsAdding(false);
             setAddingForDate(null);
         } catch (exception) {
-            const message = exception instanceof Error ? exception.message : "Could not save this itinerary item.";
+            const message =
+                exception instanceof Error
+                    ? exception.message
+                    : "Could not save this itinerary item.";
             const responseErrors = getResponseFormErrors(message);
-            if (Object.keys(responseErrors).length > 0) setFormErrors(responseErrors);
+            if (Object.keys(responseErrors).length > 0)
+                setFormErrors(responseErrors);
             else setFormError(message);
         } finally {
             setIsSaving(false);
@@ -201,8 +235,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!editingItemId)
-            return;
+        if (!editingItemId) return;
         const validationErrors = validateForm(editingItem);
         if (Object.keys(validationErrors).length > 0) {
             setFormErrors(validationErrors);
@@ -214,22 +247,26 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setFormErrors({});
 
         try {
-            const updated = await updateItineraryItem(trip.id, editingItemId, toRequest(editingItem));
+            const updated = await updateItineraryItem(
+                trip.id,
+                editingItemId,
+                toRequest(editingItem),
+            );
             setItems((current) =>
                 current.map((item) =>
-                    (item.id === updated.id ? updated : item)
+                    item.id === updated.id ? updated : item,
                 ),
             );
             setEditingItemId(null);
         } catch (exception) {
-            const message = exception instanceof Error
-                ? exception.message
-                : "Could not save these changes.";
+            const message =
+                exception instanceof Error
+                    ? exception.message
+                    : "Could not save these changes.";
             const responseErrors = getResponseFormErrors(message);
             if (Object.keys(responseErrors).length > 0) {
                 setFormErrors(responseErrors);
-            }
-            else {
+            } else {
                 setFormError(message);
             }
         } finally {
@@ -279,6 +316,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const startEditing = (item: ItineraryItem) => {
         setIsAdding(false);
         setEditingItemId(item.id);
+        setIsMoreDetailsOpen(false);
         setEditingItem({
             name: item.name,
             date: item.date ?? "",
@@ -286,10 +324,10 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             category: item.category ?? "",
             duration: item.durationMinutes
                 ? `${Math.floor(item.durationMinutes / 60)
-                    .toString()
-                    .padStart(2, "0")}:${(item.durationMinutes % 60)
-                    .toString()
-                    .padStart(2, "0")}`
+                      .toString()
+                      .padStart(2, "0")}:${(item.durationMinutes % 60)
+                      .toString()
+                      .padStart(2, "0")}`
                 : "",
             openingTime: item.openingTime?.slice(0, 5) ?? "",
             closingTime: item.closingTime?.slice(0, 5) ?? "",
@@ -303,15 +341,26 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     const startAdding = (date = "") => {
         setEditingItemId(null);
+        setIsMoreDetailsOpen(false);
         setNewItem({ ...createEmptyItineraryItemForm(), date });
         setAddingForDate(date || null);
         setIsAdding(true);
     };
 
     const cancelAdding = () => {
+        setIsMoreDetailsOpen(false);
         setIsAdding(false);
         setAddingForDate(null);
     };
+
+    const cancelOpenForm = () => {
+        if (editingItemId !== null) setEditingItemId(null);
+        else cancelAdding();
+    };
+    const { formRef, onFormKeyDown, cancelForm } = useFormKeyboardInteraction(
+        isAdding || editingItemId !== null,
+        cancelOpenForm,
+    );
 
     const toggleDetails = (itemId: string) => {
         setExpandedItemIds((current) => {
@@ -319,13 +368,34 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
             if (updated.has(itemId)) {
                 updated.delete(itemId);
-            }
-            else {
+            } else {
                 updated.add(itemId);
             }
 
             return updated;
         });
+    };
+
+    const expandableItemIds = items
+        .filter(
+            (item) =>
+                item.openingTime ||
+                item.closingTime ||
+                item.location ||
+                item.externalLink ||
+                item.note,
+        )
+        .map((item) => item.id);
+    const areAllExpandableItemsExpanded =
+        expandableItemIds.length > 0 &&
+        expandableItemIds.every((itemId) => expandedItemIds.has(itemId));
+
+    const toggleAllDetails = () => {
+        setExpandedItemIds(
+            areAllExpandableItemsExpanded
+                ? new Set()
+                : new Set(expandableItemIds),
+        );
     };
 
     /** Shared inline activity form for both adding and editing. */
@@ -334,40 +404,51 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (
-        <form className="itinerary-form form-surface" onSubmit={submit}>
-            <label>
-                Name
-                <input
-                    value={item.name}
-                    onChange={(event) => updateForm("name", event.target.value, editing)}
-                    placeholder="e.g. Sagrada Família"
-                    required
-                    aria-invalid={Boolean(formErrors.name)}
-                />
-                {formErrors.name && <span className="form-field-error">{formErrors.name}</span>}
-            </label>
-            <div className="form-row">
-                <label>
-                    Category
-                    <select
-                        value={item.category}
+        <form
+            ref={formRef}
+            className="itinerary-form form-surface"
+            onKeyDown={onFormKeyDown}
+            onSubmit={submit}
+        >
+            <div className="itinerary-form-row itinerary-form-row-essential">
+                <label className="itinerary-field itinerary-name-field">
+                    <span className="field-label field-label-required">
+                        Name
+                    </span>
+                    <input
+                        value={item.name}
                         onChange={(event) =>
-                            updateForm("category", event.target.value, editing)
+                            updateForm("name", event.target.value, editing)
                         }
-                    >
-                        <option value="">Not specified</option>
-                        <option value="Museum">Museum</option>
-                        <option value="Tour">Tour</option>
-                        <option value="Event">Event</option>
-                        <option value="Food">Food</option>
-                        <option value="Beach">Beach</option>
-                        <option value="Bar">Bar</option>
-                        <option value="Attraction">Attraction</option>
-                        <option value="Other">Other</option>
-                    </select>
+                        placeholder="e.g. Sagrada Família"
+                        required
+                        aria-invalid={Boolean(formErrors.name)}
+                    />
+                    {formErrors.name && (
+                        <span className="form-field-error">
+                            {formErrors.name}
+                        </span>
+                    )}
                 </label>
-                <label>
-                    Priority
+                <label className="itinerary-field itinerary-price-field">
+                    <span className="field-label">Price ({trip.currency})</span>
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        value={item.cost}
+                        onChange={(event) =>
+                            updateForm("cost", event.target.value, editing)
+                        }
+                        aria-invalid={Boolean(formErrors.cost)}
+                    />
+                    {formErrors.cost && (
+                        <span className="form-field-error">
+                            {formErrors.cost}
+                        </span>
+                    )}
+                </label>
+                <label className="itinerary-field itinerary-priority-field">
+                    <span className="field-label">Priority</span>
                     <select
                         value={item.priority}
                         onChange={(event) =>
@@ -375,148 +456,213 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         }
                     >
                         <option value="MustDo">Must do</option>
-                        <option value="WouldLikeToDo">Would like to do</option>
+                        <option value="WouldLikeToDo">Want to do</option>
                         <option value="Optional">Optional</option>
                     </select>
                 </label>
-                <label>
-                    Cost ({trip.currency})
+                {trip.startDate && trip.endDate ? (
+                    <>
+                        <label className="itinerary-field itinerary-date-field">
+                            <span className="field-label">Date</span>
+                            <input
+                                type="date"
+                                min={trip.startDate}
+                                max={trip.endDate}
+                                value={item.date}
+                                onChange={(event) => {
+                                    updateForm(
+                                        "date",
+                                        event.target.value,
+                                        editing,
+                                    );
+                                    if (!event.target.value)
+                                        updateForm("startTime", "", editing);
+                                }}
+                                aria-invalid={Boolean(formErrors.date)}
+                            />
+                            {formErrors.date && (
+                                <span className="form-field-error">
+                                    {formErrors.date}
+                                </span>
+                            )}
+                        </label>
+                        <label className="itinerary-field itinerary-time-field">
+                            <span className="field-label">Time</span>
+                            <input
+                                type="time"
+                                value={item.startTime}
+                                disabled={!item.date}
+                                onChange={(event) =>
+                                    updateForm(
+                                        "startTime",
+                                        event.target.value,
+                                        editing,
+                                    )
+                                }
+                                aria-invalid={Boolean(formErrors.startTime)}
+                            />
+                            {formErrors.startTime && (
+                                <span className="form-field-error">
+                                    {formErrors.startTime}
+                                </span>
+                            )}
+                        </label>
+                    </>
+                ) : null}
+                <label className="itinerary-field itinerary-duration-field">
+                    <span className="field-label">Duration</span>
                     <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.cost}
-                        onChange={(event) =>
-                            updateForm("cost", event.target.value, editing)
-                        }
-                        aria-invalid={Boolean(formErrors.cost)}
-                    />
-                    {formErrors.cost && <span className="form-field-error">{formErrors.cost}</span>}
-                </label>
-            </div>
-            {trip.startDate && trip.endDate ? (
-                <div className="form-row">
-                    <label>
-                        <span className="field-label">Date <span className="optional">(optional)</span></span>
-                        <input
-                            type="date"
-                            min={trip.startDate}
-                            max={trip.endDate}
-                            value={item.date}
-                            onChange={(event) => {
-                                updateForm("date", event.target.value, editing);
-                                if (!event.target.value) updateForm("startTime", "", editing);
-                            }}
-                            aria-invalid={Boolean(formErrors.date)}
-                        />
-                        {formErrors.date && <span className="form-field-error">{formErrors.date}</span>}
-                    </label>
-                    <label>
-                        <span className="field-label">Start time <span className="optional">(optional)</span></span>
-                        <input
-                            type="time"
-                            value={item.startTime}
-                            disabled={!item.date}
-                            onChange={(event) =>
-                                updateForm("startTime", event.target.value, editing)
-                            }
-                            aria-invalid={Boolean(formErrors.startTime)}
-                        />
-                        {formErrors.startTime && <span className="form-field-error">{formErrors.startTime}</span>}
-                    </label>
-                    <label>
-                        <span className="field-label">Duration <span className="optional">(optional)</span></span>
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]{1,3}:[0-5][0-9]"
-                            placeholder="HH:MM"
-                            value={item.duration}
-                            onChange={(event) =>
-                                updateForm("duration", event.target.value, editing)
-                            }
-                            aria-invalid={Boolean(formErrors.duration)}
-                        />
-                        {formErrors.duration && <span className="form-field-error">{formErrors.duration}</span>}
-                    </label>
-                </div>
-            ) : (
-                <p className="detail-message">
-                    Add trip dates in Details before scheduling activities. This draft item will stay unscheduled.
-                </p>
-            )}
-            {!trip.startDate || !trip.endDate ? (
-                <label>
-                    <span className="field-label">Duration <span className="optional">(optional)</span></span>
-                    <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]{1,3}:[0-5][0-9]"
-                        placeholder="HH:MM"
+                        type="time"
+                        step="60"
                         value={item.duration}
-                        onChange={(event) => updateForm("duration", event.target.value, editing)}
+                        onChange={(event) =>
+                            updateForm("duration", event.target.value, editing)
+                        }
                         aria-invalid={Boolean(formErrors.duration)}
                     />
-                    {formErrors.duration && <span className="form-field-error">{formErrors.duration}</span>}
-                </label>
-            ) : null}
-            <div className="form-row">
-                <label>
-                    <span className="field-label">Opening hours <span className="optional">(optional)</span></span>
-                    <span className="opening-hours">
-            <input
-                type="time"
-                value={item.openingTime}
-                onChange={(event) => updateForm("openingTime", event.target.value, editing)}
-            />
-            <span aria-hidden="true">–</span>
-            <input
-                type="time"
-                value={item.closingTime}
-                onChange={(event) => updateForm("closingTime", event.target.value, editing)}
-            />
-          </span>
+                    {formErrors.duration && (
+                        <span className="form-field-error">
+                            {formErrors.duration}
+                        </span>
+                    )}
                 </label>
             </div>
-            <label>
-                <span className="field-label">Location <span className="optional">(optional)</span></span>
-                <input
-                    value={item.location}
-                    onChange={(event) => updateForm("location", event.target.value, editing)}
-                    placeholder="e.g. Carrer de Mallorca, 401"
-                />
-            </label>
-            <label>
-                <span className="field-label">External link <span className="optional">(optional)</span></span>
-                <input
-                    type="url"
-                    value={item.externalLink}
-                    onChange={(event) =>
-                        updateForm("externalLink", event.target.value, editing)
+            {!trip.startDate || !trip.endDate ? (
+                <p className="detail-message">
+                    Add trip dates in Details before scheduling activities. This
+                    draft item will stay unscheduled.
+                </p>
+            ) : null}
+            <button
+                className="text-button itinerary-more-details-toggle"
+                type="button"
+                aria-expanded={isMoreDetailsOpen}
+                aria-controls={
+                    editing
+                        ? "itinerary-edit-more-details"
+                        : "itinerary-add-more-details"
+                }
+                onClick={() => setIsMoreDetailsOpen((current) => !current)}
+            >
+                {isMoreDetailsOpen ? "Hide details" : "More details"}
+            </button>
+            {isMoreDetailsOpen && (
+                <div
+                    className="itinerary-form-row itinerary-form-row-details"
+                    id={
+                        editing
+                            ? "itinerary-edit-more-details"
+                            : "itinerary-add-more-details"
                     }
-                    placeholder="https://…"
-                />
-            </label>
-            <label>
-                <span className="field-label">Notes <span className="optional">(optional)</span></span>
-                <textarea
-                    value={item.note}
-                    onChange={(event) => updateForm("note", event.target.value, editing)}
-                    rows={2}
-                />
-            </label>
+                >
+                    <label className="itinerary-field">
+                        <span className="field-label">Category</span>
+                        <select
+                            value={item.category}
+                            onChange={(event) =>
+                                updateForm(
+                                    "category",
+                                    event.target.value,
+                                    editing,
+                                )
+                            }
+                        >
+                            <option value="">Not specified</option>
+                            <option value="Museum">Museum</option>
+                            <option value="Tour">Tour</option>
+                            <option value="Event">Event</option>
+                            <option value="Food">Food</option>
+                            <option value="Beach">Beach</option>
+                            <option value="Bar">Bar</option>
+                            <option value="Attraction">Attraction</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </label>
+                    <label className="itinerary-field itinerary-opening-hours-field">
+                        <span className="field-label">Opening hours</span>
+                        <span className="opening-hours">
+                            <input
+                                type="time"
+                                aria-label="Opening time"
+                                value={item.openingTime}
+                                onChange={(event) =>
+                                    updateForm(
+                                        "openingTime",
+                                        event.target.value,
+                                        editing,
+                                    )
+                                }
+                            />
+                            <span aria-hidden="true">–</span>
+                            <input
+                                type="time"
+                                aria-label="Closing time"
+                                value={item.closingTime}
+                                onChange={(event) =>
+                                    updateForm(
+                                        "closingTime",
+                                        event.target.value,
+                                        editing,
+                                    )
+                                }
+                            />
+                        </span>
+                    </label>
+                    <label className="itinerary-field">
+                        <span className="field-label">Location</span>
+                        <input
+                            value={item.location}
+                            onChange={(event) =>
+                                updateForm(
+                                    "location",
+                                    event.target.value,
+                                    editing,
+                                )
+                            }
+                            placeholder="e.g. Carrer de Mallorca, 401"
+                        />
+                    </label>
+                    <label className="itinerary-field">
+                        <span className="field-label">Link</span>
+                        <input
+                            type="url"
+                            value={item.externalLink}
+                            onChange={(event) =>
+                                updateForm(
+                                    "externalLink",
+                                    event.target.value,
+                                    editing,
+                                )
+                            }
+                            placeholder="https://…"
+                        />
+                    </label>
+                    <label className="itinerary-field itinerary-notes-field">
+                        <span className="field-label">Notes</span>
+                        <textarea
+                            value={item.note}
+                            onChange={(event) =>
+                                updateForm("note", event.target.value, editing)
+                            }
+                            rows={2}
+                        />
+                    </label>
+                </div>
+            )}
             {formError && <p className="form-error">{formError}</p>}
             <div className="form-actions">
                 <button
                     className="text-button"
                     type="button"
-                    onClick={() =>
-                        editing ? setEditingItemId(null) : cancelAdding()
-                    }
+                    onClick={cancelForm}
                 >
                     Cancel
                 </button>
-                <button className="primary-button" type="submit" disabled={isSaving}>
+                <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={isSaving}
+                >
                     {isSaving ? "Saving…" : editing ? "Save changes" : "Save"}
                 </button>
             </div>
@@ -529,14 +675,22 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             return <li key={item.id}>{form(editingItem, saveEdit, true)}</li>;
         }
 
-        const details = [
-            item.startTime ? formatTime(item.startTime) : null,
-            item.category ? formatCategory(item.category) : null,
-            item.durationMinutes !== null
-                ? formatDuration(item.durationMinutes)
+        const summaryDetails = [
+            item.startTime
+                ? { label: "Time", value: formatTime(item.startTime) }
                 : null,
-            item.cost !== null ? formatMoney(item.cost, trip.currency) : null,
-            item.priority ? formatPriority(item.priority) : null,
+            item.durationMinutes !== null
+                ? {
+                      label: "Duration",
+                      value: formatDuration(item.durationMinutes),
+                  }
+                : null,
+            item.cost !== null
+                ? {
+                      label: "Price",
+                      value: formatMoney(item.cost, trip.currency),
+                  }
+                : null,
         ].filter(Boolean);
         const openingHours = formatOpeningHours(item);
         const hasAdditionalDetails = Boolean(
@@ -550,9 +704,34 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             <li className="item-card" key={item.id}>
                 <div className="itinerary-item-summary">
                     <div>
-                        <strong>{item.name}</strong>
-                        {details.length > 0 && (
-                            <span className="itinerary-item-details">{details.join(" · ")}</span>
+                        <div className="itinerary-item-title">
+                            <strong>{item.name}</strong>
+                        </div>
+                        {(item.category || item.priority) && (
+                            <div className="itinerary-item-meta">
+                            {item.category && (
+                                <span className="itinerary-item-category">
+                                    {formatCategory(item.category)}
+                                </span>
+                            )}
+                            {item.priority && (
+                                <span className="itinerary-item-priority">
+                                    {formatPriority(item.priority)}
+                                </span>
+                            )}
+                            </div>
+                        )}
+                        {summaryDetails.length > 0 && (
+                            <span className="itinerary-item-details">
+                                {summaryDetails.map((detail) =>
+                                    detail ? (
+                                        <span key={detail.label}>
+                                            <strong>{detail.label}:</strong>{" "}
+                                            {detail.value}
+                                        </span>
+                                    ) : null,
+                                )}
+                            </span>
                         )}
                         {openingHoursWarning && (
                             <p className="itinerary-warning" role="status">
@@ -561,6 +740,23 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         )}
                     </div>
                     <div className="itinerary-item-actions">
+                        {hasAdditionalDetails && (
+                            <button
+                                className="icon-button"
+                                type="button"
+                                onClick={() => toggleDetails(item.id)}
+                                aria-label={`${isExpanded ? "Collapse" : "Expand"} ${item.name} details`}
+                                aria-expanded={isExpanded}
+                                aria-controls={detailsId}
+                                title={isExpanded ? "Collapse details" : "Expand details"}
+                            >
+                                {isExpanded ? (
+                                    <ChevronUp size={17} />
+                                ) : (
+                                    <ChevronDown size={17} />
+                                )}
+                            </button>
+                        )}
                         <button
                             className="icon-button"
                             onClick={() => startEditing(item)}
@@ -579,30 +775,35 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         </button>
                     </div>
                 </div>
-                {hasAdditionalDetails && (
-                    <button
-                        className="text-button itinerary-details-toggle"
-                        type="button"
-                        onClick={() => toggleDetails(item.id)}
-                        aria-expanded={isExpanded}
-                        aria-controls={detailsId}
-                    >
-                        {isExpanded ? "Hide details" : "Show details"}
-                    </button>
-                )}
                 {isExpanded && (
                     <div className="itinerary-expanded-details" id={detailsId}>
-                        {openingHours && <p><strong>Opening hours:</strong> {openingHours}</p>}
-                        {item.location && <p><strong>Location:</strong> {item.location}</p>}
+                        {openingHours && (
+                            <p>
+                                <strong>Opening hours:</strong> {openingHours}
+                            </p>
+                        )}
+                        {item.location && (
+                            <p>
+                                <strong>Location:</strong> {item.location}
+                            </p>
+                        )}
                         {item.externalLink && (
                             <p>
                                 <strong>Link:</strong>{" "}
-                                <a href={item.externalLink} target="_blank" rel="noreferrer">
-                                    Open link
+                                <a
+                                    href={item.externalLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {item.externalLink}
                                 </a>
                             </p>
                         )}
-                        {item.note && <p><strong>Notes:</strong> {item.note}</p>}
+                        {item.note && (
+                            <p>
+                                <strong>Notes:</strong> {item.note}
+                            </p>
+                        )}
                     </div>
                 )}
             </li>
@@ -613,19 +814,36 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         <section className="detail-section itinerary-section">
             <div className="itinerary-section-heading">
                 <h2>Itinerary</h2>
-                <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => startAdding()}
-                >
-                    Add item
-                </button>
+                <div className="itinerary-section-actions">
+                    {expandableItemIds.length > 0 && (
+                        <button
+                            className="text-button"
+                            type="button"
+                            onClick={toggleAllDetails}
+                        >
+                            {areAllExpandableItemsExpanded
+                                ? "Collapse all"
+                                : "Expand all"}
+                        </button>
+                    )}
+                    <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => startAdding()}
+                    >
+                        Add item
+                    </button>
+                </div>
             </div>
             {isAdding && !addingForDate && form(newItem, saveNewItem)}
             {isLoading && <p className="detail-message">Loading itinerary…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
             {pendingDeletion && (
-                <button className="undo-toast" type="button" onClick={undoDelete}>
+                <button
+                    className="undo-toast"
+                    type="button"
+                    onClick={undoDelete}
+                >
                     <span>Activity deleted.</span>
                     <strong>Undo</strong>
                 </button>
@@ -655,15 +873,24 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                         </button>
                                     </div>
                                 </div>
-                                <ul className="list-items">{dayItems.map(renderItem)}</ul>
-                                {isAdding && addingForDate === day && form(newItem, saveNewItem)}
+                                <ul className="list-items">
+                                    {dayItems.map(renderItem)}
+                                </ul>
+                                {isAdding &&
+                                    addingForDate === day &&
+                                    form(newItem, saveNewItem)}
                             </section>
                         );
                     })}
-                    {sortUnscheduledItems(items.filter((item) => !item.date)).length > 0 && (
+                    {sortUnscheduledItems(items.filter((item) => !item.date))
+                        .length > 0 && (
                         <section className="itinerary-day itinerary-unscheduled">
                             <h3>Unscheduled</h3>
-                            <ul className="list-items">{sortUnscheduledItems(items.filter((item) => !item.date)).map(renderItem)}</ul>
+                            <ul className="list-items">
+                                {sortUnscheduledItems(
+                                    items.filter((item) => !item.date),
+                                ).map(renderItem)}
+                            </ul>
                         </section>
                     )}
                 </div>

@@ -4,6 +4,7 @@ import type { TripWorkspaceContext } from "./Workspace";
 
 /** Connects the itinerary feature to the shared trip workspace. */
 export function TripItineraryPage() {
-    const { trip, setHasUnsavedForm } = useOutletContext<TripWorkspaceContext>();
+    const { trip, setHasUnsavedForm } =
+        useOutletContext<TripWorkspaceContext>();
     return <Itinerary trip={trip} setHasUnsavedForm={setHasUnsavedForm} />;
 }
