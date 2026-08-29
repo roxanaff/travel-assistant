@@ -24,9 +24,8 @@ public class BudgetValidationTests
             ExpenseValidation.Validate(new CreateExpenseRequest("Hotel", ExpenseCategory.Accommodation, 1_000_000_000m, null, null)));
 
     [Fact]
-    public void PlannedCostValidate_ReturnsError_WhenCategoryIsMissing() =>
-        Assert.Equal("A planned cost category is required.",
-            PlannedCostValidation.Validate(new CreatePlannedCostRequest("Hotel", null, 100)));
+    public void PlannedCostValidate_AllowsMissingCategory() =>
+        Assert.Null(PlannedCostValidation.Validate(new CreatePlannedCostRequest("Hotel", null, 100)));
 
     [Theory]
     [InlineData(0)]

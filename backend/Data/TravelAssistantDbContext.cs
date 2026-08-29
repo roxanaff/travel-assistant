@@ -66,7 +66,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         modelBuilder.Entity<PlannedCost>(plannedCost =>
         {
             plannedCost.Property(item => item.Name).HasMaxLength(150).IsRequired();
-            plannedCost.Property(item => item.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            plannedCost.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             plannedCost.Property(item => item.Amount).HasPrecision(12, 2);
             plannedCost.HasOne(item => item.Trip)
                 .WithMany(trip => trip.PlannedCosts)

@@ -63,6 +63,28 @@ Prerequisites: .NET 10 SDK, Node.js/npm, and Docker Desktop (or another PostgreS
    npm run dev
    ```
 
+### Physical phone testing
+
+To test the local app in a phone browser, connect the phone and development computer to the same private Wi-Fi network.
+Find the computer's Wi-Fi IPv4 address with `ipconfig`, then replace `YOUR-LAN-IP` below with that address.
+
+Start the API from `backend/`, allowing the local frontend origin:
+
+```powershell
+$env:Cors__AllowedOrigins__0 = "http://YOUR-LAN-IP:5173"
+dotnet run --urls http://0.0.0.0:5263
+```
+
+In a separate terminal, start the frontend from `frontend/` with the API's local-network address:
+
+```powershell
+$env:VITE_API_BASE_URL = "http://YOUR-LAN-IP:5263"
+npm run dev -- --host 0.0.0.0
+```
+
+Open `http://YOUR-LAN-IP:5173` on the phone. If Windows asks about firewall access, allow it only on private networks.
+These commands apply only to the current terminals; they do not commit, push, or deploy any code.
+
 ## Testing and verification
 
 Backend validation tests are run from the repository root:

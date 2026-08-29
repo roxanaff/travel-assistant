@@ -120,7 +120,6 @@ export function PlannedBudget({
     });
 
     const validate = (cost: PlannedCostForm) => {
-        if (!cost.category) return "Choose a category.";
         if (!cost.amount || Number(cost.amount) <= 0)
             return "Enter an amount greater than zero.";
         return null;
@@ -183,7 +182,7 @@ export function PlannedBudget({
         setEditingCostId(cost.id);
         setEditingCost({
             name: cost.name === "Cost item" ? "" : cost.name,
-            category: cost.category,
+            category: cost.category ?? "",
             amount: cost.amount.toString(),
         });
         setFormError(null);
@@ -349,27 +348,6 @@ export function PlannedBudget({
             <div className="form-row">
                 <label>
                     <span className="field-label field-label-required">
-                        Category
-                    </span>
-                    <select
-                        value={cost.category}
-                        onChange={(event) =>
-                            updateForm("category", event.target.value, editing)
-                        }
-                        required
-                    >
-                        <option value="" disabled>
-                            Choose a category
-                        </option>
-                        {plannedCostCategories.map((category) => (
-                            <option key={category.value} value={category.value}>
-                                {category.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label>
-                    <span className="field-label field-label-required">
                         Amount ({trip.currency})
                     </span>
                     <input
@@ -381,6 +359,22 @@ export function PlannedBudget({
                         }
                         required
                     />
+                </label>
+                <label>
+                    <span className="field-label">Category</span>
+                    <select
+                        value={cost.category}
+                        onChange={(event) =>
+                            updateForm("category", event.target.value, editing)
+                        }
+                    >
+                        <option value="">Not specified</option>
+                        {plannedCostCategories.map((category) => (
+                            <option key={category.value} value={category.value}>
+                                {category.label}
+                            </option>
+                        ))}
+                    </select>
                 </label>
             </div>
             {formError && <p className="form-error">{formError}</p>}
@@ -477,7 +471,10 @@ export function PlannedBudget({
             )}
             {!isLoading &&
                 !error &&
-                plannedCostCategories.map((category) => {
+                [
+                    ...plannedCostCategories,
+                    { value: null, label: "Uncategorised" },
+                ].map((category) => {
                     const categoryCosts = costs.filter(
                         (cost) => cost.category === category.value,
                     );
@@ -490,21 +487,23 @@ export function PlannedBudget({
                     return (
                         <section
                             className="budget-category"
-                            key={category.value}
+                            key={category.value ?? "uncategorised"}
                         >
                             <div className="budget-category-heading">
                                 <div className="budget-category-title">
                                     <h4>{category.label}</h4>
-                                    <button
-                                        className="icon-button"
-                                        type="button"
-                                        onClick={() =>
-                                            startAdding(category.value)
-                                        }
-                                        aria-label={`Add a planned cost to ${category.label}`}
-                                    >
-                                        <Plus size={17} />
-                                    </button>
+                                    {category.value && (
+                                        <button
+                                            className="icon-button"
+                                            type="button"
+                                            onClick={() =>
+                                                startAdding(category.value)
+                                            }
+                                            aria-label={`Add a planned cost to ${category.label}`}
+                                        >
+                                            <Plus size={17} />
+                                        </button>
+                                    )}
                                 </div>
                                 <strong>
                                     {formatMoney(categoryTotal, trip.currency)}
@@ -603,6 +602,7 @@ export function PlannedBudget({
                                 )}
                             </ul>
                             {isAdding &&
+                                category.value !== null &&
                                 addingForCategory === category.value &&
                                 form(newCost, saveNewCost)}
                         </section>

@@ -61,7 +61,7 @@ public static class PlannedCostEndpoints
             {
                 TripId = tripId,
                 Name = NormalizeName(request.Name),
-                Category = request.Category!.Value,
+                Category = request.Category,
                 Amount = request.Amount
             };
 
@@ -86,7 +86,7 @@ public static class PlannedCostEndpoints
             }
 
             plannedCost.Name = NormalizeName(request.Name);
-            plannedCost.Category = request.Category!.Value;
+            plannedCost.Category = request.Category;
             plannedCost.Amount = request.Amount;
 
             await database.SaveChangesAsync();

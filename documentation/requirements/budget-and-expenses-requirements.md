@@ -14,9 +14,9 @@ Budget and expenses provide separate views of expected and actual trip spending 
 
 ### Planned costs
 
-- Planned costs are grouped by category. A category appears only when it contains an entry, and has a `+` action for
-  adding another entry.
-- Each entry has a required amount and an optional name. Blank names are stored as `Cost item`.
+- Planned costs are grouped by category. A category appears only when it contains an entry and has a `+` action for
+  adding another entry. Uncategorised planned costs appear in their own group.
+- Each entry has a required amount, optional name, and optional category. Blank names are stored as `Cost item`.
 - Category totals are calculated from their entries and are not edited separately.
 - Entries can be edited or deleted. Deletion has a five-second Undo period.
 - Theoretical remaining is `target budget − total planned costs`; a negative value is shown as over budget.
@@ -38,7 +38,7 @@ Budget and expenses provide separate views of expected and actual trip spending 
 ### Categories
 
 Planned costs use: Travel to/from, Accommodation, Local transport, Food, Activities & museums, Bars & nightlife,
-Shopping, Emergency buffer, and Other.
+Shopping, Emergency buffer, and Other. `Not specified` creates an Uncategorised planned cost.
 
 Expenses use the same list except Emergency buffer. Planned-cost rows can be copied to expenses with today's date. A
 linked row displays `Added · Undo`; Undo removes the linked expense and makes the planned cost available to add again.

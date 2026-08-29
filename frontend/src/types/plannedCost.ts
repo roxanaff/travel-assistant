@@ -2,7 +2,7 @@ export type PlannedCost = {
     id: string;
     tripId: string;
     name: string;
-    category: PlannedCostCategory;
+    category: PlannedCostCategory | null;
     amount: number;
     createdAtUtc: string;
     expenseAdded?: boolean;

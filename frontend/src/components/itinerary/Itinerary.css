@@ -21,9 +21,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px 20px;
 }
-.itinerary-form-row-essential {
-    grid-template-columns: minmax(15rem, 2fr) minmax(10rem, 1fr) minmax(12rem, 1fr);
-    max-width: 900px;
+.itinerary-form-row-name {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 48rem;
+}
+.itinerary-form-row-schedule,
+.itinerary-form-row-planning {
+    grid-template-columns: repeat(3, minmax(0, 12rem));
+    max-width: 38.5rem;
+}
+.itinerary-form-row-details {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 48rem;
 }
 .itinerary-notes-field {
     grid-column: 1 / -1;
@@ -54,11 +63,15 @@
     min-width: 0;
 }
 .itinerary-form .itinerary-date-field > input,
-.itinerary-form .itinerary-time-field > input,
-.itinerary-form .itinerary-duration-field > input,
 .itinerary-form .itinerary-price-field > input,
 .itinerary-form .itinerary-priority-field > select {
     max-width: 12rem;
+}
+.itinerary-form .itinerary-time-field > input,
+.itinerary-form .itinerary-duration-field > input,
+.itinerary-form .opening-hours input {
+    flex: 0 0 7rem;
+    width: 7rem;
 }
 .itinerary-form .itinerary-notes-field {
     align-items: flex-start;
@@ -73,6 +86,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
+}
+.itinerary-form .itinerary-opening-hours-field > .opening-hours {
+    flex: 0 1 20rem;
+    max-width: 20rem;
 }
 .itinerary-form .opening-hours input {
     min-width: 0;

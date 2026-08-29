@@ -410,7 +410,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             onKeyDown={onFormKeyDown}
             onSubmit={submit}
         >
-            <div className="itinerary-form-row itinerary-form-row-essential">
+            <div className="itinerary-form-row itinerary-form-row-name">
                 <label className="itinerary-field itinerary-name-field">
                     <span className="field-label field-label-required">
                         Name
@@ -430,36 +430,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         </span>
                     )}
                 </label>
-                <label className="itinerary-field itinerary-price-field">
-                    <span className="field-label">Price ({trip.currency})</span>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        value={item.cost}
-                        onChange={(event) =>
-                            updateForm("cost", event.target.value, editing)
-                        }
-                        aria-invalid={Boolean(formErrors.cost)}
-                    />
-                    {formErrors.cost && (
-                        <span className="form-field-error">
-                            {formErrors.cost}
-                        </span>
-                    )}
-                </label>
-                <label className="itinerary-field itinerary-priority-field">
-                    <span className="field-label">Priority</span>
-                    <select
-                        value={item.priority}
-                        onChange={(event) =>
-                            updateForm("priority", event.target.value, editing)
-                        }
-                    >
-                        <option value="MustDo">Must do</option>
-                        <option value="WouldLikeToDo">Want to do</option>
-                        <option value="Optional">Optional</option>
-                    </select>
-                </label>
+            </div>
+            <div className="itinerary-form-row itinerary-form-row-schedule">
                 {trip.startDate && trip.endDate ? (
                     <>
                         <label className="itinerary-field itinerary-date-field">
@@ -527,6 +499,57 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     )}
                 </label>
             </div>
+            <div className="itinerary-form-row itinerary-form-row-planning">
+                <label className="itinerary-field itinerary-priority-field">
+                    <span className="field-label">Priority</span>
+                    <select
+                        value={item.priority}
+                        onChange={(event) =>
+                            updateForm("priority", event.target.value, editing)
+                        }
+                    >
+                        <option value="MustDo">Must do</option>
+                        <option value="WouldLikeToDo">Want to do</option>
+                        <option value="Optional">Optional</option>
+                    </select>
+                </label>
+                <label className="itinerary-field itinerary-category-field">
+                    <span className="field-label">Category</span>
+                    <select
+                        value={item.category}
+                        onChange={(event) =>
+                            updateForm("category", event.target.value, editing)
+                        }
+                    >
+                        <option value="">Not specified</option>
+                        <option value="Museum">Museum</option>
+                        <option value="Tour">Tour</option>
+                        <option value="Event">Event</option>
+                        <option value="Food">Food</option>
+                        <option value="Beach">Beach</option>
+                        <option value="Bar">Bar</option>
+                        <option value="Attraction">Attraction</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label className="itinerary-field itinerary-price-field">
+                    <span className="field-label">Price ({trip.currency})</span>
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        value={item.cost}
+                        onChange={(event) =>
+                            updateForm("cost", event.target.value, editing)
+                        }
+                        aria-invalid={Boolean(formErrors.cost)}
+                    />
+                    {formErrors.cost && (
+                        <span className="form-field-error">
+                            {formErrors.cost}
+                        </span>
+                    )}
+                </label>
+            </div>
             {!trip.startDate || !trip.endDate ? (
                 <p className="detail-message">
                     Add trip dates in Details before scheduling activities. This
@@ -555,29 +578,6 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             : "itinerary-add-more-details"
                     }
                 >
-                    <label className="itinerary-field">
-                        <span className="field-label">Category</span>
-                        <select
-                            value={item.category}
-                            onChange={(event) =>
-                                updateForm(
-                                    "category",
-                                    event.target.value,
-                                    editing,
-                                )
-                            }
-                        >
-                            <option value="">Not specified</option>
-                            <option value="Museum">Museum</option>
-                            <option value="Tour">Tour</option>
-                            <option value="Event">Event</option>
-                            <option value="Food">Food</option>
-                            <option value="Beach">Beach</option>
-                            <option value="Bar">Bar</option>
-                            <option value="Attraction">Attraction</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </label>
                     <label className="itinerary-field itinerary-opening-hours-field">
                         <span className="field-label">Opening hours</span>
                         <span className="opening-hours">

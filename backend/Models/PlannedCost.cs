@@ -13,7 +13,7 @@ public class PlannedCost
 
     public string Name { get; set; } = "Cost item";
 
-    public PlannedCostCategory Category { get; set; }
+    public PlannedCostCategory? Category { get; set; }
 
     public decimal Amount { get; set; }
 
