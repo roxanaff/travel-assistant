@@ -25,7 +25,8 @@ async function getErrorMessage(
     fallback: string,
 ): Promise<string> {
     const body = await response.text();
-    if (!body) return fallback;
+    if (!body) 
+        return fallback;
 
     try {
         const value: unknown = JSON.parse(body);
@@ -37,8 +38,10 @@ async function getErrorMessage(
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
     const response = await apiFetch(`${authUrl}/me`);
-    if (response.status === 401) return null;
-    if (!response.ok) throw new Error("Could not restore your session.");
+    if (response.status === 401) 
+        return null;
+    if (!response.ok) 
+        throw new Error("Could not restore your session.");
     return response.json();
 }
 

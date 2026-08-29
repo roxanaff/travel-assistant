@@ -25,7 +25,8 @@ export async function getItineraryItems(
     tripId: string,
 ): Promise<ItineraryItem[]> {
     const response = await apiFetch(itineraryUrl(tripId));
-    if (!response.ok) throw new Error("Could not load itinerary items.");
+    if (!response.ok) 
+        throw new Error("Could not load itinerary items.");
 
     return response.json();
 }
@@ -75,5 +76,6 @@ export async function deleteItineraryItem(
     const response = await apiFetch(`${itineraryUrl(tripId)}/${itemId}`, {
         method: "DELETE",
     });
-    if (!response.ok) throw new Error("Could not delete this itinerary item.");
+    if (!response.ok) 
+        throw new Error("Could not delete this itinerary item.");
 }

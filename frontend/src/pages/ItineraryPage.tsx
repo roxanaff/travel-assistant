@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom";
-import { Itinerary } from "../features/itinerary/Itinerary";
+import { Itinerary } from "../components/itinerary/Itinerary";
 import type { TripWorkspaceContext } from "./Workspace";
 
 /** Connects the itinerary feature to the shared trip workspace. */

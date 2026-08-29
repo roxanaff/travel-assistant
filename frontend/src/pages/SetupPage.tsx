@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 
-import { TripSetup } from "../features/setup/TripSetup";
+import { TripSetup } from "../components/setup/TripSetup";
 import type { TripWorkspaceContext } from "./Workspace";
 
 /** Route adapter for trip details; the setup feature owns editing and deletion behaviour. */

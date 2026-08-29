@@ -9,7 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PackingChecklist } from "../../../src/features/packing/PackingChecklist";
+import { PackingChecklist } from "../../../src/components/packing/PackingChecklist";
 import type { Trip } from "../../../src/types/trip";
 
 const api = vi.hoisted(() => ({

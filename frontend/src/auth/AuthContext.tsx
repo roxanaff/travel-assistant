@@ -15,13 +15,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void authApi
             .getCurrentUser()
             .then((currentUser) => {
-                if (isMounted) setUser(currentUser);
+                if (isMounted) 
+                    setUser(currentUser);
             })
             .catch(() => {
                 if (isMounted)
-                    setError(
-                        "Could not connect to your account. Please try again.",
-                    );
+                    setError("Could not connect to your account. Please try again.");
             })
             .finally(() => {
                 if (isMounted) setIsLoading(false);

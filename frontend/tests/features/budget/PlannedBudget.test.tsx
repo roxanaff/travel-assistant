@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PlannedBudget } from "../../../src/features/budget/PlannedBudget";
+import { PlannedBudget } from "../../../src/components/budget/PlannedBudget";
 import type { Trip } from "../../../src/types/trip";
 
 const plannedCostsApi = vi.hoisted(() => ({

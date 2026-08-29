@@ -18,8 +18,8 @@ This folder contains the Vite/React browser application. The app loads in `main.
 | `src/pages/BudgetPage.tsx` | Coordinates planned costs and actual expenses, including refreshes between them. |
 | `src/pages/PackingPage.tsx` | Thin route adapter connecting the workspace to the packing feature. |
 | `src/pages/SetupPage.tsx` | Displays and edits core trip details. |
-| `src/features/packing/PackingChecklist.tsx` | Packing checklist setup, editing, drag ordering, and deletion Undo flow. |
-| `src/features/itinerary/Itinerary.tsx` | Activity scheduling, inline editing, expanded details, and deletion Undo flow. |
+| `src/components/packing/PackingChecklist.tsx` | Packing checklist setup, editing, drag ordering, and deletion Undo flow. |
+| `src/components/itinerary/Itinerary.tsx` | Activity scheduling, inline editing, expanded details, and deletion Undo flow. |
 | `src/components/Header.tsx` | Persistent application header and dashboard link. |
 | `src/components/TripCard.tsx` | Summary card and action menu for one dashboard trip. |
 | `src/components/TripForm.tsx` | Reusable create/edit form for a trip. |
@@ -29,7 +29,7 @@ This folder contains the Vite/React browser application. The app loads in `main.
 | `src/styles/shared.css` | Reusable layout and form primitives. |
 | `src/App.css` | Overall page-shell layout. |
 | `src/pages/*.css` | Styles exclusive to the matching route page or workspace. |
-| `src/features/*/*.css` | Styles exclusive to the matching feature. |
+| `src/components/*/*.css` | Styles exclusive to the matching component. |
 | `src/components/*.css` | Styles exclusive to the matching reusable component. |
 | `src/assets/` | Static image assets; currently includes the hero image and starter Vite/React SVGs. |
 

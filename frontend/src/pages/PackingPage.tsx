@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 
-import { PackingChecklist } from "../features/packing/PackingChecklist";
+import { PackingChecklist } from "../components/packing/PackingChecklist";
 import type { TripWorkspaceContext } from "./Workspace";
 
 /**

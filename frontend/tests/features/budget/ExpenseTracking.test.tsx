@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ExpenseTracking } from "../../../src/features/budget/ExpenseTracking";
+import { ExpenseTracking } from "../../../src/components/budget/ExpenseTracking";
 import type { Trip } from "../../../src/types/trip";
 
 const api = vi.hoisted(() => ({

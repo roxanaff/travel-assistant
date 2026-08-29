@@ -62,12 +62,13 @@
     background: var(--color-white);
     color: var(--color-ink);
     font: inherit;
+    font-weight: 600;
 }
 
 .packing-setup-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    /*gap: 16px;*/
 }
 
 .packing-lists {
@@ -106,12 +107,44 @@
 }
 
 .packing-item {
+    position: relative;
     display: grid;
     align-items: center;
-    grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto;
-    gap: 16px;
+    grid-template-columns: auto minmax(0, 1fr) minmax(140px, 180px) auto;
+    gap: 8px;
     padding: 6px 0;
     /*border-bottom: 1px solid var(--color-gray-200);*/
+}
+
+.packing-item-placeholder {
+    min-height: 42px;
+    /*border: 1px var(--color-gray-500);*/
+    background-color: var(--color-gray-100);
+    border-radius: 8px;
+}
+
+.packing-item-placeholder > * {
+    visibility: hidden;
+}
+
+.packing-drop-before::before,
+.packing-drop-after::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    height: 1px;
+    /*border-radius: 0px;*/
+    background: var(--color-blue-500);
+    content: "";
+}
+
+.packing-drop-before::before {
+    top: -3px;
+}
+
+.packing-drop-after::after {
+    bottom: -3px;
 }
 
 .packing-item-main {
@@ -149,9 +182,25 @@
     place-items: center;
     color: var(--color-gray-500);
     cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
 }
 .packing-drag-handle:active {
     cursor: grabbing;
+}
+
+.packing-drag-preview {
+    position: fixed;
+    z-index: 20;
+    box-sizing: border-box;
+    padding: 6px 0;
+    border: 1px solid var(--color-blue-500);
+    border-radius: 8px;
+    background: var(--color-white);
+    color: var(--color-ink);
+    font: inherit;
+    opacity: 0.72;
+    pointer-events: none;
 }
 
 .packing-item-form .form-row > label {
@@ -179,15 +228,15 @@
     }
 
     .packing-item {
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
     .packing-category {
-        grid-column: 1;
+        grid-column: 2;
     }
 
     .packing-item-actions {
-        grid-column: 2;
+        grid-column: 3;
         grid-row: 1 / span 2;
     }
 }

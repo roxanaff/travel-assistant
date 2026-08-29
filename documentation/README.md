@@ -2,10 +2,12 @@
 
 ## Stage 1 — Personal trip planner
 
-Stage 1 is the current product. It provides a private, account-based workspace for manually planning a trip, tracking its costs, and managing a packing checklist. The core feature set is implemented; remaining Stage 1 work is limited to verification and documented UX improvements.
+Stage 1 is the current product. It provides a private, account-based workspace for manually planning a trip, tracking
+its costs, and managing a packing checklist. The core feature set and planned UX improvements are implemented; remaining
+Stage 1 work is limited to verification.
 
-| Document | Purpose |
-| --- | --- |
+| Document                          | Purpose                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ |
 | [Stage 1 guide](stage-1-guide.md) | Stage 1 scope, current product behavior, architecture, local development, tests, and deployment. |
 
 ### Stage 1 requirements
@@ -21,4 +23,5 @@ Stage 1 is the current product. It provides a private, account-based workspace f
 
 ## Beyond Stage 1
 
-Ideas and requirements that are not part of the current product are kept separately in [future/](future/). They are not implementation commitments or a delivery schedule.
+Ideas and requirements that are not part of the current product are kept separately in [future/](future/). They are not
+implementation commitments or a delivery schedule.

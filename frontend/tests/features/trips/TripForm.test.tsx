@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { TripForm } from "../../../src/features/trips/TripForm";
+import { TripForm } from "../../../src/components/trips/TripForm";
 
 describe("TripForm", () => {
     afterEach(cleanup);

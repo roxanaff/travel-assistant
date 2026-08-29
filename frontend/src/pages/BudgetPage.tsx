@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 
-import { TripBudget } from "../features/budget/TripBudget";
+import { TripBudget } from "../components/budget/TripBudget";
 import type { TripWorkspaceContext } from "./Workspace";
 
 /** Route adapter for the budget URL; the feature component owns the budget UI and interactions. */

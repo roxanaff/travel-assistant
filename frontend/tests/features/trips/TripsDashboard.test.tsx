@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TripsDashboard } from "../../../src/features/trips/TripsDashboard";
+import { TripsDashboard } from "../../../src/components/trips/TripsDashboard";
 
 const renderDashboard = () =>
     render(

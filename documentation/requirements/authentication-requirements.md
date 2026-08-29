@@ -8,10 +8,14 @@ Authentication provides a private workspace in which every trip and its related 
 
 - Accounts use email and password registration and sign-in. Email verification is not required in Stage 1.
 - Passwords require at least eight characters. Login failures do not reveal whether an email address has an account.
-- Authentication uses secure, HTTP-only persistent cookies. Sessions expire after 30 days of inactivity and normal activity renews the current session.
-- Account controls provide password change, sign-out from the current browser/device, and permanent account deletion after current-password confirmation.
-- Protected frontend routes redirect unauthenticated people to sign-in. Loading, unavailable-account, and account-error states are displayed.
-- Backend authorization is enforced for every trip and trip-scoped endpoint. Another account's trip is returned as not found.
+- Authentication uses secure, HTTP-only persistent cookies. Sessions expire after 30 days of inactivity and normal
+  activity renews the current session.
+- Account controls provide password change, sign-out from the current browser/device, and permanent account deletion
+  after current-password confirmation.
+- Protected frontend routes redirect unauthenticated people to sign-in. Loading, unavailable-account, and account-error
+  states are displayed.
+- Backend authorization is enforced for every trip and trip-scoped endpoint. Another account's trip is returned as not
+  found.
 
 ## Open Stage 1 work
 
@@ -20,13 +24,16 @@ No product behavior remains to be added. Automated account and ownership coverag
 ## Verification
 
 - [ ] Add automated coverage for registration, sign-in, sign-out, password change, and account deletion.
-- [ ] Add backend integration coverage that proves one account cannot read or change another account's trip or related data.
+- [ ] Add backend integration coverage that proves one account cannot read or change another account's trip or related
+      data.
 - [ ] Verify protected-route redirects, loading states, unavailable-account states, and account-error states.
 
 ## Constraints
 
-The pre-account trip migration has completed. Every new trip must have an owner, and account deletion permanently deletes that account's trips and related records.
+The pre-account trip migration has completed. Every new trip must have an owner, and account deletion permanently
+deletes that account's trips and related records.
 
 ## Beyond Stage 1
 
-Future account hardening, shared trips, and collaboration directions are recorded in [accounts and collaboration](../future/accounts-and-collaboration.md).
+Future account hardening, shared trips, and collaboration directions are recorded in
+[accounts and collaboration](../future/accounts-and-collaboration.md).

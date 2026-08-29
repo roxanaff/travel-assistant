@@ -16,7 +16,8 @@
 - Overlap detection, travel-time estimates, and route optimisation.
 - Opening-hours hints when no start time is selected.
 - Reservations, ticket or booking status, attendee counts, expanded details, and activity recommendations.
-- Links to or uploads of booked accommodation, flights, transport, tickets, and other reservation documents, attached to the relevant activity or trip detail.
+- Links to or uploads of booked accommodation, flights, transport, tickets, and other reservation documents, attached to
+  the relevant activity or trip detail.
 - Custom activity categories and category suggestions based on trip type.
 - Category-specific itinerary forms; for example, hiking, beach time, and city walks should not collect opening hours.
 - A clear relationship between activity costs and budget-planner entries.
@@ -25,12 +26,14 @@
 
 - Near-trip reminders or visual indicators.
 - A separate history view or tab for past trips, distinct from Draft, Upcoming, and Ongoing trips.
-- Past-trip analysis: total spending, spending by category and day, planned versus actual spending, and itinerary summaries such as activity counts.
+- Past-trip analysis: total spending, spending by category and day, planned versus actual spending, and itinerary
+  summaries such as activity counts.
 - Search, filtering, or alternative sorting if the number of trips makes lifecycle ordering insufficient.
 - Multi-destination card display.
 - An overview section for progress, reminders, collaborators, and budget status.
 
 ## Planning checklist
 
-- A manual pre-trip to-do checklist, modelled on the packing list; for example, booking accommodation, booking transport, arranging documents, or buying tickets.
+- A manual pre-trip to-do checklist, modelled on the packing list; for example, booking accommodation, booking
+  transport, arranging documents, or buying tickets.
 - Default checklist templates that can be copied into a trip and then edited without affecting the template.

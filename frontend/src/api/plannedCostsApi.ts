@@ -6,13 +6,17 @@ export type PlannedCostRequest = {
     category: PlannedCostCategory | null;
     amount: number;
 };
+
 const plannedCostsUrl = (tripId: string) =>
     `${apiBaseUrl}/api/trips/${tripId}/planned-costs`;
+
 export async function getPlannedCosts(tripId: string): Promise<PlannedCost[]> {
     const response = await apiFetch(plannedCostsUrl(tripId));
-    if (!response.ok) throw new Error("Could not load planned costs.");
+    if (!response.ok) 
+        throw new Error("Could not load planned costs.");
     return response.json();
 }
+
 export async function createPlannedCost(
     tripId: string,
     request: PlannedCostRequest,
@@ -28,6 +32,7 @@ export async function createPlannedCost(
         );
     return response.json();
 }
+
 export async function updatePlannedCost(
     tripId: string,
     costId: string,
@@ -44,6 +49,7 @@ export async function updatePlannedCost(
         );
     return response.json();
 }
+
 export async function deletePlannedCost(
     tripId: string,
     costId: string,
@@ -51,5 +57,6 @@ export async function deletePlannedCost(
     const response = await apiFetch(`${plannedCostsUrl(tripId)}/${costId}`, {
         method: "DELETE",
     });
-    if (!response.ok) throw new Error("Could not delete this planned cost.");
+    if (!response.ok) 
+        throw new Error("Could not delete this planned cost.");
 }

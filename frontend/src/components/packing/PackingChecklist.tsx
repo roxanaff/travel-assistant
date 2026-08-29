@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -33,6 +33,20 @@ type PendingDeletion = {
     item: PackingItem;
 };
 
+type PackingDrag = {
+    item: PackingItem;
+    sectionItems: PackingItem[];
+    pointerId: number;
+    width: number;
+    offsetX: number;
+    offsetY: number;
+};
+
+type DropTarget = {
+    itemId: string;
+    position: "before" | "after";
+};
+
 const categoryLabel = (category: PackingItem["category"]) =>
     packingCategories.find((option) => option.value === category)?.label ??
     null;
@@ -64,8 +78,20 @@ export function PackingChecklist({
     const [pendingDeletion, setPendingDeletion] =
         useState<PendingDeletion | null>(null);
     const [view, setView] = useState<PackingView>("list");
-    const [draggedItem, setDraggedItem] = useState<PackingItem | null>(null);
+    const [drag, setDrag] = useState<PackingDrag | null>(null);
+    const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+    const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
     const deleteTimerRef = useRef<number | null>(null);
+    const touchDragTimerRef = useRef<number | null>(null);
+    const dropTargetRef = useRef<DropTarget | null>(null);
+    const pendingPointerRef = useRef<{
+        item: PackingItem;
+        sectionItems: PackingItem[];
+        pointerId: number;
+        x: number;
+        y: number;
+        handle: HTMLSpanElement;
+    } | null>(null);
 
     useEffect(() => {
         setHasUnsavedForm(isAdding || editingItemId !== null);
@@ -380,16 +406,24 @@ export function PackingChecklist({
     const moveItem = (
         sectionItems: PackingItem[],
         itemId: string,
-        destinationIndex: number,
+        target: DropTarget,
     ) => {
         const currentIndex = sectionItems.findIndex(
             (item) => item.id === itemId,
         );
-        if (currentIndex < 0 || currentIndex === destinationIndex) return;
+        if (currentIndex < 0) return;
 
         const reorderedSection = [...sectionItems];
         const [movedItem] = reorderedSection.splice(currentIndex, 1);
-        reorderedSection.splice(destinationIndex, 0, movedItem);
+        const targetIndex = reorderedSection.findIndex(
+            (item) => item.id === target.itemId,
+        );
+        if (targetIndex < 0) return;
+        reorderedSection.splice(
+            target.position === "before" ? targetIndex : targetIndex + 1,
+            0,
+            movedItem,
+        );
 
         const otherSection = items.filter(
             (item) => item.isPacked !== movedItem.isPacked,
@@ -401,31 +435,154 @@ export function PackingChecklist({
         void persistOrder(nextItems);
     };
 
-    const startDrag = (
-        event: DragEvent<HTMLSpanElement>,
+    const beginPointerDrag = (
         item: PackingItem,
+        sectionItems: PackingItem[],
+        pointerId: number,
+        handle: HTMLSpanElement,
+        clientX: number,
+        clientY: number,
     ) => {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", item.id);
+        const row = handle.closest<HTMLElement>(".packing-item");
+        if (!row) return;
 
-        const preview = document.createElement("div");
-        preview.textContent = item.name;
-        Object.assign(preview.style, {
-            position: "fixed",
-            top: "-1000px",
-            left: "-1000px",
-            padding: "8px 12px",
-            border: "1px solid #d8dee3",
-            borderRadius: "8px",
-            background: "#fffdf8",
-            color: "#17212b",
-            font: "600 14px Inter, sans-serif",
+        const bounds = row.getBoundingClientRect();
+        handle.setPointerCapture(pointerId);
+        setDrag({
+            item,
+            sectionItems,
+            pointerId,
+            width: bounds.width,
+            offsetX: clientX - bounds.left,
+            offsetY: clientY - bounds.top,
         });
-        document.body.appendChild(preview);
-        event.dataTransfer.setDragImage(preview, 12, 12);
-        requestAnimationFrame(() => preview.remove());
+        setDragPosition({ x: clientX, y: clientY });
+        setDropTarget(null);
+    };
 
-        setDraggedItem(item);
+    const clearPointerDrag = () => {
+        if (touchDragTimerRef.current !== null) {
+            window.clearTimeout(touchDragTimerRef.current);
+            touchDragTimerRef.current = null;
+        }
+        pendingPointerRef.current = null;
+        dropTargetRef.current = null;
+        setDrag(null);
+        setDropTarget(null);
+    };
+
+    const findDropTarget = (event: globalThis.PointerEvent) => {
+        if (!drag) return null;
+        const hoveredRow = document
+            .elementFromPoint(event.clientX, event.clientY)
+            ?.closest<HTMLElement>("[data-packing-item-id]");
+        if (!hoveredRow) return null;
+
+        const targetId = hoveredRow.dataset.packingItemId;
+        if (!targetId || targetId === drag.item.id) return null;
+        const availableItems = drag.sectionItems.filter(
+            (item) => item.id !== drag.item.id,
+        );
+        const targetIndex = availableItems.findIndex(
+            (item) => item.id === targetId,
+        );
+        const targetItem = availableItems[targetIndex];
+        if (!targetItem || targetItem.isPacked !== drag.item.isPacked) return null;
+
+        const bounds = hoveredRow.getBoundingClientRect();
+        if (event.clientY < bounds.top + bounds.height / 2) {
+            return { itemId: targetId, position: "before" } satisfies DropTarget;
+        }
+
+        const nextItem = availableItems[targetIndex + 1];
+        return nextItem
+            ? ({ itemId: nextItem.id, position: "before" } satisfies DropTarget)
+            : ({ itemId: targetId, position: "after" } satisfies DropTarget);
+    };
+
+    useEffect(() => {
+        const updateDrag = (event: globalThis.PointerEvent) => {
+            const pending = pendingPointerRef.current;
+            if (pending && event.pointerId === pending.pointerId) {
+                const moved = Math.hypot(
+                    event.clientX - pending.x,
+                    event.clientY - pending.y,
+                );
+                if (moved > 6) {
+                    if (touchDragTimerRef.current !== null) {
+                        window.clearTimeout(touchDragTimerRef.current);
+                        touchDragTimerRef.current = null;
+                    }
+                    if (event.pointerType !== "touch") {
+                        beginPointerDrag(
+                            pending.item,
+                            pending.sectionItems,
+                            pending.pointerId,
+                            pending.handle,
+                            event.clientX,
+                            event.clientY,
+                        );
+                    }
+                    pendingPointerRef.current = null;
+                }
+                return;
+            }
+            if (!drag || event.pointerId !== drag.pointerId) return;
+            setDragPosition({ x: event.clientX, y: event.clientY });
+            const nextDropTarget = findDropTarget(event);
+            dropTargetRef.current = nextDropTarget;
+            setDropTarget(nextDropTarget);
+        };
+
+        const finishDrag = (event: globalThis.PointerEvent) => {
+            if (drag?.pointerId === event.pointerId && dropTargetRef.current) {
+                moveItem(drag.sectionItems, drag.item.id, dropTargetRef.current);
+            }
+            if (drag?.pointerId === event.pointerId || pendingPointerRef.current?.pointerId === event.pointerId) {
+                clearPointerDrag();
+            }
+        };
+
+        window.addEventListener("pointermove", updateDrag);
+        window.addEventListener("pointerup", finishDrag);
+        window.addEventListener("pointercancel", finishDrag);
+        return () => {
+            window.removeEventListener("pointermove", updateDrag);
+            window.removeEventListener("pointerup", finishDrag);
+            window.removeEventListener("pointercancel", finishDrag);
+        };
+    }, [drag]);
+
+    const startPointerDrag = (
+        event: PointerEvent<HTMLSpanElement>,
+        item: PackingItem,
+        sectionItems: PackingItem[],
+    ) => {
+        if (event.button !== 0) return;
+        pendingPointerRef.current = {
+            item,
+            sectionItems,
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            handle: event.currentTarget,
+        };
+        if (event.pointerType === "touch") {
+            touchDragTimerRef.current = window.setTimeout(() => {
+                const pending = pendingPointerRef.current;
+                if (!pending) return;
+                beginPointerDrag(
+                    pending.item,
+                    pending.sectionItems,
+                    pending.pointerId,
+                    pending.handle,
+                    pending.x,
+                    pending.y,
+                );
+                pendingPointerRef.current = null;
+                touchDragTimerRef.current = null;
+            }, 200);
+        }
     };
 
     /** Shared add/edit form so both flows enforce the same input behaviour and error display. */
@@ -514,25 +671,20 @@ export function PackingChecklist({
             </li>
         ) : (
             <li
-                className={
-                    item.isPacked ? "packing-item packed" : "packing-item"
-                }
+                className={`packing-item${item.isPacked ? " packed" : ""}${drag?.item.id === item.id ? " packing-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` packing-drop-${dropTarget.position}` : ""}`}
                 key={item.id}
-                onDragOver={(event) => {
-                    if (draggedItem?.isPacked === item.isPacked)
-                        event.preventDefault();
-                }}
-                onDrop={() => {
-                    if (draggedItem?.isPacked === item.isPacked) {
-                        moveItem(
-                            sectionItems,
-                            draggedItem.id,
-                            sectionItems.indexOf(item),
-                        );
-                    }
-                    setDraggedItem(null);
-                }}
+                data-packing-item-id={item.id}
             >
+                <span
+                    className="packing-drag-handle"
+                    onPointerDown={(event) =>
+                        startPointerDrag(event, item, sectionItems)
+                    }
+                    aria-label={`Reorder ${item.name}`}
+                    title="Drag to reorder within this list"
+                >
+                    <GripVertical size={17} aria-hidden="true" />
+                </span>
                 <label className="packing-item-main">
                     <input
                         type="checkbox"
@@ -554,16 +706,6 @@ export function PackingChecklist({
                     </span>
                 )}
                 <div className="packing-item-actions">
-                    <span
-                        className="packing-drag-handle"
-                        draggable
-                        onDragStart={(event) => startDrag(event, item)}
-                        onDragEnd={() => setDraggedItem(null)}
-                        aria-label={`Reorder ${item.name}`}
-                        title="Drag to reorder within this list"
-                    >
-                        <GripVertical size={17} aria-hidden="true" />
-                    </span>
                     <button
                         className="icon-button"
                         type="button"
@@ -622,6 +764,22 @@ export function PackingChecklist({
 
     return (
         <section className="detail-section packing-section">
+            {drag && (
+                <div
+                    className="packing-drag-preview"
+                    style={{
+                        width: drag.width,
+                        left: dragPosition.x - drag.offsetX,
+                        top: dragPosition.y - drag.offsetY,
+                    }}
+                    aria-hidden="true"
+                >
+                    {drag.item.quantity > 1 && (
+                        <strong>{drag.item.quantity} × </strong>
+                    )}
+                    {drag.item.name}
+                </div>
+            )}
             <div className="section-title-row">
                 <div className="packing-title">
                     <h2>Packing</h2>

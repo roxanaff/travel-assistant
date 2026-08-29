@@ -14,7 +14,8 @@ const expensesUrl = (tripId: string) =>
 
 export async function getExpenses(tripId: string): Promise<Expense[]> {
     const response = await apiFetch(expensesUrl(tripId));
-    if (!response.ok) throw new Error("Could not load expenses.");
+    if (!response.ok) 
+        throw new Error("Could not load expenses.");
     return response.json();
 }
 
@@ -60,7 +61,9 @@ export async function deleteExpense(
     const response = await apiFetch(`${expensesUrl(tripId)}/${itemId}`, {
         method: "DELETE",
     });
-    if (response.status === 404) return false;
-    if (!response.ok) throw new Error("Could not delete this expense.");
+    if (response.status === 404) 
+        return false;
+    if (!response.ok) 
+        throw new Error("Could not delete this expense.");
     return true;
 }

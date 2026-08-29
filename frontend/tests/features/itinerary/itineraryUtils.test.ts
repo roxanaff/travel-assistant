@@ -7,7 +7,7 @@ import {
     getTripDays,
     sortDatedItems,
     sortUnscheduledItems,
-} from "../../../src/features/itinerary/itineraryUtils";
+} from "../../../src/components/itinerary/itineraryUtils";
 
 const trip = { startDate: "2026-09-01", endDate: "2026-09-03" } as Trip;
 

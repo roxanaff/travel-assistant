@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TripSetup } from "../../../src/features/setup/TripSetup";
+import { TripSetup } from "../../../src/components/setup/TripSetup";
 import type { Trip } from "../../../src/types/trip";
 
 const api = vi.hoisted(() => ({
