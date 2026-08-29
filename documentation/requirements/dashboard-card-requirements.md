@@ -15,7 +15,7 @@ The dashboard provides an account-level view of trips and the entry point to eac
 - When both destination and dates are missing, their prompts are shown on separate lines.
 - Each card can show, in order: name and status, destination, dates, trip type, target budget, and a one- or two-line
   notes preview.
-- The three-dot menu provides Edit and Delete. Escape closes the menu.
+- A narrow action column provides Edit and Delete. It leaves space for future actions without changing the card layout.
 - Editing replaces the selected card with its form in the same grid position; cancelling restores the card.
 - Delete failures leave the dashboard visible and report the failed action.
 
@@ -29,7 +29,7 @@ The remaining card layout, in-place edit, keyboard, and responsive improvements 
 - [ ] Verify one card for each lifecycle status and a Draft with no optional fields.
 - [ ] Verify one-, two-, and three-or-more-card layouts at desktop and responsive widths.
 - [ ] Verify that card editing replaces the same card and that cancelling restores it in the original position.
-- [ ] Verify long names and notes, card navigation, menu interaction, and edit/delete failure states.
+- [ ] Verify long names and notes, card navigation, action buttons, and edit/delete failure states.
 
 ## Beyond Stage 1
 

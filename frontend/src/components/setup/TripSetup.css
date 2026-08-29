@@ -1,4 +1,4 @@
-/* Detail display and action-menu styles for editing one trip's core setup. */
+/* Detail display and visible trip actions. */
 .trip-setup-list {
     display: grid;
     gap: 16px;
@@ -22,13 +22,12 @@
 .trip-setup-note {
     white-space: pre-wrap;
 }
-.trip-details-menu {
-    position: relative;
-    margin-left: auto;
-}
-.trip-details-menu .action-menu-popover {
-    min-width: 120px;
-}
+/*.trip-details-actions {*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    gap: 4px;*/
+/*    margin-left: auto;*/
+/*}*/
 @media (max-width: 600px) {
     .trip-setup-list div {
         grid-template-columns: 1fr;

@@ -18,8 +18,7 @@
 
 .packing-title,
 .packing-toolbar,
-.packing-header-actions,
-.packing-item-actions {
+.packing-header-actions {
     display: flex;
     align-items: center;
 }
@@ -36,10 +35,14 @@
     margin: 0;
 }
 
-.packing-header-actions,
-.packing-item-actions {
+.packing-header-actions {
     gap: 10px;
 }
+
+/*.packing-item-actions {*/
+/*    gap: 4px;*/
+/*}*/
+
 .packing-toolbar {
     display: flex;
     align-items: center;
@@ -110,8 +113,8 @@
     position: relative;
     display: grid;
     align-items: center;
-    grid-template-columns: auto minmax(0, 1fr) minmax(140px, 180px) auto;
-    gap: 8px;
+    grid-template-columns: auto 18px minmax(0, 1fr) minmax(140px, 180px) auto;
+    gap: 10px;
     padding: 6px 0;
     /*border-bottom: 1px solid var(--color-gray-200);*/
 }
@@ -147,14 +150,7 @@
     bottom: -3px;
 }
 
-.packing-item-main {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.packing-item-main input {
+.packing-item-checkbox {
     flex: 0 0 18px;
     width: 18px;
     height: 18px;
@@ -163,11 +159,15 @@
     cursor: pointer;
 }
 
+.packing-item-name {
+    cursor: pointer;
+}
+
 .packing-item.packed {
     color: var(--color-gray-500);
 }
 
-.packing-item.packed .packing-item-main span {
+.packing-item.packed .packing-item-name {
     text-decoration: line-through;
 }
 
@@ -211,8 +211,41 @@
     margin: 0;
 }
 
-@media (max-width: 700px) {
-    .packing-title,
+@media (max-width: 1250px) {
+    .packing-lists {
+        gap: 48px;
+    }
+
+    .packing-item {
+        grid-template-columns: auto 18px minmax(0, 1fr) auto;
+        column-gap: 10px;
+        row-gap: 2px;
+    }
+
+    .packing-drag-handle,
+    .packing-item-checkbox {
+        grid-row: 1 / span 2;
+        align-self: center;
+    }
+
+    .packing-item-name {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .packing-category {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    .packing-item .item-actions {
+        grid-column: 4;
+        grid-row: 1 / span 2;
+        align-self: center;
+    }
+}
+
+@media (max-width: 760px) {
     .packing-toolbar,
     .packing-setup-actions {
         align-items: flex-start;
@@ -220,23 +253,10 @@
     }
 
     .packing-header-actions {
-        align-items: flex-end;
-        flex-direction: column;
+        align-items: center;
     }
+
     .packing-lists {
         grid-template-columns: 1fr;
-    }
-
-    .packing-item {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-    }
-
-    .packing-category {
-        grid-column: 2;
-    }
-
-    .packing-item-actions {
-        grid-column: 3;
-        grid-row: 1 / span 2;
     }
 }

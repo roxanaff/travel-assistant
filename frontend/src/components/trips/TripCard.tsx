@@ -1,39 +1,27 @@
 import { Link } from "react-router-dom";
-import { MoreHorizontal } from "lucide-react";
-import { useRef } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { formatDateRange, formatMoney } from "../../utils/format";
 import { formatTripType } from "../../utils/tripType";
-import { useDismissibleMenu } from "../../utils/useDismissibleMenu";
 import type { Trip } from "../../types/trip";
 
 type Props = {
     trip: Trip;
-    isMenuOpen: boolean;
     isDeleting: boolean;
-    onToggleMenu: () => void;
     onEdit: () => void;
     onDelete: () => void;
 };
 /** Displays one trip on the dashboard and delegates edit/delete actions to its parent. */
-export function TripCard({
-    trip,
-    isMenuOpen,
-    isDeleting,
-    onToggleMenu,
-    onEdit,
-    onDelete,
-}: Props) {
-    const menuRef = useRef<HTMLDivElement>(null);
+export function TripCard({ trip, isDeleting, onEdit, onDelete }: Props) {
     const prompts = [
         !trip.destination && "Destination not set",
         (!trip.startDate || !trip.endDate) && "Dates not set",
     ].filter(Boolean);
-    useDismissibleMenu(isMenuOpen, menuRef, onToggleMenu);
+
     return (
         <article
             className={`trip-card ${trip.status === "Past" ? "trip-card-past" : ""}`}
         >
-            <div>
+            <div className="trip-card-summary">
                 <div className="card-topline">
                     <span className="status-pill">{trip.status}</span>
                 </div>
@@ -53,55 +41,45 @@ export function TripCard({
                         </p>
                     )}
                 </Link>
-                {trip.budget !== null && (
-                    <div className="budget-row">
-                        <span>Target budget</span>
-                        <strong>
-                            {formatMoney(trip.budget, trip.currency)}
-                        </strong>
-                    </div>
-                )}
-                {prompts.length > 0 && (
-                    <div className="draft-prompts">
-                        {prompts.map((prompt) => (
-                            <span key={String(prompt)}>{prompt}</span>
-                        ))}
-                    </div>
-                )}
-                {trip.note && (
-                    <div className="trip-note-preview">
-                        <span className="trip-note-label">Notes</span>
-                        <p className="trip-note">{trip.note}</p>
-                    </div>
-                )}
             </div>
-            <div className="card-menu" ref={menuRef}>
+            <div className="trip-card-actions" aria-label={`Actions for ${trip.name}`}>
+                <button
+                    className="icon-button danger-button"
+                    type="button"
+                    onClick={onDelete}
+                    aria-label={`Delete ${trip.name}`}
+                    disabled={isDeleting}
+                >
+                    <Trash2 size={20} />
+                </button>
                 <button
                     className="icon-button"
                     type="button"
-                    onClick={onToggleMenu}
-                    aria-label={`Actions for ${trip.name}`}
-                    aria-expanded={isMenuOpen}
-                    aria-haspopup="menu"
-                    data-menu-trigger
+                    onClick={onEdit}
+                    aria-label={`Edit ${trip.name}`}
                 >
-                    <MoreHorizontal size={18} />
+                    <Pencil size={20} />
                 </button>
-                {isMenuOpen && (
-                    <div className="action-menu-popover">
-                        <button type="button" onClick={onEdit}>
-                            Edit
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onDelete}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? "Deleting…" : "Delete"}
-                        </button>
-                    </div>
-                )}
             </div>
+            {trip.budget !== null && (
+                <div className="budget-row">
+                    <span>Target budget</span>
+                    <strong>{formatMoney(trip.budget, trip.currency)}</strong>
+                </div>
+            )}
+            {prompts.length > 0 && (
+                <div className="draft-prompts">
+                    {prompts.map((prompt) => (
+                        <span key={String(prompt)}>{prompt}</span>
+                    ))}
+                </div>
+            )}
+            {trip.note && (
+                <div className="trip-note-preview">
+                    <span className="trip-note-label">Notes</span>
+                    <p className="trip-note">{trip.note}</p>
+                </div>
+            )}
         </article>
     );
 }

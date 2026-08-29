@@ -50,7 +50,6 @@ export function TripsDashboard() {
     );
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     // Load once when the dashboard mounts; child workspaces load individual trips separately.
@@ -113,7 +112,6 @@ export function TripsDashboard() {
             setTrips((current) =>
                 current.filter((currentTrip) => currentTrip.id !== trip.id),
             );
-            setOpenMenuId(null);
         } catch {
             setActionError("Could not delete this trip. Please try again.");
         } finally {
@@ -180,16 +178,9 @@ export function TripsDashboard() {
                             <TripCard
                                 key={trip.id}
                                 trip={trip}
-                                isMenuOpen={openMenuId === trip.id}
                                 isDeleting={deletingId === trip.id}
-                                onToggleMenu={() =>
-                                    setOpenMenuId((current) =>
-                                        current === trip.id ? null : trip.id,
-                                    )
-                                }
                                 onEdit={() => {
                                     setFormError(null);
-                                    setOpenMenuId(null);
                                     setEditingTrip(trip);
                                 }}
                                 onDelete={() => void deleteTrip(trip)}

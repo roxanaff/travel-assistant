@@ -664,8 +664,10 @@ export function PackingChecklist({
     const showSetupChoice = !trip.hasStartedPackingList && items.length === 0;
 
     /** Renders either an item row or its inline edit form. */
-    const renderItem = (item: PackingItem, sectionItems: PackingItem[]) =>
-        editingItemId === item.id ? (
+    const renderItem = (item: PackingItem, sectionItems: PackingItem[]) => {
+        const checkboxId = `packing-item-${item.id}`;
+
+        return editingItemId === item.id ? (
             <li className="packing-item-editing" key={item.id}>
                 {form(editingItem, saveEdit, true)}
             </li>
@@ -685,27 +687,25 @@ export function PackingChecklist({
                 >
                     <GripVertical size={17} aria-hidden="true" />
                 </span>
-                <label className="packing-item-main">
-                    <input
-                        type="checkbox"
-                        checked={item.isPacked}
-                        disabled={updatingItemId === item.id}
-                        onChange={() => void togglePacked(item)}
-                        aria-label={`Mark ${item.name} as ${item.isPacked ? "not packed" : "packed"}`}
-                    />
-                    <span>
-                        {item.quantity > 1 && (
-                            <strong>{item.quantity} × </strong>
-                        )}
-                        {item.name}
-                    </span>
+                <input
+                    id={checkboxId}
+                    className="packing-item-checkbox"
+                    type="checkbox"
+                    checked={item.isPacked}
+                    disabled={updatingItemId === item.id}
+                    onChange={() => void togglePacked(item)}
+                    aria-label={`Mark ${item.name} as ${item.isPacked ? "not packed" : "packed"}`}
+                />
+                <label className="packing-item-name" htmlFor={checkboxId}>
+                    {item.quantity > 1 && <strong>{item.quantity} × </strong>}
+                    {item.name}
                 </label>
                 {categoryLabel(item.category) && (
                     <span className="packing-category">
                         {categoryLabel(item.category)}
                     </span>
                 )}
-                <div className="packing-item-actions">
+                <div className="item-actions">
                     <button
                         className="icon-button"
                         type="button"
@@ -725,6 +725,7 @@ export function PackingChecklist({
                 </div>
             </li>
         );
+    };
 
     /** Switches between the user's chosen flat-list and category-grouped views. */
     const renderSectionItems = (sectionItems: PackingItem[]) => {

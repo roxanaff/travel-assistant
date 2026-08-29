@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TripForm } from "../trips/TripForm";
 import { deleteTrip, updateTrip } from "../../api/tripsApi";
 import { formatDateRange, formatMoney } from "../../utils/format";
 import { formatTripType } from "../../utils/tripType";
-import { useDismissibleMenu } from "../../utils/useDismissibleMenu";
 import { tripToFormValues, type TripRequest } from "../../types/trip";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import "./TripSetup.css";
@@ -17,16 +16,12 @@ export function TripSetup({
     setHasUnsavedForm,
 }: TripWorkspaceContext) {
     const navigate = useNavigate();
-    const [menuOpen, setMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [itineraryMessage, setItineraryMessage] = useState<string | null>(
         null,
     );
-
-    useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
 
     // An open trip form should be protected from accidental tab changes.
     useEffect(() => {
@@ -78,40 +73,23 @@ export function TripSetup({
         <section className="detail-section trip-setup">
             <div className="section-title-row">
                 <h2>Trip details</h2>
-                <div className="trip-details-menu" ref={menuRef}>
+                <div className="item-actions" aria-label="Trip actions">
                     <button
                         className="icon-button"
                         type="button"
-                        aria-label="Trip actions"
-                        aria-expanded={menuOpen}
-                        aria-haspopup="menu"
-                        data-menu-trigger
-                        onClick={() => setMenuOpen((current) => !current)}
+                        aria-label="Edit trip"
+                        onClick={() => setEditing(true)}
                     >
-                        <MoreHorizontal size={20} />
+                        <Pencil size={20} />
                     </button>
-                    {menuOpen && (
-                        <div className="action-menu-popover">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    setEditing(true);
-                                }}
-                            >
-                                Edit trip
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    void remove();
-                                }}
-                            >
-                                Delete trip
-                            </button>
-                        </div>
-                    )}
+                    <button
+                        className="icon-button danger-button"
+                        type="button"
+                        aria-label="Delete trip"
+                        onClick={() => void remove()}
+                    >
+                        <Trash2 size={20} />
+                    </button>
                 </div>
             </div>
             {error && <p className="form-error">{error}</p>}

@@ -54,7 +54,7 @@
     align-items: center;
     justify-content: end;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 4px;
 }
 .action-menu-popover {
     position: absolute;

@@ -739,7 +739,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             </p>
                         )}
                     </div>
-                    <div className="itinerary-item-actions">
+                    <div className="item-actions">
                         {hasAdditionalDetails && (
                             <button
                                 className="icon-button"

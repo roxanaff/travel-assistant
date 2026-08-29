@@ -28,4 +28,6 @@
 - Rule-based suggestions based on trip type, activities, destination, duration, and laundry access.
 - Weather-aware suggestions.
 - Live movement of surrounding rows while a packing item is dragged.
+- Improve touch drag-and-drop so an item can be dropped into its intended position without needing to move it sideways to
+  avoid the original drop target.
 - Shared and personal packing lists for group trips.

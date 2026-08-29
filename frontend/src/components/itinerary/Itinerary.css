@@ -181,11 +181,11 @@
     color: var(--color-red-500);
     font-size: 0.85rem;
 }
-.itinerary-item-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+/*.itinerary-item-actions {*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    gap: 4px;*/
+/*}*/
 .itinerary-expanded-details {
     display: grid;
     gap: 6px;
