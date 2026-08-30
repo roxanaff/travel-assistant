@@ -39,16 +39,9 @@ fully editable:
 
 The default list deliberately does not include a phone.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-No additional packing-specific behavior is currently planned for Stage 1. Cross-cutting keyboard, responsive, and manual
-verification work is recorded in [experience and quality requirements](experience-and-quality-requirements.md).
-
-## Verification
-
-- [ ] Verify Draft and dated trips, default-list creation, and starting empty.
-- [ ] Verify quantities of one and greater than one; check/uncheck behavior; progress; ordering; and grouping.
-- [ ] Verify editing, deletion, Undo expiry, API failure recovery, narrow/mobile layouts, and keyboard interaction.
+Packing implementation, responsive behavior, and manual verification are complete.
 
 ## Beyond Stage 1
 

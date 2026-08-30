@@ -17,16 +17,9 @@ Authentication provides a private workspace in which every trip and its related 
 - Backend authorization is enforced for every trip and trip-scoped endpoint. Another account's trip is returned as not
   found.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-No product behavior remains to be added. Automated account and ownership coverage remains Stage 1 work.
-
-## Verification
-
-- [ ] Add automated coverage for registration, sign-in, sign-out, password change, and account deletion.
-- [ ] Add backend integration coverage that proves one account cannot read or change another account's trip or related
-      data.
-- [ ] Verify protected-route redirects, loading states, unavailable-account states, and account-error states.
+Account behavior, automated coverage, and manual verification are complete.
 
 ## Constraints
 

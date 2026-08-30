@@ -48,17 +48,9 @@ without restoring stale expense data.
 Across both sections, each item places its name and a prominent, right-aligned amount on the first row. Applicable
 secondary information remains left-aligned below it.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-No additional budget-specific UX work is currently planned for Stage 1.
-
-## Verification
-
-- [ ] Verify named and unnamed planned costs, category totals, overall totals, unallocated money, and over-budget plans.
-- [ ] Verify trips without a target budget and that Emergency buffer is unavailable for expenses.
-- [ ] Verify uncategorised, pre-trip, dated, and undated expenses; category ordering; day grouping; and newest-first
-      ordering.
-- [ ] Verify theoretical and actual remaining independently, including Undo expiry and API failure recovery.
+Budget and expense implementation and manual verification are complete.
 
 ## Constraints
 

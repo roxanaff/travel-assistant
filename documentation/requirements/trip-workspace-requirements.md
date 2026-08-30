@@ -25,16 +25,9 @@ placing every feature on one long page.
 - Switching sections warns before an open add/edit form with unsaved changes is discarded.
 - `/trips/:id/details` remains available as a compatible Details URL.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-- Cross-cutting tab and keyboard improvements are recorded in
-  [experience and quality requirements](experience-and-quality-requirements.md).
-
-## Verification
-
-- [ ] Verify direct navigation to every workspace route and returning to the dashboard.
-- [ ] Verify the workspace with Draft, Upcoming, Ongoing, and Past trips.
-- [ ] Verify narrow/mobile navigation, keyboard tab navigation, not-found states, and API-error states.
+The workspace implementation, navigation, and manual verification are complete.
 
 ## Constraints
 

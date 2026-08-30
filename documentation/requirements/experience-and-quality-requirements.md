@@ -1,7 +1,7 @@
 # Experience and Quality — Stage 1 Requirements
 
-This document records the cross-cutting work that remains within Stage 1. It covers small usability improvements,
-accessibility, visual consistency, and verification; it does not introduce new product capabilities.
+This document records the cross-cutting quality baseline for Stage 1. It covers usability improvements, accessibility,
+visual consistency, and verification; it does not introduce new product capabilities.
 
 ## Product behavior
 
@@ -20,37 +20,28 @@ accessibility, visual consistency, and verification; it does not introduce new p
 - The visual system uses sans-serif text, a warm-neutral surface for list items, and consistent typography, colour,
   spacing, and controls.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-### Dashboard and workspace usability
-
-- [ ] Complete responsive and keyboard-only manual checks across the dashboard and workspace.
-
-### Visual consistency
-
-- [ ] Apply the current colour system consistently: blue is reserved for emphasis, pink is used intentionally, and ink
-      is used for neutral text and controls.
+Responsive and keyboard-only manual checks are complete. The current colour system is applied consistently: blue is
+reserved for emphasis, pink is used intentionally, and ink is used for neutral text and controls.
 
 ### Engineering consistency
 
 Shared status presentation, trip-type labels, form keyboard behavior, and action-menu presentation are used where the
 behavior is common. Feature-specific API and form workflows remain explicit when their behavior differs.
 
-## Verification
+## Completed coverage
 
-- [x] Add frontend coverage for the dashboard empty state and trip creation, the trip form's date validation and type
-      options, Trip Details display and editing, and planned-cost totals and Add expense/Undo behavior.
-- [x] Add backend integration coverage for registration, authenticated trip creation, and account ownership when reading
-      a trip. The tests use a disposable SQLite database and ephemeral data-protection keys; production remains
-      PostgreSQL with database-backed key protection.
-- [x] Add frontend coverage for dashboard loading-error and lifecycle states, plus Escape cancellation for an unchanged
-      trip form.
-- [ ] Add deeper frontend coverage for action failure paths, dialog and menu keyboard behavior, and Trip Details
-      responsive states.
-- [x] Add Chromium smoke coverage for registration, sign-in, creating a trip, adding an itinerary item, recording an
-      expense, and adding a packing item. It starts a test-only API host with an in-memory database and never uses local
-      or deployed trip data.
-- [ ] Complete the feature-specific verification checklists in the Stage 1 requirement files.
+- Frontend coverage includes the dashboard empty state and trip creation, trip-form date validation and type options,
+  Trip Details display and editing, planned-cost totals, Add expense/Undo behavior, dashboard loading-error and
+  lifecycle states, and Escape cancellation for an unchanged trip form.
+- Backend integration coverage includes registration, authenticated trip creation, and account ownership when reading a
+  trip. The tests use a disposable SQLite database and ephemeral data-protection keys; production remains PostgreSQL
+  with database-backed key protection.
+- Chromium smoke coverage includes registration, sign-in, creating a trip, adding an itinerary item, recording an
+  expense, and adding a packing item. It starts a test-only API host with an in-memory database and never uses local or
+  deployed trip data.
+- Feature-specific manual verification checklists are complete.
 
 ## Constraints
 

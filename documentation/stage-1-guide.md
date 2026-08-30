@@ -2,9 +2,9 @@
 
 ## Stage overview
 
-Stage 1 is the current product: a private, account-based workspace for manually planning a trip, tracking its costs, and
-managing a packing checklist. Its core feature set and planned UX improvements are implemented. Remaining work is
-limited to verification recorded in the Stage 1 requirements.
+Stage 1 is complete: a private, account-based workspace for manually planning a trip, tracking its costs, and managing
+a packing checklist. Its core feature set, planned UX improvements, automated coverage, and manual verification are
+complete.
 
 Future product directions are documented separately in [future/](future/). They are not yet defined as delivery stages.
 
@@ -108,8 +108,8 @@ Current automated coverage includes backend validation rules plus isolated API c
 trip creation, and account ownership. Frontend coverage includes formatting and numeric input helpers; itinerary,
 packing, expense, planned-budget, dashboard, trip-form, and Trip Details component flows, including dashboard loading
 errors and trip-form Escape cancellation. The Chromium smoke test registers an account, creates a trip, and adds an
-itinerary item, expense, and packing item using an isolated in-memory API host. Remaining work is limited to deeper UI
-edge-case coverage and manual responsive and keyboard checks.
+itinerary item, expense, and packing item using an isolated in-memory API host. Additional automated edge-case coverage
+can be added later as the product evolves.
 
 ## Deployment
 

@@ -36,17 +36,9 @@ The itinerary is a manual, ordered activity plan for one trip. It supports both 
 - When trip dates move without shortening the trip, scheduled activities shift by the same number of days. Activities
   outside a shortened trip become unscheduled.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-Form focus and keyboard behavior are recorded in
-[experience and quality requirements](experience-and-quality-requirements.md).
-
-## Verification
-
-- [ ] Verify Draft, Upcoming, Ongoing, and Past trips.
-- [ ] Verify unscheduled, dated untimed, and timed activities with and without duration.
-- [ ] Verify opening hours that close the next day and both opening-hours warnings.
-- [ ] Verify trip-date shifts, trip shortening, Undo expiry, and API failure recovery.
+The itinerary implementation, keyboard behavior, and manual verification are complete.
 
 ## Constraints
 

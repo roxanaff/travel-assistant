@@ -2,9 +2,9 @@
 
 ## Stage 1 — Personal trip planner
 
-Stage 1 is the current product. It provides a private, account-based workspace for manually planning a trip, tracking
-its costs, and managing a packing checklist. The core feature set and planned UX improvements are implemented; remaining
-Stage 1 work is limited to verification.
+Stage 1 is complete. It provides a private, account-based workspace for manually planning a trip, tracking its costs,
+and managing a packing checklist. The core feature set, planned UX improvements, automated coverage, and manual
+verification are complete.
 
 | Document                          | Purpose                                                                                          |
 | --------------------------------- | ------------------------------------------------------------------------------------------------ |

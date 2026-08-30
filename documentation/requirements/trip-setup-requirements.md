@@ -16,15 +16,9 @@ Trip setup creates and updates the information that defines a trip and its lifec
   Skiing & winter sports; Road trip; Camping; Cabin stay; Cruise; All-inclusive resort; Festival / event; Work trip;
   Visiting friends & family; and Other.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-No additional trip-details UX work is currently planned for Stage 1.
-
-## Verification
-
-- [ ] Verify create and edit states with Draft, Upcoming, Ongoing, and Past trips.
-- [ ] Verify field labels, required markers, date validation, keyboard behavior, and responsive layouts.
-- [ ] Verify selected trip types persist and display correctly.
+Trip-details implementation and manual verification are complete.
 
 ## Constraints
 

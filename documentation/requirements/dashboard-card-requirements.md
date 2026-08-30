@@ -19,17 +19,9 @@ The dashboard provides an account-level view of trips and the entry point to eac
 - Editing replaces the selected card with its form in the same grid position; cancelling restores the card.
 - Delete failures leave the dashboard visible and report the failed action.
 
-## Open Stage 1 work
+## Stage 1 completion
 
-The remaining card layout, in-place edit, keyboard, and responsive improvements are recorded in
-[experience and quality requirements](experience-and-quality-requirements.md).
-
-## Verification
-
-- [ ] Verify one card for each lifecycle status and a Draft with no optional fields.
-- [ ] Verify one-, two-, and three-or-more-card layouts at desktop and responsive widths.
-- [ ] Verify that card editing replaces the same card and that cancelling restores it in the original position.
-- [ ] Verify long names and notes, card navigation, action buttons, and edit/delete failure states.
+The dashboard implementation and its manual verification are complete.
 
 ## Beyond Stage 1
 
