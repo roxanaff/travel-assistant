@@ -1,14 +1,9 @@
-import { Link, NavLink, Outlet, useParams } from "react-router-dom";
-import {
-    useEffect,
-    useState,
-    type Dispatch,
-    type MouseEvent,
-    type SetStateAction,
-} from "react";
+import { Link, NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
 import { getTrip } from "../api/tripsApi";
 import { formatDateRange } from "../utils/format";
 import type { Trip } from "../types/trip";
+import { ConfirmDialog } from "../components/shared/ConfirmDialog";
 import "./Workspace.css";
 
 /** Data shared by every section nested inside one trip workspace. */
@@ -24,9 +19,11 @@ export type TripWorkspaceContext = {
  */
 export function TripWorkspace() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [trip, setTrip] = useState<Trip | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [hasUnsavedForm, setHasUnsavedForm] = useState(false);
+    const [pendingSectionPath, setPendingSectionPath] = useState<string | null>(null);
 
     // The workspace is responsible for loading the trip.
     useEffect(() => {
@@ -70,19 +67,25 @@ export function TripWorkspace() {
             </section>
         );
 
-    // Draft trips can be useful before every setup field has been entered.
+    // Draft trips can be useful before every detail has been entered.
     const prompts = [
         !trip.destination && "Destination not set",
         (!trip.startDate || !trip.endDate) && "Dates not set",
     ].filter(Boolean);
 
     const confirmSectionChange = (event: MouseEvent<HTMLAnchorElement>) => {
-        if (
-            hasUnsavedForm &&
-            !window.confirm("Discard your unsaved changes and switch sections?")
-        ) {
-            event.preventDefault();
-        }
+        if (!hasUnsavedForm) return;
+
+        event.preventDefault();
+        setPendingSectionPath(new URL(event.currentTarget.href).pathname);
+    };
+
+    const discardChangesAndSwitchSection = () => {
+        if (!pendingSectionPath) return;
+
+        setHasUnsavedForm(false);
+        navigate(pendingSectionPath);
+        setPendingSectionPath(null);
     };
 
     return (
@@ -97,45 +100,27 @@ export function TripWorkspace() {
                 <div className="workspace-meta">
                     <span className="status-pill">{trip.status}</span>
                     {trip.startDate && trip.endDate && (
-                        <p className="trip-dates">
-                            {formatDateRange(trip.startDate, trip.endDate)}
-                        </p>
+                        <p className="trip-dates">{formatDateRange(trip.startDate, trip.endDate)}</p>
                     )}
-                    {trip.destination && (
-                        <p className="workspace-destination">
-                            {trip.destination}
-                        </p>
-                    )}
-                    {prompts.length > 0 && (
-                        <p className="draft-prompt">{prompts.join(" · ")}</p>
-                    )}
+                    {trip.destination && <p className="workspace-destination">{trip.destination}</p>}
+                    {prompts.length > 0 && <p className="draft-prompt">{prompts.join(" · ")}</p>}
                 </div>
             </header>
             <nav className="workspace-tabs" aria-label="Trip sections">
                 {/* Do not silently discard a currently open Add/Edit form when changing tabs. */}
-                <NavLink
-                    end
-                    to={`/trips/${trip.id}`}
-                    onClick={confirmSectionChange}
-                >
+                <NavLink end to={`/trips/${trip.id}`} onClick={confirmSectionChange}>
                     Details
                 </NavLink>
-                <NavLink
-                    to={`/trips/${trip.id}/itinerary`}
-                    onClick={confirmSectionChange}
-                >
+                <NavLink to={`/trips/${trip.id}/itinerary`} onClick={confirmSectionChange}>
                     Itinerary
                 </NavLink>
-                <NavLink
-                    to={`/trips/${trip.id}/budget`}
-                    onClick={confirmSectionChange}
-                >
+                <NavLink to={`/trips/${trip.id}/budget`} onClick={confirmSectionChange}>
                     Budget &amp; expenses
                 </NavLink>
-                <NavLink
-                    to={`/trips/${trip.id}/packing`}
-                    onClick={confirmSectionChange}
-                >
+                <NavLink to={`/trips/${trip.id}/todo`} onClick={confirmSectionChange}>
+                    To-do
+                </NavLink>
+                <NavLink to={`/trips/${trip.id}/packing`} onClick={confirmSectionChange}>
                     Packing
                 </NavLink>
             </nav>
@@ -148,6 +133,15 @@ export function TripWorkspace() {
                     } satisfies TripWorkspaceContext
                 }
             />
+            <ConfirmDialog
+                isOpen={pendingSectionPath !== null}
+                title="Discard unsaved changes?"
+                confirmLabel="Discard changes"
+                onCancel={() => setPendingSectionPath(null)}
+                onConfirm={discardChangesAndSwitchSection}
+            >
+                <p>Your current changes will be lost if you switch sections.</p>
+            </ConfirmDialog>
         </section>
     );
 }

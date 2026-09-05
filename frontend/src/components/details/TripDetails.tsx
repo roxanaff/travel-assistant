@@ -5,23 +5,21 @@ import { TripForm } from "../trips/TripForm";
 import { deleteTrip, updateTrip } from "../../api/tripsApi";
 import { formatDateRange, formatMoney } from "../../utils/format";
 import { formatTripType } from "../../utils/tripType";
+import { SectionCard } from "../shared/SectionCard";
+import { SectionHeader } from "../shared/SectionHeader";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { tripToFormValues, type TripRequest } from "../../types/trip";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
-import "./TripSetup.css";
+import "./TripDetails.css";
 
-/** Displays the complete trip setup and provides the edit/delete actions. */
-export function TripSetup({
-    trip,
-    setTrip,
-    setHasUnsavedForm,
-}: TripWorkspaceContext) {
+/** Displays the complete trip details and provides the edit/delete actions. */
+export function TripDetails({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
     const navigate = useNavigate();
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [itineraryMessage, setItineraryMessage] = useState<string | null>(
-        null,
-    );
+    const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
+    const [isConfirmingDeletion, setIsConfirmingDeletion] = useState(false);
 
     // An open trip form should be protected from accidental tab changes.
     useEffect(() => {
@@ -45,20 +43,13 @@ export function TripSetup({
             }
             setEditing(false);
         } catch (exception) {
-            setError(
-                exception instanceof Error && exception.message
-                    ? exception.message
-                    : "Could not save this trip.",
-            );
+            setError(exception instanceof Error && exception.message ? exception.message : "Could not save this trip.");
         } finally {
             setSaving(false);
         }
     };
     /** Deletes the current trip, then returns the user to the dashboard. */
     const remove = async () => {
-        if (!window.confirm(`Delete “${trip.name}”? This cannot be undone.`))
-            return;
-
         setError(null);
 
         try {
@@ -70,32 +61,32 @@ export function TripSetup({
     };
 
     return (
-        <section className="detail-section trip-setup">
-            <div className="section-title-row">
-                <h2>Trip details</h2>
-                <div className="item-actions" aria-label="Trip actions">
-                    <button
-                        className="icon-button"
-                        type="button"
-                        aria-label="Edit trip"
-                        onClick={() => setEditing(true)}
-                    >
-                        <Pencil size={20} />
-                    </button>
-                    <button
-                        className="icon-button danger-button"
-                        type="button"
-                        aria-label="Delete trip"
-                        onClick={() => void remove()}
-                    >
-                        <Trash2 size={20} />
-                    </button>
-                </div>
-            </div>
+        <SectionCard className="trip-details">
+            <SectionHeader
+                title="Trip details"
+                actions={
+                    <div className="item-actions" aria-label="Trip actions">
+                        <button
+                            className="icon-button"
+                            type="button"
+                            aria-label="Edit trip"
+                            onClick={() => setEditing(true)}
+                        >
+                            <Pencil size={20} />
+                        </button>
+                        <button
+                            className="icon-button danger-button"
+                            type="button"
+                            aria-label="Delete trip"
+                            onClick={() => setIsConfirmingDeletion(true)}
+                        >
+                            <Trash2 size={20} />
+                        </button>
+                    </div>
+                }
+            />
             {error && <p className="form-error">{error}</p>}
-            {itineraryMessage && (
-                <p className="detail-message">{itineraryMessage}</p>
-            )}
+            {itineraryMessage && <p className="detail-message">{itineraryMessage}</p>}
             {editing ? (
                 <TripForm
                     heading="Edit trip"
@@ -107,7 +98,7 @@ export function TripSetup({
                     onSubmit={save}
                 />
             ) : (
-                <dl className="trip-setup-list">
+                <dl className="trip-details-list">
                     <div>
                         <dt>Destination</dt>
                         <dd>{trip.destination ?? "Not set"}</dd>
@@ -115,9 +106,7 @@ export function TripSetup({
                     <div>
                         <dt>Dates</dt>
                         <dd>
-                            {trip.startDate && trip.endDate
-                                ? formatDateRange(trip.startDate, trip.endDate)
-                                : "Not set"}
+                            {trip.startDate && trip.endDate ? formatDateRange(trip.startDate, trip.endDate) : "Not set"}
                         </dd>
                     </div>
                     <div>
@@ -126,20 +115,26 @@ export function TripSetup({
                     </div>
                     <div>
                         <dt>Target budget</dt>
-                        <dd>
-                            {trip.budget == null
-                                ? "Not set"
-                                : formatMoney(trip.budget, trip.currency)}
-                        </dd>
+                        <dd>{trip.budget == null ? "Not set" : formatMoney(trip.budget, trip.currency)}</dd>
                     </div>
                     <div>
                         <dt>Notes</dt>
-                        <dd className="trip-setup-note">
-                            {trip.note ?? "No notes"}
-                        </dd>
+                        <dd className="trip-details-note">{trip.note ?? "No notes"}</dd>
                     </div>
                 </dl>
             )}
-        </section>
+            <ConfirmDialog
+                isOpen={isConfirmingDeletion}
+                title="Delete trip?"
+                confirmLabel="Delete trip"
+                onCancel={() => setIsConfirmingDeletion(false)}
+                onConfirm={() => {
+                    setIsConfirmingDeletion(false);
+                    void remove();
+                }}
+            >
+                <p>Delete “{trip.name}”? This cannot be undone.</p>
+            </ConfirmDialog>
+        </SectionCard>
     );
 }

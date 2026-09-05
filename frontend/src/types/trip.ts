@@ -12,6 +12,8 @@ export type Trip = {
     currency: string;
     note: string | null;
     hasStartedPackingList: boolean;
+    hasStartedTodoList: boolean;
+    hasPendingTodoDeadlineReview: boolean;
     createdAtUtc: string;
     status: TripStatus;
     unscheduledActivityCount: number;

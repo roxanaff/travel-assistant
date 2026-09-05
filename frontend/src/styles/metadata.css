@@ -1,0 +1,13 @@
+.item-metadata {
+    display: grid;
+    gap: 2px;
+    color: var(--color-gray-500);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.item-metadata-label,
+.item-metadata-detail {
+    color: var(--color-gray-500);
+    font-size: 0.85rem;
+}

@@ -1,0 +1,71 @@
+.field-label {
+    display: flex;
+    gap: 4px;
+    font-weight: 400;
+}
+
+.field-label-required {
+    font-weight: 700;
+}
+
+.field-label-required::after {
+    content: "*";
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.form-row > label {
+    flex: 1;
+    min-width: 0;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    gap: 12px;
+}
+
+.form-surface {
+    display: grid;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 12px;
+    background: var(--color-white);
+}
+
+.form-surface label {
+    display: grid;
+    gap: 7px;
+    color: var(--color-blue-700);
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.form-surface input,
+.form-surface select,
+.form-surface textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 9px;
+    background: var(--color-white);
+    color: var(--color-ink);
+    font: inherit;
+    font-weight: 400;
+}
+
+.form-surface textarea {
+    resize: vertical;
+}
+
+@media (max-width: 700px) {
+    .form-row {
+        flex-direction: column;
+    }
+}

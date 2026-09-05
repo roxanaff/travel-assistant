@@ -1,0 +1,37 @@
+.form-error {
+    margin: 0;
+    color: var(--color-red-500);
+}
+
+.detail-message {
+    margin: 20px 0 0;
+}
+
+.undo-toast {
+    position: fixed;
+    z-index: 10;
+    bottom: 24px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: min(360px, calc(100vw - 32px));
+    padding: 14px 18px;
+    border: 1px solid var(--color-blue-700);
+    border-radius: 12px;
+    background: var(--color-blue-700);
+    color: var(--color-white);
+    box-shadow: 0 12px 30px rgba(23, 33, 43, 0.22);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transform: translateX(-50%);
+}
+
+.undo-toast strong {
+    margin-left: auto;
+}
+
+.trip-dates {
+    color: var(--color-gray-500);
+}

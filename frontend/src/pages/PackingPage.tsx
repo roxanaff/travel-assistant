@@ -10,5 +10,5 @@ import type { TripWorkspaceContext } from "./Workspace";
 export function TripPackingPage() {
     const workspace = useOutletContext<TripWorkspaceContext>();
 
-    return <PackingChecklist {...workspace} />;
+    return <PackingChecklist key={workspace.trip.id} {...workspace} />;
 }

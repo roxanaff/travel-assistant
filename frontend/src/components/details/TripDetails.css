@@ -1,35 +1,29 @@
 /* Detail display and visible trip actions. */
-.trip-setup-list {
+.trip-details-list {
     display: grid;
     gap: 16px;
     margin: 24px 0 0;
 }
-.trip-setup-list div {
+.trip-details-list div {
     display: grid;
     grid-template-columns: minmax(130px, 160px) minmax(0, 1fr);
     align-items: baseline;
     gap: 16px;
 }
-.trip-setup-list dt {
+.trip-details-list dt {
     color: var(--color-blue-500);
     font-size: 1rem;
     font-weight: bold;
 }
-.trip-setup-list dd {
+.trip-details-list dd {
     margin: 0;
     color: var(--color-ink);
 }
-.trip-setup-note {
+.trip-details-note {
     white-space: pre-wrap;
 }
-/*.trip-details-actions {*/
-/*    display: flex;*/
-/*    align-items: center;*/
-/*    gap: 4px;*/
-/*    margin-left: auto;*/
-/*}*/
 @media (max-width: 600px) {
-    .trip-setup-list div {
+    .trip-details-list div {
         grid-template-columns: 1fr;
         gap: 4px;
     }

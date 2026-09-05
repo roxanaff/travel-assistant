@@ -1,0 +1,25 @@
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.section-header-title,
+.section-header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.section-header-title {
+    gap: 12px;
+}
+
+.section-header-title h2,
+.section-header-title h3 {
+    margin: 0;
+}
+
+.section-header-actions {
+    gap: 10px;
+}

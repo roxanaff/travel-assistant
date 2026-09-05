@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-import {
-    createExpense,
-    deleteExpense as deleteExpenseApi,
-    getExpenses,
-    updateExpense,
-} from "../../api/expensesApi";
+import { createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense } from "../../api/expensesApi";
 import type { Expense, NewExpenseForm } from "../../types/expense";
 import { formatDate, formatMoney } from "../../utils/format";
+import { SectionCard } from "../shared/SectionCard";
+import { SectionHeader } from "../shared/SectionHeader";
+import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
+import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { GroupHeading } from "../shared/GroupHeading";
+import { GroupingControl } from "../shared/GroupingControl";
+import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import type { Trip } from "../../types/trip";
@@ -66,15 +68,13 @@ const createEmptyExpenseForm = (): NewExpenseForm => ({
 });
 
 const getExpenseCategoryLabel = (category: string | null) =>
-    expenseCategories.find((option) => option.value === category)?.label ??
-    "Uncategorised";
+    expenseCategories.find((option) => option.value === category)?.label ?? "Uncategorised";
 
 /** Sorts dated expenses newest first, with undated entries after them. */
 const sortExpenses = (expenses: Expense[]) =>
     [...expenses].sort(
         (first, second) =>
-            Number(Boolean(second.expenseDate)) -
-                Number(Boolean(first.expenseDate)) ||
+            Number(Boolean(second.expenseDate)) - Number(Boolean(first.expenseDate)) ||
             (second.expenseDate ?? "").localeCompare(first.expenseDate ?? "") ||
             first.createdAtUtc.localeCompare(second.createdAtUtc),
     );
@@ -83,11 +83,7 @@ const sortExpenses = (expenses: Expense[]) =>
  * Manages actual expenses, including inline edits, grouping, and a five-second deletion Undo window.
  * It reloads when PlannedBudget converts an estimated cost into an expense.
  */
-export function ExpenseTracking({
-    trip,
-    onFormOpenChange,
-    refreshKey,
-}: ExpenseTrackingProps) {
+export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -95,17 +91,10 @@ export function ExpenseTracking({
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [newExpense, setNewExpense] = useState<NewExpenseForm>(
-        createEmptyExpenseForm(),
-    );
-    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(
-        null,
-    );
-    const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(
-        createEmptyExpenseForm(),
-    );
-    const [pendingDeletion, setPendingDeletion] =
-        useState<PendingDeletion | null>(null);
+    const [newExpense, setNewExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
+    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+    const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
+    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [grouping, setGrouping] = useState<ExpenseGrouping>("category");
     const deleteTimerRef = useRef<number | null>(null);
 
@@ -128,11 +117,7 @@ export function ExpenseTracking({
         void loadExpenses();
     }, [refreshKey, trip.id]);
 
-    const updateForm = (
-        field: keyof NewExpenseForm,
-        value: string,
-        editing = false,
-    ) => {
+    const updateForm = (field: keyof NewExpenseForm, value: string, editing = false) => {
         if (field === "amount") {
             const normalized = normalizeMoneyInput(value);
             if (normalized === null) return;
@@ -157,8 +142,7 @@ export function ExpenseTracking({
     });
 
     const validate = (expense: NewExpenseForm) => {
-        if (!expense.amount || Number(expense.amount) <= 0)
-            return "Enter an amount greater than zero.";
+        if (!expense.amount || Number(expense.amount) <= 0) return "Enter an amount greater than zero.";
         return null;
     };
 
@@ -178,10 +162,8 @@ export function ExpenseTracking({
         if (editingExpenseId !== null) setEditingExpenseId(null);
         else cancelAdding();
     };
-    const { formRef, onFormKeyDown, cancelForm } = useFormKeyboardInteraction(
-        isAdding || editingExpenseId !== null,
-        cancelOpenForm,
-    );
+    const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
+        useFormKeyboardInteraction(isAdding || editingExpenseId !== null, cancelOpenForm);
 
     const saveNewExpense = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -200,9 +182,7 @@ export function ExpenseTracking({
             setIsAdding(false);
         } catch (exception) {
             setFormError(
-                exception instanceof Error && exception.message
-                    ? exception.message
-                    : "Could not save this expense.",
+                exception instanceof Error && exception.message ? exception.message : "Could not save this expense.",
             );
         } finally {
             setIsSaving(false);
@@ -234,22 +214,12 @@ export function ExpenseTracking({
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updateExpense(
-                trip.id,
-                editingExpenseId,
-                toRequest(editingExpense),
-            );
-            setExpenses((current) =>
-                current.map((expense) =>
-                    expense.id === updated.id ? updated : expense,
-                ),
-            );
+            const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense));
+            setExpenses((current) => current.map((expense) => (expense.id === updated.id ? updated : expense)));
             setEditingExpenseId(null);
         } catch (exception) {
             setFormError(
-                exception instanceof Error && exception.message
-                    ? exception.message
-                    : "Could not save these changes.",
+                exception instanceof Error && exception.message ? exception.message : "Could not save these changes.",
             );
         } finally {
             setIsSaving(false);
@@ -268,9 +238,7 @@ export function ExpenseTracking({
             setExpenses((current) => [...current, expense]);
             setActionError("Could not delete this expense. It was restored.");
         } finally {
-            setPendingDeletion((current) =>
-                current?.item.id === expense.id ? null : current,
-            );
+            setPendingDeletion((current) => (current?.item.id === expense.id ? null : current));
         }
     };
 
@@ -278,14 +246,11 @@ export function ExpenseTracking({
     const deleteExpense = (expense: Expense) => {
         setActionError(null);
         if (pendingDeletion) {
-            if (deleteTimerRef.current !== null)
-                window.clearTimeout(deleteTimerRef.current);
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
             void commitDelete(pendingDeletion.item);
         }
 
-        setExpenses((current) =>
-            current.filter((item) => item.id !== expense.id),
-        );
+        setExpenses((current) => current.filter((item) => item.id !== expense.id));
         setPendingDeletion({ item: expense });
         deleteTimerRef.current = window.setTimeout(() => {
             void commitDelete(expense);
@@ -295,8 +260,7 @@ export function ExpenseTracking({
 
     const undoDelete = () => {
         if (!pendingDeletion) return;
-        if (deleteTimerRef.current !== null)
-            window.clearTimeout(deleteTimerRef.current);
+        if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
         setExpenses((current) => [...current, pendingDeletion.item]);
         setPendingDeletion(null);
         deleteTimerRef.current = null;
@@ -308,30 +272,21 @@ export function ExpenseTracking({
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (
-        <form
-            ref={formRef}
-            className="budget-item-form form-surface"
-            onKeyDown={onFormKeyDown}
-            onSubmit={submit}
-        >
+        <FormSurface formRef={formRef} className="budget-item-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
             <label>
-                <span className="field-label">What did you pay for?</span>
+                <FieldLabel>What did you pay for?</FieldLabel>
                 <input
                     value={expense.name}
-                    onChange={(event) =>
-                        updateForm("name", event.target.value, editing)
-                    }
+                    onChange={(event) => updateForm("name", event.target.value, editing)}
                     placeholder="e.g. Hotel"
                 />
             </label>
-            <div className="form-row">
+            <FieldRow>
                 <label>
-                    <span className="field-label">Category</span>
+                    <FieldLabel>Category</FieldLabel>
                     <select
                         value={expense.category}
-                        onChange={(event) =>
-                            updateForm("category", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("category", event.target.value, editing)}
                     >
                         <option value="">Not specified</option>
                         {expenseCategories.map((category) => (
@@ -342,106 +297,70 @@ export function ExpenseTracking({
                     </select>
                 </label>
                 <label>
-                    <span className="field-label field-label-required">
-                        Amount ({trip.currency})
-                    </span>
+                    <FieldLabel required>Amount ({trip.currency})</FieldLabel>
                     <input
                         type="text"
                         inputMode="decimal"
                         value={expense.amount}
-                        onChange={(event) =>
-                            updateForm("amount", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("amount", event.target.value, editing)}
                         required
                     />
                 </label>
                 <label>
-                    <span className="field-label">Date</span>
+                    <FieldLabel>Date</FieldLabel>
                     <input
                         type="date"
                         value={expense.expenseDate}
-                        onChange={(event) =>
-                            updateForm(
-                                "expenseDate",
-                                event.target.value,
-                                editing,
-                            )
-                        }
+                        onChange={(event) => updateForm("expenseDate", event.target.value, editing)}
                     />
                 </label>
-            </div>
+            </FieldRow>
             {formError && <p className="form-error">{formError}</p>}
-            <div className="form-actions">
-                <button
-                    className="text-button"
-                    type="button"
-                    onClick={cancelForm}
-                >
+            <FormActions>
+                <button className="text-button" type="button" onClick={cancelForm}>
                     Cancel
                 </button>
-                <button
-                    className="primary-button"
-                    type="submit"
-                    disabled={isSaving}
-                >
+                <button className="primary-button" type="submit" disabled={isSaving}>
                     {isSaving ? "Saving…" : editing ? "Save changes" : "Save"}
                 </button>
-            </div>
-        </form>
+            </FormActions>
+        </FormSurface>
     );
 
-    const actualSpending = expenses.reduce(
-        (total, expense) => total + expense.amount,
-        0,
-    );
-    const actualRemaining =
-        trip.budget === null ? null : trip.budget - actualSpending;
+    const actualSpending = expenses.reduce((total, expense) => total + expense.amount, 0);
+    const actualRemaining = trip.budget === null ? null : trip.budget - actualSpending;
 
     const categoryGroups: ExpenseGroup[] = [
         ...expenseCategories.map((category) => ({
             label: category.label,
             category: category.value,
             date: null,
-            expenses: sortExpenses(
-                expenses.filter(
-                    (expense) => expense.category === category.value,
-                ),
-            ),
+            expenses: sortExpenses(expenses.filter((expense) => expense.category === category.value)),
         })),
         {
             label: "Uncategorised",
             category: null,
             date: null,
-            expenses: sortExpenses(
-                expenses.filter((expense) => expense.category === null),
-            ),
+            expenses: sortExpenses(expenses.filter((expense) => expense.category === null)),
         },
     ].filter((group) => group.expenses.length > 0);
 
     const dayGroups: ExpenseGroup[] = [
         ...Array.from(
-            new Set(
-                expenses
-                    .map((expense) => expense.expenseDate)
-                    .filter((date): date is string => date !== null),
-            ),
+            new Set(expenses.map((expense) => expense.expenseDate).filter((date): date is string => date !== null)),
         )
             .sort((first, second) => second.localeCompare(first))
             .map((date) => ({
                 label: formatDate(date),
                 date,
                 category: null,
-                expenses: sortExpenses(
-                    expenses.filter((expense) => expense.expenseDate === date),
-                ),
+                expenses: sortExpenses(expenses.filter((expense) => expense.expenseDate === date)),
             })),
         {
             label: "Undated",
             date: null,
             category: null,
-            expenses: sortExpenses(
-                expenses.filter((expense) => expense.expenseDate === null),
-            ),
+            expenses: sortExpenses(expenses.filter((expense) => expense.expenseDate === null)),
         },
     ].filter((group) => group.expenses.length > 0);
 
@@ -460,198 +379,116 @@ export function ExpenseTracking({
                 ];
 
     return (
-        <section className="detail-section budget-section">
-            <div className="section-title-row">
-                <h3>Expenses</h3>
-                <div className="expense-header-actions">
-                    <button
-                        className="primary-button"
-                        type="button"
-                        onClick={() => startAdding()}
-                    >
+        <SectionCard className="budget-section">
+            <SectionHeader
+                title="Expenses"
+                headingLevel={3}
+                actions={
+                    <button className="primary-button" type="button" onClick={() => startAdding()}>
                         Add expense
                     </button>
-                </div>
-            </div>
+                }
+            />
             <div className="section-overview">
                 <div>
                     <span>Target budget</span>
-                    <strong>
-                        {trip.budget === null
-                            ? "Not set"
-                            : formatMoney(trip.budget, trip.currency)}
-                    </strong>
+                    <strong>{trip.budget === null ? "Not set" : formatMoney(trip.budget, trip.currency)}</strong>
                 </div>
                 <div>
                     <span>Total spent</span>
-                    <strong>
-                        {formatMoney(actualSpending, trip.currency)}
-                    </strong>
+                    <strong>{formatMoney(actualSpending, trip.currency)}</strong>
                 </div>
                 {actualRemaining !== null && (
                     <div className={actualRemaining < 0 ? "over-budget" : ""}>
-                        <span>
-                            {actualRemaining < 0
-                                ? "Over budget"
-                                : "Actual remaining"}
-                        </span>
-                        <strong>
-                            {formatMoney(
-                                Math.abs(actualRemaining),
-                                trip.currency,
-                            )}
-                        </strong>
+                        <span>{actualRemaining < 0 ? "Over budget" : "Actual remaining"}</span>
+                        <strong>{formatMoney(Math.abs(actualRemaining), trip.currency)}</strong>
                     </div>
                 )}
             </div>
             <div className="expense-grouping-control">
-                <label>
-                    <span>Group by</span>
-                    <select
-                        value={grouping}
-                        onChange={(event) =>
-                            setGrouping(event.target.value as ExpenseGrouping)
-                        }
-                    >
-                        <option value="none">Ungrouped</option>
-                        <option value="category">Category</option>
-                        <option value="date">Date</option>
-                    </select>
-                </label>
+                <GroupingControl value={grouping} onChange={setGrouping}>
+                    <option value="none">Ungrouped</option>
+                    <option value="category">Category</option>
+                    <option value="date">Date</option>
+                </GroupingControl>
             </div>
             {isAdding && form(newExpense, saveNewExpense)}
             {isLoading && <p className="detail-message">Loading expenses…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
-            {actionError && (
-                <p className="detail-message form-error">{actionError}</p>
-            )}
-            {pendingDeletion && (
-                <button
-                    className="undo-toast"
-                    type="button"
-                    onClick={undoDelete}
-                >
-                    <span>Expense deleted.</span>
-                    <strong>Undo</strong>
-                </button>
-            )}
-            {!isLoading && !error && expenses.length === 0 && (
-                <p className="detail-message">No expenses yet.</p>
-            )}
+            {actionError && <p className="detail-message form-error">{actionError}</p>}
+            {pendingDeletion && <UndoToast message="Expense deleted." onUndo={undoDelete} />}
+            {!isLoading && !error && expenses.length === 0 && <p className="detail-message">No expenses yet.</p>}
             {!isLoading &&
                 !error &&
                 groups.map((group) => {
-                    const subtotal = group.expenses.reduce(
-                        (total, expense) => total + expense.amount,
-                        0,
-                    );
+                    const subtotal = group.expenses.reduce((total, expense) => total + expense.amount, 0);
                     return (
                         <section className="budget-category" key={group.label}>
                             {grouping !== "none" && (
-                                <div className="budget-category-heading">
-                                    <div className="budget-category-title">
-                                        <h4>{group.label}</h4>
-                                        {(grouping === "category" ||
-                                            grouping === "date") && (
+                                <GroupHeading
+                                    title={group.label}
+                                    actions={
+                                        (grouping === "category" || grouping === "date") && (
                                             <button
                                                 className="icon-button"
                                                 type="button"
                                                 onClick={() =>
                                                     startAdding({
-                                                        category:
-                                                            grouping ===
-                                                            "category"
-                                                                ? (group.category ??
-                                                                  "")
-                                                                : "",
+                                                        category: grouping === "category" ? (group.category ?? "") : "",
                                                         expenseDate:
-                                                            grouping === "date"
-                                                                ? (group.date ?? "")
-                                                                : localToday(),
+                                                            grouping === "date" ? (group.date ?? "") : localToday(),
                                                     })
                                                 }
                                                 aria-label={`Add an expense to ${group.label}`}
                                             >
                                                 <Plus size={17} />
                                             </button>
-                                        )}
-                                    </div>
-                                    <strong>
-                                        {formatMoney(subtotal, trip.currency)}
-                                    </strong>
-                                </div>
+                                        )
+                                    }
+                                    summary={formatMoney(subtotal, trip.currency)}
+                                />
                             )}
                             <ul className="list-items">
                                 {group.expenses.map((expense) =>
                                     editingExpenseId === expense.id ? (
-                                        <li
-                                            className="budget-item-editing"
-                                            key={expense.id}
-                                        >
-                                            {form(
-                                                editingExpense,
-                                                saveEdit,
-                                                true,
-                                            )}
+                                        <li className="budget-item-editing" key={expense.id}>
+                                            {form(editingExpense, saveEdit, true)}
                                         </li>
                                     ) : (
-                                        <li
-                                            className="list-row"
-                                            key={expense.id}
-                                        >
+                                        <li className="list-row" key={expense.id}>
                                             <div className="budget-item-description">
                                                 <div className="budget-item-primary">
                                                     <strong>{expense.name}</strong>
                                                     <strong className="budget-item-amount">
-                                                        {formatMoney(
-                                                            expense.amount,
-                                                            trip.currency,
-                                                        )}
+                                                        {formatMoney(expense.amount, trip.currency)}
                                                     </strong>
                                                 </div>
-                                                {grouping === "category" &&
-                                                    expense.expenseDate && (
-                                                        <span>
-                                                            {formatDate(
-                                                                expense.expenseDate,
-                                                            )}
-                                                        </span>
-                                                    )}
+                                                {grouping === "category" && expense.expenseDate && (
+                                                    <span>{formatDate(expense.expenseDate)}</span>
+                                                )}
                                                 {grouping === "date" && (
+                                                    <span>{getExpenseCategoryLabel(expense.category)}</span>
+                                                )}
+                                                {grouping === "none" && (expense.expenseDate || expense.category) && (
                                                     <span>
-                                                        {getExpenseCategoryLabel(
-                                                            expense.category,
-                                                        )}
+                                                        {[
+                                                            expense.category
+                                                                ? getExpenseCategoryLabel(expense.category)
+                                                                : null,
+                                                            expense.expenseDate
+                                                                ? formatDate(expense.expenseDate)
+                                                                : null,
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(" · ")}
                                                     </span>
                                                 )}
-                                                {grouping === "none" &&
-                                                    (expense.expenseDate ||
-                                                        expense.category) && (
-                                                        <span>
-                                                            {[
-                                                                expense.category
-                                                                    ? getExpenseCategoryLabel(
-                                                                          expense.category,
-                                                                      )
-                                                                    : null,
-                                                                expense.expenseDate
-                                                                    ? formatDate(
-                                                                          expense.expenseDate,
-                                                                      )
-                                                                    : null,
-                                                            ]
-                                                                .filter(Boolean)
-                                                                .join(" · ")}
-                                                        </span>
-                                                    )}
                                             </div>
                                             <div className="item-actions">
                                                 <button
                                                     className="icon-button"
                                                     type="button"
-                                                    onClick={() =>
-                                                        startEditing(expense)
-                                                    }
+                                                    onClick={() => startEditing(expense)}
                                                     aria-label={`Edit ${expense.name}`}
                                                 >
                                                     <Pencil size={17} />
@@ -659,9 +496,7 @@ export function ExpenseTracking({
                                                 <button
                                                     className="icon-button danger-button"
                                                     type="button"
-                                                    onClick={() =>
-                                                        deleteExpense(expense)
-                                                    }
+                                                    onClick={() => deleteExpense(expense)}
                                                     aria-label={`Delete ${expense.name}`}
                                                 >
                                                     <Trash2 size={17} />
@@ -674,6 +509,11 @@ export function ExpenseTracking({
                         </section>
                     );
                 })}
-        </section>
+            <FormDiscardDialog
+                isOpen={isConfirmingDiscard}
+                onCancel={cancelDiscardConfirmation}
+                onConfirm={discardChanges}
+            />
+        </SectionCard>
     );
 }

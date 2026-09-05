@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-import {
-    createPlannedCost,
-    deletePlannedCost,
-    getPlannedCosts,
-    updatePlannedCost,
-} from "../../api/plannedCostsApi";
+import { createPlannedCost, deletePlannedCost, getPlannedCosts, updatePlannedCost } from "../../api/plannedCostsApi";
 import { createExpense, deleteExpense } from "../../api/expensesApi";
 import type { Trip } from "../../types/trip";
 import {
@@ -17,6 +12,12 @@ import {
     type PlannedCostForm,
 } from "../../types/plannedCost";
 import { formatMoney } from "../../utils/format";
+import { SectionCard } from "../shared/SectionCard";
+import { SectionHeader } from "../shared/SectionHeader";
+import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
+import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { GroupHeading } from "../shared/GroupHeading";
+import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 
@@ -46,32 +47,20 @@ const localToday = () => {
 /**
  * Manages estimated spending by category and can copy one plan into actual expenses exactly once.
  */
-export function PlannedBudget({
-    trip,
-    onFormOpenChange,
-    onExpenseAdded,
-}: PlannedBudgetProps) {
+export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: PlannedBudgetProps) {
     const [costs, setCosts] = useState<PlannedCost[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [newCost, setNewCost] = useState<PlannedCostForm>(
-        createEmptyPlannedCostForm(),
-    );
+    const [newCost, setNewCost] = useState<PlannedCostForm>(createEmptyPlannedCostForm());
     const [isAdding, setIsAdding] = useState(false);
-    const [addingForCategory, setAddingForCategory] =
-        useState<PlannedCostCategory | null>(null);
+    const [addingForCategory, setAddingForCategory] = useState<PlannedCostCategory | null>(null);
     const [editingCostId, setEditingCostId] = useState<string | null>(null);
-    const [editingCost, setEditingCost] = useState<PlannedCostForm>(
-        createEmptyPlannedCostForm(),
-    );
-    const [pendingDeletion, setPendingDeletion] =
-        useState<PendingDeletion | null>(null);
+    const [editingCost, setEditingCost] = useState<PlannedCostForm>(createEmptyPlannedCostForm());
+    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [copyingCostId, setCopyingCostId] = useState<string | null>(null);
-    const [undoingExpenseCostId, setUndoingExpenseCostId] = useState<
-        string | null
-    >(null);
+    const [undoingExpenseCostId, setUndoingExpenseCostId] = useState<string | null>(null);
     const deleteTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -93,11 +82,7 @@ export function PlannedBudget({
         void loadCosts();
     }, [trip.id]);
 
-    const updateForm = (
-        field: keyof PlannedCostForm,
-        value: string,
-        editing = false,
-    ) => {
+    const updateForm = (field: keyof PlannedCostForm, value: string, editing = false) => {
         if (field === "amount") {
             const normalized = normalizeMoneyInput(value);
             if (normalized === null) return;
@@ -120,8 +105,7 @@ export function PlannedBudget({
     });
 
     const validate = (cost: PlannedCostForm) => {
-        if (!cost.amount || Number(cost.amount) <= 0)
-            return "Enter an amount greater than zero.";
+        if (!cost.amount || Number(cost.amount) <= 0) return "Enter an amount greater than zero.";
         return null;
     };
 
@@ -143,10 +127,8 @@ export function PlannedBudget({
         if (editingCostId !== null) setEditingCostId(null);
         else cancelAdding();
     };
-    const { formRef, onFormKeyDown, cancelForm } = useFormKeyboardInteraction(
-        isAdding || editingCostId !== null,
-        cancelOpenForm,
-    );
+    const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
+        useFormKeyboardInteraction(isAdding || editingCostId !== null, cancelOpenForm);
 
     const saveNewCost = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -159,10 +141,7 @@ export function PlannedBudget({
         setIsSaving(true);
         setFormError(null);
         try {
-            const created = await createPlannedCost(
-                trip.id,
-                toRequest(newCost),
-            );
+            const created = await createPlannedCost(trip.id, toRequest(newCost));
             setCosts((current) => [...current, created]);
             cancelAdding();
         } catch (exception) {
@@ -200,22 +179,12 @@ export function PlannedBudget({
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updatePlannedCost(
-                trip.id,
-                editingCostId,
-                toRequest(editingCost),
-            );
-            setCosts((current) =>
-                current.map((cost) =>
-                    cost.id === updated.id ? updated : cost,
-                ),
-            );
+            const updated = await updatePlannedCost(trip.id, editingCostId, toRequest(editingCost));
+            setCosts((current) => current.map((cost) => (cost.id === updated.id ? updated : cost)));
             setEditingCostId(null);
         } catch (exception) {
             setFormError(
-                exception instanceof Error && exception.message
-                    ? exception.message
-                    : "Could not save these changes.",
+                exception instanceof Error && exception.message ? exception.message : "Could not save these changes.",
             );
         } finally {
             setIsSaving(false);
@@ -229,22 +198,17 @@ export function PlannedBudget({
             setCosts((current) => [...current, cost]);
             setError("Could not delete this planned cost. It was restored.");
         } finally {
-            setPendingDeletion((current) =>
-                current?.cost.id === cost.id ? null : current,
-            );
+            setPendingDeletion((current) => (current?.cost.id === cost.id ? null : current));
         }
     };
 
     const deleteCost = (cost: PlannedCost) => {
         if (pendingDeletion) {
-            if (deleteTimerRef.current !== null)
-                window.clearTimeout(deleteTimerRef.current);
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
             void commitDelete(pendingDeletion.cost);
         }
 
-        setCosts((current) =>
-            current.filter((currentCost) => currentCost.id !== cost.id),
-        );
+        setCosts((current) => current.filter((currentCost) => currentCost.id !== cost.id));
         setPendingDeletion({ cost });
         deleteTimerRef.current = window.setTimeout(() => {
             void commitDelete(cost);
@@ -254,8 +218,7 @@ export function PlannedBudget({
 
     const undoDelete = () => {
         if (!pendingDeletion) return;
-        if (deleteTimerRef.current !== null)
-            window.clearTimeout(deleteTimerRef.current);
+        if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
         setCosts((current) => [...current, pendingDeletion.cost]);
         setPendingDeletion(null);
         deleteTimerRef.current = null;
@@ -268,8 +231,7 @@ export function PlannedBudget({
         try {
             const expense = await createExpense(trip.id, {
                 name: cost.name,
-                category:
-                    cost.category === "EmergencyBuffer" ? null : cost.category,
+                category: cost.category === "EmergencyBuffer" ? null : cost.category,
                 amount: cost.amount,
                 expenseDate: localToday(),
                 plannedCostId: cost.id,
@@ -329,44 +291,31 @@ export function PlannedBudget({
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (
-        <form
-            ref={formRef}
-            className="budget-item-form form-surface"
-            onKeyDown={onFormKeyDown}
-            onSubmit={submit}
-        >
+        <FormSurface formRef={formRef} className="budget-item-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
             <label>
-                <span className="field-label">Name</span>
+                <FieldLabel>Name</FieldLabel>
                 <input
                     value={cost.name}
-                    onChange={(event) =>
-                        updateForm("name", event.target.value, editing)
-                    }
+                    onChange={(event) => updateForm("name", event.target.value, editing)}
                     placeholder="Cost item"
                 />
             </label>
-            <div className="form-row">
+            <FieldRow>
                 <label>
-                    <span className="field-label field-label-required">
-                        Amount ({trip.currency})
-                    </span>
+                    <FieldLabel required>Amount ({trip.currency})</FieldLabel>
                     <input
                         type="text"
                         inputMode="decimal"
                         value={cost.amount}
-                        onChange={(event) =>
-                            updateForm("amount", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("amount", event.target.value, editing)}
                         required
                     />
                 </label>
                 <label>
-                    <span className="field-label">Category</span>
+                    <FieldLabel>Category</FieldLabel>
                     <select
                         value={cost.category}
-                        onChange={(event) =>
-                            updateForm("category", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("category", event.target.value, editing)}
                     >
                         <option value="">Not specified</option>
                         {plannedCostCategories.map((category) => (
@@ -376,146 +325,83 @@ export function PlannedBudget({
                         ))}
                     </select>
                 </label>
-            </div>
+            </FieldRow>
             {formError && <p className="form-error">{formError}</p>}
-            <div className="form-actions">
-                <button
-                    className="text-button"
-                    type="button"
-                    onClick={cancelForm}
-                >
+            <FormActions>
+                <button className="text-button" type="button" onClick={cancelForm}>
                     Cancel
                 </button>
-                <button
-                    className="primary-button"
-                    type="submit"
-                    disabled={isSaving}
-                >
+                <button className="primary-button" type="submit" disabled={isSaving}>
                     {isSaving ? "Saving…" : editing ? "Save changes" : "Save"}
                 </button>
-            </div>
-        </form>
+            </FormActions>
+        </FormSurface>
     );
 
-    const totalPlannedCosts = costs.reduce(
-        (total, cost) => total + cost.amount,
-        0,
-    );
-    const theoreticalRemaining =
-        trip.budget === null ? null : trip.budget - totalPlannedCosts;
+    const totalPlannedCosts = costs.reduce((total, cost) => total + cost.amount, 0);
+    const theoreticalRemaining = trip.budget === null ? null : trip.budget - totalPlannedCosts;
 
     return (
-        <section className="detail-section budget-section">
-            <div className="section-title-row">
-                <h3>Planned budget</h3>
-                <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => startAdding()}
-                >
-                    Add planned cost
-                </button>
-            </div>
+        <SectionCard className="budget-section">
+            <SectionHeader
+                title="Planned budget"
+                headingLevel={3}
+                actions={
+                    <button className="primary-button" type="button" onClick={() => startAdding()}>
+                        Add planned cost
+                    </button>
+                }
+            />
             <div className="section-overview">
                 <div>
                     <span>Target budget</span>
-                    <strong>
-                        {trip.budget === null
-                            ? "Not set"
-                            : formatMoney(trip.budget, trip.currency)}
-                    </strong>
+                    <strong>{trip.budget === null ? "Not set" : formatMoney(trip.budget, trip.currency)}</strong>
                 </div>
                 <div>
                     <span>Planned spending</span>
-                    <strong>
-                        {formatMoney(totalPlannedCosts, trip.currency)}
-                    </strong>
+                    <strong>{formatMoney(totalPlannedCosts, trip.currency)}</strong>
                 </div>
                 {theoreticalRemaining !== null && (
-                    <div
-                        className={
-                            theoreticalRemaining < 0 ? "over-budget" : ""
-                        }
-                    >
-                        <span>
-                            {theoreticalRemaining < 0
-                                ? "Over budget"
-                                : "Remaining"}
-                        </span>
-                        <strong>
-                            {formatMoney(
-                                Math.abs(theoreticalRemaining),
-                                trip.currency,
-                            )}
-                        </strong>
+                    <div className={theoreticalRemaining < 0 ? "over-budget" : ""}>
+                        <span>{theoreticalRemaining < 0 ? "Over budget" : "Remaining"}</span>
+                        <strong>{formatMoney(Math.abs(theoreticalRemaining), trip.currency)}</strong>
                     </div>
                 )}
             </div>
             {isAdding && !addingForCategory && form(newCost, saveNewCost)}
-            {isLoading && (
-                <p className="detail-message">Loading planned costs…</p>
-            )}
+            {isLoading && <p className="detail-message">Loading planned costs…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
-            {pendingDeletion && (
-                <button
-                    className="undo-toast"
-                    type="button"
-                    onClick={undoDelete}
-                >
-                    <span>Planned cost deleted.</span>
-                    <strong>Undo</strong>
-                </button>
-            )}
-            {!isLoading && !error && costs.length === 0 && (
-                <p className="detail-message">No planned costs yet.</p>
-            )}
+            {pendingDeletion && <UndoToast message="Planned cost deleted." onUndo={undoDelete} />}
+            {!isLoading && !error && costs.length === 0 && <p className="detail-message">No planned costs yet.</p>}
             {!isLoading &&
                 !error &&
-                [
-                    ...plannedCostCategories,
-                    { value: null, label: "Uncategorised" },
-                ].map((category) => {
-                    const categoryCosts = costs.filter(
-                        (cost) => cost.category === category.value,
-                    );
+                [...plannedCostCategories, { value: null, label: "Uncategorised" }].map((category) => {
+                    const categoryCosts = costs.filter((cost) => cost.category === category.value);
                     if (categoryCosts.length === 0) return null;
-                    const categoryTotal = categoryCosts.reduce(
-                        (total, cost) => total + cost.amount,
-                        0,
-                    );
+                    const categoryTotal = categoryCosts.reduce((total, cost) => total + cost.amount, 0);
 
                     return (
-                        <section
-                            className="budget-category"
-                            key={category.value ?? "uncategorised"}
-                        >
-                            <div className="budget-category-heading">
-                                <div className="budget-category-title">
-                                    <h4>{category.label}</h4>
-                                    {category.value && (
+                        <section className="budget-category" key={category.value ?? "uncategorised"}>
+                            <GroupHeading
+                                title={category.label}
+                                actions={
+                                    category.value && (
                                         <button
                                             className="icon-button"
                                             type="button"
-                                            onClick={() =>
-                                                startAdding(category.value)
-                                            }
+                                            onClick={() => startAdding(category.value)}
                                             aria-label={`Add a planned cost to ${category.label}`}
                                         >
                                             <Plus size={17} />
                                         </button>
-                                    )}
-                                </div>
-                                <strong>
-                                    {formatMoney(categoryTotal, trip.currency)}
-                                </strong>
-                            </div>
+                                    )
+                                }
+                                summary={formatMoney(categoryTotal, trip.currency)}
+                            />
                             <ul className="list-items">
                                 {categoryCosts.map((cost) =>
                                     editingCostId === cost.id ? (
-                                        <li
-                                            className="budget-item-editing"
-                                            key={cost.id}
-                                        >
+                                        <li className="budget-item-editing" key={cost.id}>
                                             {form(editingCost, saveEdit, true)}
                                         </li>
                                     ) : (
@@ -524,54 +410,30 @@ export function PlannedBudget({
                                                 <div className="budget-item-primary">
                                                     <strong>{cost.name}</strong>
                                                     <strong className="budget-item-amount">
-                                                        {formatMoney(
-                                                            cost.amount,
-                                                            trip.currency,
-                                                        )}
+                                                        {formatMoney(cost.amount, trip.currency)}
                                                     </strong>
                                                 </div>
-                                                {cost.category !==
-                                                    "EmergencyBuffer" &&
+                                                {cost.category !== "EmergencyBuffer" &&
                                                     (cost.expenseAdded ? (
                                                         <span className="planned-cost-expense-added">
                                                             Added ·{" "}
                                                             <button
                                                                 className="text-button"
                                                                 type="button"
-                                                                onClick={() =>
-                                                                    void undoExpenseAdded(
-                                                                        cost,
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    undoingExpenseCostId ===
-                                                                    cost.id
-                                                                }
+                                                                onClick={() => void undoExpenseAdded(cost)}
+                                                                disabled={undoingExpenseCostId === cost.id}
                                                             >
-                                                                {undoingExpenseCostId ===
-                                                                cost.id
-                                                                    ? "Undoing…"
-                                                                    : "Undo"}
+                                                                {undoingExpenseCostId === cost.id ? "Undoing…" : "Undo"}
                                                             </button>
                                                         </span>
                                                     ) : (
                                                         <button
                                                             className="text-button planned-cost-expense-action"
                                                             type="button"
-                                                            onClick={() =>
-                                                                void copyToExpenses(
-                                                                    cost,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                copyingCostId ===
-                                                                cost.id
-                                                            }
+                                                            onClick={() => void copyToExpenses(cost)}
+                                                            disabled={copyingCostId === cost.id}
                                                         >
-                                                            {copyingCostId ===
-                                                            cost.id
-                                                                ? "Adding…"
-                                                                : "Add expense"}
+                                                            {copyingCostId === cost.id ? "Adding…" : "Add expense"}
                                                         </button>
                                                     ))}
                                             </div>
@@ -579,9 +441,7 @@ export function PlannedBudget({
                                                 <button
                                                     className="icon-button"
                                                     type="button"
-                                                    onClick={() =>
-                                                        startEditing(cost)
-                                                    }
+                                                    onClick={() => startEditing(cost)}
                                                     aria-label={`Edit ${cost.name}`}
                                                 >
                                                     <Pencil size={17} />
@@ -589,9 +449,7 @@ export function PlannedBudget({
                                                 <button
                                                     className="icon-button danger-button"
                                                     type="button"
-                                                    onClick={() =>
-                                                        deleteCost(cost)
-                                                    }
+                                                    onClick={() => deleteCost(cost)}
                                                     aria-label={`Delete ${cost.name}`}
                                                 >
                                                     <Trash2 size={17} />
@@ -608,6 +466,11 @@ export function PlannedBudget({
                         </section>
                     );
                 })}
-        </section>
+            <FormDiscardDialog
+                isOpen={isConfirmingDiscard}
+                onCancel={cancelDiscardConfirmation}
+                onConfirm={discardChanges}
+            />
+        </SectionCard>
     );
 }

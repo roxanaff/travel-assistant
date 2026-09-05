@@ -67,7 +67,6 @@
     display: -webkit-box;
     margin: 16px 0 0;
     overflow: hidden;
-    /*color: var(--color-blue-700);*/
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
 }
@@ -129,7 +128,6 @@
     font-size: 1rem;
 }
 .budget-row strong {
-    /*color: var(--color-blue-500);*/
     font-size: 1rem;
 }
 .status-message,

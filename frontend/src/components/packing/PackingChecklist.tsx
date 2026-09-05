@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -20,6 +20,15 @@ import {
 } from "../../types/packingItem";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import { ChecklistColumns } from "../shared/ChecklistColumns";
+import { ChecklistHeader } from "../shared/ChecklistHeader";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
+import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { GroupingControl } from "../shared/GroupingControl";
+import { GroupHeading } from "../shared/GroupHeading";
+import { SectionCard } from "../shared/SectionCard";
+import { UndoToast } from "../shared/UndoToast";
+import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
 
 import "./PackingChecklist.css";
 
@@ -28,6 +37,20 @@ type SetupAction = "default" | "empty" | null;
 // Packing quantities are stored in a C# Int32, so the browser uses the same upper bound.
 const maximumPackingQuantity = 2_147_483_647;
 type PackingView = "list" | "category";
+
+const packingViewStorageKey = (tripId: string) =>
+    `travel-assistant:packing-view:${tripId}`;
+
+const getStoredPackingView = (tripId: string): PackingView => {
+    try {
+        return window.localStorage.getItem(packingViewStorageKey(tripId)) ===
+            "category"
+            ? "category"
+            : "list";
+    } catch {
+        return "list";
+    }
+};
 
 type PendingDeletion = {
     item: PackingItem;
@@ -48,18 +71,13 @@ type DropTarget = {
 };
 
 const categoryLabel = (category: PackingItem["category"]) =>
-    packingCategories.find((option) => option.value === category)?.label ??
-    null;
+    packingCategories.find((option) => option.value === category)?.label ?? null;
 
 /**
  * Owns the packing-checklist workflow: choose its initial template, edit items, mark items packed,
  * reorder them, and offer a short undo period before a deletion reaches the API.
  */
-export function PackingChecklist({
-    trip,
-    setTrip,
-    setHasUnsavedForm,
-}: TripWorkspaceContext) {
+export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
     const [items, setItems] = useState<PackingItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -67,17 +85,15 @@ export function PackingChecklist({
     const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [newItem, setNewItem] = useState<PackingItemForm>(
-        createEmptyPackingItemForm(),
-    );
-    const [editingItem, setEditingItem] = useState<PackingItemForm>(
-        createEmptyPackingItemForm(),
-    );
+    const [newItem, setNewItem] = useState<PackingItemForm>(createEmptyPackingItemForm());
+    const [editingItem, setEditingItem] = useState<PackingItemForm>(createEmptyPackingItemForm());
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [pendingDeletion, setPendingDeletion] =
-        useState<PendingDeletion | null>(null);
-    const [view, setView] = useState<PackingView>("list");
+    const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const [view, setView] = useState<PackingView>(() =>
+        getStoredPackingView(trip.id),
+    );
     const [drag, setDrag] = useState<PackingDrag | null>(null);
     const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
     const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -115,11 +131,19 @@ export function PackingChecklist({
         void loadItems();
     }, [trip.id]);
 
+    const changeView = (nextView: PackingView) => {
+        setView(nextView);
+
+        try {
+            window.localStorage.setItem(packingViewStorageKey(trip.id), nextView);
+        } catch {
+            // The checklist still works when browser storage is unavailable.
+        }
+    };
+
     /** Mirrors the API's setup flag in workspace state so this page immediately leaves the setup view. */
     const markChecklistStarted = () => {
-        setTrip((current) =>
-            current ? { ...current, hasStartedPackingList: true } : current,
-        );
+        setTrip((current) => (current ? { ...current, hasStartedPackingList: true } : current));
     };
 
     const chooseDefaultList = async () => {
@@ -165,45 +189,25 @@ export function PackingChecklist({
         setError(null);
         setItems((current) =>
             current.map((currentItem) =>
-                currentItem.id === item.id
-                    ? { ...currentItem, isPacked: nextPackedState }
-                    : currentItem,
+                currentItem.id === item.id ? { ...currentItem, isPacked: nextPackedState } : currentItem,
             ),
         );
 
         try {
-            const updated = await updatePackingItemPackedState(
-                trip.id,
-                item.id,
-                nextPackedState,
-            );
+            const updated = await updatePackingItemPackedState(trip.id, item.id, nextPackedState);
             setItems((current) =>
-                current.map((currentItem) =>
-                    currentItem.id === updated.id ? updated : currentItem,
-                ),
+                current.map((currentItem) => (currentItem.id === updated.id ? updated : currentItem)),
             );
         } catch {
-            setItems((current) =>
-                current.map((currentItem) =>
-                    currentItem.id === item.id ? item : currentItem,
-                ),
-            );
+            setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? item : currentItem)));
             setError("Could not update this packing item. It was restored.");
         } finally {
             setUpdatingItemId(null);
         }
     };
 
-    const updateForm = (
-        field: keyof PackingItemForm,
-        value: string,
-        editing = false,
-    ) => {
-        if (
-            field === "quantity" &&
-            value !== "" &&
-            Number(value) > maximumPackingQuantity
-        ) {
+    const updateForm = (field: keyof PackingItemForm, value: string, editing = false) => {
+        if (field === "quantity" && value !== "" && Number(value) > maximumPackingQuantity) {
             return;
         }
 
@@ -219,11 +223,7 @@ export function PackingChecklist({
     /** Performs quick browser-side checks before the API repeats its authoritative validation. */
     const validateForm = (item: PackingItemForm) => {
         if (!item.name.trim()) return "Enter an item name.";
-        if (
-            item.quantity &&
-            (!Number.isInteger(Number(item.quantity)) ||
-                Number(item.quantity) <= 0)
-        ) {
+        if (item.quantity && (!Number.isInteger(Number(item.quantity)) || Number(item.quantity) <= 0)) {
             return "Quantity must be a whole number greater than zero.";
         }
         return null;
@@ -239,10 +239,8 @@ export function PackingChecklist({
         if (editingItemId !== null) setEditingItemId(null);
         else cancelAdding();
     };
-    const { formRef, onFormKeyDown, cancelForm } = useFormKeyboardInteraction(
-        isAdding || editingItemId !== null,
-        cancelOpenForm,
-    );
+    const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
+        useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
 
     const saveNewItem = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -259,11 +257,7 @@ export function PackingChecklist({
             setItems((current) => [...current, created]);
             cancelAdding();
         } catch (exception) {
-            setFormError(
-                exception instanceof Error
-                    ? exception.message
-                    : "Could not save this item.",
-            );
+            setFormError(exception instanceof Error ? exception.message : "Could not save this item.");
         } finally {
             setIsSaving(false);
         }
@@ -292,23 +286,11 @@ export function PackingChecklist({
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updatePackingItem(
-                trip.id,
-                editingItemId,
-                editingItem,
-            );
-            setItems((current) =>
-                current.map((item) =>
-                    item.id === updated.id ? updated : item,
-                ),
-            );
+            const updated = await updatePackingItem(trip.id, editingItemId, editingItem);
+            setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
             setEditingItemId(null);
         } catch (exception) {
-            setFormError(
-                exception instanceof Error
-                    ? exception.message
-                    : "Could not save these changes.",
-            );
+            setFormError(exception instanceof Error ? exception.message : "Could not save these changes.");
         } finally {
             setIsSaving(false);
         }
@@ -322,23 +304,18 @@ export function PackingChecklist({
             setItems((current) => [...current, item]);
             setError("Could not delete this packing item. It was restored.");
         } finally {
-            setPendingDeletion((current) =>
-                current?.item.id === item.id ? null : current,
-            );
+            setPendingDeletion((current) => (current?.item.id === item.id ? null : current));
         }
     };
 
     /** Removes an item from the view immediately, keeping it available for five seconds of Undo. */
     const removeItem = (item: PackingItem) => {
         if (pendingDeletion) {
-            if (deleteTimerRef.current !== null)
-                window.clearTimeout(deleteTimerRef.current);
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
             void commitDelete(pendingDeletion.item);
         }
 
-        setItems((current) =>
-            current.filter((currentItem) => currentItem.id !== item.id),
-        );
+        setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
         setPendingDeletion({ item });
         deleteTimerRef.current = window.setTimeout(() => {
             void commitDelete(item);
@@ -348,92 +325,66 @@ export function PackingChecklist({
 
     const undoDelete = () => {
         if (!pendingDeletion) return;
-        if (deleteTimerRef.current !== null)
-            window.clearTimeout(deleteTimerRef.current);
+        if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
         setItems((current) => [...current, pendingDeletion.item]);
         setPendingDeletion(null);
         deleteTimerRef.current = null;
     };
 
     const resetChecklist = async () => {
-        if (
-            !window.confirm(
-                "Reset this checklist? All packing items will be removed.",
-            )
-        )
-            return;
-
         setError(null);
         try {
             await resetPackingList(trip.id);
-            if (deleteTimerRef.current !== null)
-                window.clearTimeout(deleteTimerRef.current);
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
             setPendingDeletion(null);
             setItems([]);
-            setTrip((current) =>
-                current
-                    ? { ...current, hasStartedPackingList: false }
-                    : current,
-            );
+            setTrip((current) => (current ? { ...current, hasStartedPackingList: false } : current));
+            setIsConfirmingReset(false);
         } catch (exception) {
-            setError(
-                exception instanceof Error
-                    ? exception.message
-                    : "Could not reset this packing list.",
-            );
+            setError(exception instanceof Error ? exception.message : "Could not reset this packing list.");
         }
     };
 
     /** Optimistically saves a complete ordering and restores the previous order if it is rejected. */
-    const persistOrder = async (nextItems: PackingItem[]) => {
-        const previousItems = items;
-        setItems(
-            nextItems.map((item, index) => ({ ...item, sortOrder: index })),
-        );
+    const persistOrder = useCallback(
+        async (nextItems: PackingItem[]) => {
+            const previousItems = items;
+            setItems(nextItems.map((item, index) => ({ ...item, sortOrder: index })));
 
-        try {
-            await reorderPackingItems(
-                trip.id,
-                nextItems.map((item) => item.id),
-            );
-        } catch {
-            setItems(previousItems);
-            setError("Could not save the new packing order. It was restored.");
-        }
-    };
+            try {
+                await reorderPackingItems(
+                    trip.id,
+                    nextItems.map((item) => item.id),
+                );
+            } catch {
+                setItems(previousItems);
+                setError("Could not save the new packing order. It was restored.");
+            }
+        },
+        [items, trip.id],
+    );
 
     /** Reorders within the packed or unpacked section, then delegates persistence to the API helper. */
-    const moveItem = (
-        sectionItems: PackingItem[],
-        itemId: string,
-        target: DropTarget,
-    ) => {
-        const currentIndex = sectionItems.findIndex(
-            (item) => item.id === itemId,
-        );
-        if (currentIndex < 0) return;
+    const moveItem = useCallback(
+        (sectionItems: PackingItem[], itemId: string, target: DropTarget) => {
+            const currentIndex = sectionItems.findIndex((item) => item.id === itemId);
+            if (currentIndex < 0) return;
 
-        const reorderedSection = [...sectionItems];
-        const [movedItem] = reorderedSection.splice(currentIndex, 1);
-        const targetIndex = reorderedSection.findIndex(
-            (item) => item.id === target.itemId,
-        );
-        if (targetIndex < 0) return;
-        reorderedSection.splice(
-            target.position === "before" ? targetIndex : targetIndex + 1,
-            0,
-            movedItem,
-        );
+            const reorderedSection = [...sectionItems];
+            const [movedItem] = reorderedSection.splice(currentIndex, 1);
+            const targetIndex = reorderedSection.findIndex((item) => item.id === target.itemId);
+            if (targetIndex < 0) return;
+            reorderedSection.splice(target.position === "before" ? targetIndex : targetIndex + 1, 0, movedItem);
 
-        const otherSection = items.filter(
-            (item) => item.isPacked !== movedItem.isPacked,
-        );
-        const nextItems = movedItem.isPacked
-            ? [...otherSection, ...reorderedSection]
-            : [...reorderedSection, ...otherSection];
+            const otherSection = items.filter((item) => item.isPacked !== movedItem.isPacked);
+            const nextItems = movedItem.isPacked
+                ? [...otherSection, ...reorderedSection]
+                : [...reorderedSection, ...otherSection];
 
-        void persistOrder(nextItems);
-    };
+            void persistOrder(nextItems);
+        },
+        [items, persistOrder],
+    );
 
     const beginPointerDrag = (
         item: PackingItem,
@@ -471,43 +422,39 @@ export function PackingChecklist({
         setDropTarget(null);
     };
 
-    const findDropTarget = (event: globalThis.PointerEvent) => {
-        if (!drag) return null;
-        const hoveredRow = document
-            .elementFromPoint(event.clientX, event.clientY)
-            ?.closest<HTMLElement>("[data-packing-item-id]");
-        if (!hoveredRow) return null;
+    const findDropTarget = useCallback(
+        (event: globalThis.PointerEvent) => {
+            if (!drag) return null;
+            const hoveredRow = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>("[data-packing-item-id]");
+            if (!hoveredRow) return null;
 
-        const targetId = hoveredRow.dataset.packingItemId;
-        if (!targetId || targetId === drag.item.id) return null;
-        const availableItems = drag.sectionItems.filter(
-            (item) => item.id !== drag.item.id,
-        );
-        const targetIndex = availableItems.findIndex(
-            (item) => item.id === targetId,
-        );
-        const targetItem = availableItems[targetIndex];
-        if (!targetItem || targetItem.isPacked !== drag.item.isPacked) return null;
+            const targetId = hoveredRow.dataset.packingItemId;
+            if (!targetId || targetId === drag.item.id) return null;
+            const availableItems = drag.sectionItems.filter((item) => item.id !== drag.item.id);
+            const targetIndex = availableItems.findIndex((item) => item.id === targetId);
+            const targetItem = availableItems[targetIndex];
+            if (!targetItem || targetItem.isPacked !== drag.item.isPacked) return null;
 
-        const bounds = hoveredRow.getBoundingClientRect();
-        if (event.clientY < bounds.top + bounds.height / 2) {
-            return { itemId: targetId, position: "before" } satisfies DropTarget;
-        }
+            const bounds = hoveredRow.getBoundingClientRect();
+            if (event.clientY < bounds.top + bounds.height / 2) {
+                return { itemId: targetId, position: "before" } satisfies DropTarget;
+            }
 
-        const nextItem = availableItems[targetIndex + 1];
-        return nextItem
-            ? ({ itemId: nextItem.id, position: "before" } satisfies DropTarget)
-            : ({ itemId: targetId, position: "after" } satisfies DropTarget);
-    };
+            const nextItem = availableItems[targetIndex + 1];
+            return nextItem
+                ? ({ itemId: nextItem.id, position: "before" } satisfies DropTarget)
+                : ({ itemId: targetId, position: "after" } satisfies DropTarget);
+        },
+        [drag],
+    );
 
     useEffect(() => {
         const updateDrag = (event: globalThis.PointerEvent) => {
             const pending = pendingPointerRef.current;
             if (pending && event.pointerId === pending.pointerId) {
-                const moved = Math.hypot(
-                    event.clientX - pending.x,
-                    event.clientY - pending.y,
-                );
+                const moved = Math.hypot(event.clientX - pending.x, event.clientY - pending.y);
                 if (moved > 6) {
                     if (touchDragTimerRef.current !== null) {
                         window.clearTimeout(touchDragTimerRef.current);
@@ -551,13 +498,9 @@ export function PackingChecklist({
             window.removeEventListener("pointerup", finishDrag);
             window.removeEventListener("pointercancel", finishDrag);
         };
-    }, [drag]);
+    }, [drag, findDropTarget, moveItem]);
 
-    const startPointerDrag = (
-        event: PointerEvent<HTMLSpanElement>,
-        item: PackingItem,
-        sectionItems: PackingItem[],
-    ) => {
+    const startPointerDrag = (event: PointerEvent<HTMLSpanElement>, item: PackingItem, sectionItems: PackingItem[]) => {
         if (event.button !== 0) return;
         pendingPointerRef.current = {
             item,
@@ -591,44 +534,33 @@ export function PackingChecklist({
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (
-        <form
-            ref={formRef}
-            className="packing-item-form form-surface"
-            onKeyDown={onFormKeyDown}
-            onSubmit={submit}
-        >
+        <FormSurface formRef={formRef} className="packing-item-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
             <label>
-                <span className="field-label field-label-required">Name</span>
+                <FieldLabel required>Name</FieldLabel>
                 <input
                     value={item.name}
-                    onChange={(event) =>
-                        updateForm("name", event.target.value, editing)
-                    }
+                    onChange={(event) => updateForm("name", event.target.value, editing)}
                     required
                 />
             </label>
-            <div className="form-row">
+            <FieldRow>
                 <label>
-                    <span className="field-label">Quantity</span>
+                    <FieldLabel>Quantity</FieldLabel>
                     <input
                         type="number"
                         min="1"
                         max={maximumPackingQuantity}
                         step="1"
                         value={item.quantity}
-                        onChange={(event) =>
-                            updateForm("quantity", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("quantity", event.target.value, editing)}
                         placeholder="1"
                     />
                 </label>
                 <label>
-                    <span className="field-label">Category</span>
+                    <FieldLabel>Category</FieldLabel>
                     <select
                         value={item.category}
-                        onChange={(event) =>
-                            updateForm("category", event.target.value, editing)
-                        }
+                        onChange={(event) => updateForm("category", event.target.value, editing)}
                     >
                         <option value="">Not specified</option>
                         {packingCategories.map((category) => (
@@ -638,25 +570,17 @@ export function PackingChecklist({
                         ))}
                     </select>
                 </label>
-            </div>
+            </FieldRow>
             {formError && <p className="form-error">{formError}</p>}
-            <div className="form-actions">
-                <button
-                    className="text-button"
-                    type="button"
-                    onClick={cancelForm}
-                >
+            <FormActions>
+                <button className="text-button" type="button" onClick={cancelForm}>
                     Cancel
                 </button>
-                <button
-                    className="primary-button"
-                    type="submit"
-                    disabled={isSaving}
-                >
+                <button className="primary-button" type="submit" disabled={isSaving}>
                     {isSaving ? "Saving…" : editing ? "Save changes" : "Save"}
                 </button>
-            </div>
-        </form>
+            </FormActions>
+        </FormSurface>
     );
 
     const toPack = items.filter((item) => !item.isPacked);
@@ -664,7 +588,11 @@ export function PackingChecklist({
     const showSetupChoice = !trip.hasStartedPackingList && items.length === 0;
 
     /** Renders either an item row or its inline edit form. */
-    const renderItem = (item: PackingItem, sectionItems: PackingItem[]) => {
+    const renderItem = (
+        item: PackingItem,
+        sectionItems: PackingItem[],
+        showCategory = true,
+    ) => {
         const checkboxId = `packing-item-${item.id}`;
 
         return editingItemId === item.id ? (
@@ -673,15 +601,13 @@ export function PackingChecklist({
             </li>
         ) : (
             <li
-                className={`packing-item${item.isPacked ? " packed" : ""}${drag?.item.id === item.id ? " packing-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` packing-drop-${dropTarget.position}` : ""}`}
+                className={`checklist-item packing-item${item.isPacked ? " is-complete" : ""}${drag?.item.id === item.id ? " packing-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` packing-drop-${dropTarget.position}` : ""}`}
                 key={item.id}
                 data-packing-item-id={item.id}
             >
                 <span
                     className="packing-drag-handle"
-                    onPointerDown={(event) =>
-                        startPointerDrag(event, item, sectionItems)
-                    }
+                    onPointerDown={(event) => startPointerDrag(event, item, sectionItems)}
                     aria-label={`Reorder ${item.name}`}
                     title="Drag to reorder within this list"
                 >
@@ -689,21 +615,19 @@ export function PackingChecklist({
                 </span>
                 <input
                     id={checkboxId}
-                    className="packing-item-checkbox"
+                    className="packing-item-checkbox checklist-state-toggle"
                     type="checkbox"
                     checked={item.isPacked}
                     disabled={updatingItemId === item.id}
                     onChange={() => void togglePacked(item)}
                     aria-label={`Mark ${item.name} as ${item.isPacked ? "not packed" : "packed"}`}
                 />
-                <label className="packing-item-name" htmlFor={checkboxId}>
+                <label className="packing-item-name checklist-state-name" htmlFor={checkboxId}>
                     {item.quantity > 1 && <strong>{item.quantity} × </strong>}
                     {item.name}
                 </label>
-                {categoryLabel(item.category) && (
-                    <span className="packing-category">
-                        {categoryLabel(item.category)}
-                    </span>
+                {showCategory && categoryLabel(item.category) && (
+                    <span className="packing-category item-metadata-label">{categoryLabel(item.category)}</span>
                 )}
                 <div className="item-actions">
                     <button
@@ -730,32 +654,20 @@ export function PackingChecklist({
     /** Switches between the user's chosen flat-list and category-grouped views. */
     const renderSectionItems = (sectionItems: PackingItem[]) => {
         if (view === "list")
-            return (
-                <ul className="list-items">
-                    {sectionItems.map((item) => renderItem(item, sectionItems))}
-                </ul>
-            );
+            return <ul className="list-items">{sectionItems.map((item) => renderItem(item, sectionItems))}</ul>;
 
-        const categoryGroups = [
-            ...packingCategories,
-            { value: null, label: "Not specified" },
-        ];
+        const categoryGroups = [...packingCategories, { value: null, label: "Not specified" }];
 
         return categoryGroups.map((category) => {
-            const categoryItems = sectionItems.filter(
-                (item) => item.category === category.value,
-            );
+            const categoryItems = sectionItems.filter((item) => item.category === category.value);
             if (categoryItems.length === 0) return null;
 
             return (
-                <section
-                    className="packing-category-group"
-                    key={category.value}
-                >
-                    <h4>{category.label}</h4>
+                <section className="packing-category-group" key={category.value}>
+                    <GroupHeading title={category.label} />
                     <ul className="list-items">
                         {categoryItems.map((item) =>
-                            renderItem(item, categoryItems),
+                            renderItem(item, categoryItems, false),
                         )}
                     </ul>
                 </section>
@@ -764,7 +676,7 @@ export function PackingChecklist({
     };
 
     return (
-        <section className="detail-section packing-section">
+        <SectionCard className="checklist-section packing-section">
             {drag && (
                 <div
                     className="packing-drag-preview"
@@ -775,82 +687,59 @@ export function PackingChecklist({
                     }}
                     aria-hidden="true"
                 >
-                    {drag.item.quantity > 1 && (
-                        <strong>{drag.item.quantity} × </strong>
-                    )}
+                    {drag.item.quantity > 1 && <strong>{drag.item.quantity} × </strong>}
                     {drag.item.name}
                 </div>
             )}
-            <div className="section-title-row">
-                <div className="packing-title">
-                    <h2>Packing</h2>
-                    {!isLoading && !showSetupChoice && (
-                        <p className="packing-progress">
-                            <strong>{packed.length}</strong> of{" "}
-                            <strong>{items.length}</strong> packed
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {!isLoading && !showSetupChoice && (
-                <div className="packing-toolbar">
-                    <label className="packing-view-control">
-                        <span>Group by</span>
-                        <select
-                            value={view}
-                            onChange={(event) =>
-                                setView(event.target.value as PackingView)
-                            }
-                        >
+            <ChecklistHeader
+                title="Packing"
+                completedCount={!isLoading && !showSetupChoice ? packed.length : undefined}
+                totalCount={!isLoading && !showSetupChoice ? items.length : undefined}
+                completionLabel="packed"
+                toolbarLeading={
+                    !isLoading && !showSetupChoice ? (
+                        <GroupingControl value={view} onChange={changeView}>
                             <option value="list">Ungrouped</option>
                             <option value="category">Category</option>
-                        </select>
-                    </label>
-                    <div className="packing-header-actions">
-                        <button
-                            className="text-button"
-                            type="button"
-                            onClick={() => void resetChecklist()}
-                        >
-                            Reset checklist
-                        </button>
-                        <button
-                            className="primary-button"
-                            type="button"
-                            onClick={() => {
-                                setEditingItemId(null);
-                                setFormError(null);
-                                setIsAdding(true);
-                            }}
-                        >
-                            Add item
-                        </button>
-                    </div>
-                </div>
-            )}
+                        </GroupingControl>
+                    ) : undefined
+                }
+                actions={
+                    !isLoading && !showSetupChoice ? (
+                        <>
+                            <button className="text-button" type="button" onClick={() => setIsConfirmingReset(true)}>
+                                Reset checklist
+                            </button>
+                            <button
+                                className="primary-button"
+                                type="button"
+                                onClick={() => {
+                                    setEditingItemId(null);
+                                    setFormError(null);
+                                    setIsAdding(true);
+                                }}
+                            >
+                                Add item
+                            </button>
+                        </>
+                    ) : undefined
+                }
+            />
 
-            {isLoading && (
-                <p className="detail-message">Loading packing list…</p>
-            )}
+            {isLoading && <p className="detail-message">Loading packing list…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
 
             {!isLoading && showSetupChoice && (
-                <div className="packing-empty-state">
-                    <p>
-                        Start with the standard travel essentials, or create
-                        your own list.
-                    </p>
-                    <div className="packing-setup-actions">
+                <div className="checklist-empty-state">
+                    <p>Start with the standard travel essentials, or create your own list.</p>
+                    <div className="checklist-setup-actions">
                         <button
                             className="primary-button"
                             type="button"
                             onClick={() => void chooseDefaultList()}
                             disabled={setupAction !== null}
                         >
-                            {setupAction === "default"
-                                ? "Creating…"
-                                : "Use default list"}
+                            {setupAction === "default" ? "Creating…" : "Use default list"}
                         </button>
                         <button
                             className="text-button"
@@ -858,9 +747,7 @@ export function PackingChecklist({
                             onClick={() => void chooseEmptyList()}
                             disabled={setupAction !== null}
                         >
-                            {setupAction === "empty"
-                                ? "Starting…"
-                                : "Start empty"}
+                            {setupAction === "empty" ? "Starting…" : "Start empty"}
                         </button>
                     </div>
                 </div>
@@ -869,46 +756,47 @@ export function PackingChecklist({
             {!isLoading && !showSetupChoice && (
                 <>
                     {isAdding && form(newItem, saveNewItem)}
-                    {pendingDeletion && (
-                        <button
-                            className="undo-toast"
-                            type="button"
-                            onClick={undoDelete}
-                        >
-                            <span>Packing item deleted.</span>
-                            <strong>Undo</strong>
-                        </button>
-                    )}
+                    {pendingDeletion && <UndoToast message="Packing item deleted." onUndo={undoDelete} />}
                     {items.length === 0 ? (
-                        <p className="detail-message">
-                            Your packing list is empty.
-                        </p>
+                        <p className="detail-message">Your packing list is empty.</p>
                     ) : (
-                        <div className="packing-lists">
-                            <section className="packing-list-section">
-                                <h3>To pack</h3>
-                                {toPack.length === 0 ? (
-                                    <p className="detail-message">
-                                        Everything is packed.
-                                    </p>
-                                ) : (
-                                    renderSectionItems(toPack)
-                                )}
-                            </section>
-                            <section className="packing-list-section">
-                                <h3>Packed</h3>
-                                {packed.length === 0 ? (
-                                    <p className="detail-message">
-                                        Nothing packed yet.
-                                    </p>
-                                ) : (
-                                    renderSectionItems(packed)
-                                )}
-                            </section>
-                        </div>
+                        <ChecklistColumns
+                            first={{
+                                heading: "To pack",
+                                children:
+                                    toPack.length === 0 ? (
+                                        <p className="detail-message">Everything is packed.</p>
+                                    ) : (
+                                        renderSectionItems(toPack)
+                                    ),
+                            }}
+                            second={{
+                                heading: "Packed",
+                                children:
+                                    packed.length === 0 ? (
+                                        <p className="detail-message">Nothing packed yet.</p>
+                                    ) : (
+                                        renderSectionItems(packed)
+                                    ),
+                            }}
+                        />
                     )}
                 </>
             )}
-        </section>
+            <ConfirmDialog
+                isOpen={isConfirmingReset}
+                title="Reset checklist?"
+                confirmLabel="Reset checklist"
+                onCancel={() => setIsConfirmingReset(false)}
+                onConfirm={() => void resetChecklist()}
+            >
+                <p>All current packing items will be permanently removed.</p>
+            </ConfirmDialog>
+            <FormDiscardDialog
+                isOpen={isConfirmingDiscard}
+                onCancel={cancelDiscardConfirmation}
+                onConfirm={discardChanges}
+            />
+        </SectionCard>
     );
 }

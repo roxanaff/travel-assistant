@@ -1,0 +1,76 @@
+.icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink);
+    font: inherit;
+    cursor: pointer;
+}
+
+.icon-button:hover {
+    background: var(--color-blue-100);
+}
+
+.icon-button.danger-button {
+    color: var(--color-red-500);
+}
+
+.icon-button.danger-button:hover {
+    background: var(--color-red-100);
+}
+
+.primary-button {
+    padding: 14px 18px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--color-blue-500);
+    color: var(--color-surface);
+    font: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+
+.primary-button:not(:disabled):hover {
+    background: var(--color-blue-700);
+    transform: translateY(-1px);
+}
+
+.danger-button:not(.icon-button) {
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--color-red-500);
+    color: var(--color-white);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.danger-button:not(.icon-button):disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.primary-button:disabled,
+.icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.text-button {
+    border: 0;
+    background: transparent;
+    color: var(--color-blue-500);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}

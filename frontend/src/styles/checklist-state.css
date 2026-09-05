@@ -1,0 +1,19 @@
+.checklist-state-toggle {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-blue-500);
+    cursor: pointer;
+}
+
+.checklist-state-name {
+    cursor: pointer;
+}
+
+.is-complete {
+    color: var(--color-gray-500);
+}
+
+.is-complete .checklist-state-name {
+    text-decoration: line-through;
+}

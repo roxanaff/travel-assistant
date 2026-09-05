@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { TripCard } from "./TripCard";
 import { TripForm } from "./TripForm";
-import {
-    createTrip,
-    deleteTrip as deleteTripRequest,
-    getTrips,
-    updateTrip,
-} from "../../api/tripsApi";
-import {
-    initialTripFormValues,
-    tripToFormValues,
-    type Trip,
-    type TripRequest,
-} from "../../types/trip";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
+import { createTrip, deleteTrip as deleteTripRequest, getTrips, updateTrip } from "../../api/tripsApi";
+import { initialTripFormValues, tripToFormValues, type Trip, type TripRequest } from "../../types/trip";
 import "./TripsDashboard.css";
 
 // Dashboard-specific workflow: loads the user's trip index and coordinates create, edit, and delete actions.
@@ -30,11 +21,9 @@ const sortTrips = (trips: Trip[]) =>
 
         if (statusDifference) return statusDifference;
 
-        if (a.status === "Upcoming")
-            return (a.startDate ?? "").localeCompare(b.startDate ?? "");
+        if (a.status === "Upcoming") return (a.startDate ?? "").localeCompare(b.startDate ?? "");
 
-        if (a.status === "Past")
-            return (b.endDate ?? "").localeCompare(a.endDate ?? "");
+        if (a.status === "Past") return (b.endDate ?? "").localeCompare(a.endDate ?? "");
 
         return b.createdAtUtc.localeCompare(a.createdAtUtc);
     });
@@ -45,12 +34,11 @@ export function TripsDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
-    const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(
-        undefined,
-    );
+    const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [tripPendingDeletion, setTripPendingDeletion] = useState<Trip | null>(null);
 
     // Load once when the dashboard mounts; child workspaces load individual trips separately.
     useEffect(() => {
@@ -74,25 +62,15 @@ export function TripsDashboard() {
 
         try {
             const isEditing = editingTrip !== null;
-            const saved = isEditing
-                ? await updateTrip(editingTrip!.id, request)
-                : await createTrip(request);
+            const saved = isEditing ? await updateTrip(editingTrip!.id, request) : await createTrip(request);
 
             setTrips((current) =>
-                isEditing
-                    ? current.map((trip) =>
-                          trip.id === saved.id ? saved : trip,
-                      )
-                    : [...current, saved],
+                isEditing ? current.map((trip) => (trip.id === saved.id ? saved : trip)) : [...current, saved],
             );
 
             setEditingTrip(undefined);
         } catch (exception) {
-            setFormError(
-                exception instanceof Error
-                    ? exception.message
-                    : "Could not save this trip.",
-            );
+            setFormError(exception instanceof Error ? exception.message : "Could not save this trip.");
         } finally {
             setIsSaving(false);
         }
@@ -100,18 +78,13 @@ export function TripsDashboard() {
 
     /** Deletes and removes a trip from both the API and the displayed list. */
     const deleteTrip = async (trip: Trip) => {
-        if (!window.confirm(`Delete “${trip.name}”? This cannot be undone.`))
-            return;
-
         setActionError(null);
         setDeletingId(trip.id);
 
         try {
             await deleteTripRequest(trip.id);
 
-            setTrips((current) =>
-                current.filter((currentTrip) => currentTrip.id !== trip.id),
-            );
+            setTrips((current) => current.filter((currentTrip) => currentTrip.id !== trip.id));
         } catch {
             setActionError("Could not delete this trip. Please try again.");
         } finally {
@@ -135,7 +108,6 @@ export function TripsDashboard() {
                 >
                     New trip <span aria-hidden="true">+</span>
                 </button>
-                {/*<span className="trip-count">{trips.length} total</span>*/}
             </div>
             {editingTrip === null && (
                 <TripForm
@@ -150,9 +122,7 @@ export function TripsDashboard() {
             )}
             {isLoading && <p className="status-message">Loading your trips…</p>}
             {error && <p className="status-message error-message">{error}</p>}
-            {actionError && (
-                <p className="status-message error-message">{actionError}</p>
-            )}
+            {actionError && <p className="status-message error-message">{actionError}</p>}
             {!isLoading && !error && trips.length === 0 && (
                 <div className="empty-state">
                     <h3>No trips yet</h3>
@@ -183,12 +153,26 @@ export function TripsDashboard() {
                                     setFormError(null);
                                     setEditingTrip(trip);
                                 }}
-                                onDelete={() => void deleteTrip(trip)}
+                                onDelete={() => setTripPendingDeletion(trip)}
                             />
                         ),
                     )}
                 </div>
             )}
+            <ConfirmDialog
+                isOpen={tripPendingDeletion !== null}
+                title="Delete trip?"
+                confirmLabel="Delete trip"
+                onCancel={() => setTripPendingDeletion(null)}
+                onConfirm={() => {
+                    if (!tripPendingDeletion) return;
+                    const trip = tripPendingDeletion;
+                    setTripPendingDeletion(null);
+                    void deleteTrip(trip);
+                }}
+            >
+                <p>Delete “{tripPendingDeletion?.name}”? This cannot be undone.</p>
+            </ConfirmDialog>
         </section>
     );
 }

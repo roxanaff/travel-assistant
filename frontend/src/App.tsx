@@ -6,7 +6,8 @@ import { TripDashboard } from "./pages/Dashboard";
 import { TripBudgetPage } from "./pages/BudgetPage";
 import { TripItineraryPage } from "./pages/ItineraryPage";
 import { TripPackingPage } from "./pages/PackingPage";
-import { TripSetupPage } from "./pages/SetupPage";
+import { TripDetailsPage } from "./pages/DetailsPage";
+import { TripTodoPage } from "./pages/TodoPage";
 import { TripWorkspace } from "./pages/Workspace";
 import { AuthLoading, AuthPage } from "./pages/AuthPages";
 import "./App.css";
@@ -17,23 +18,18 @@ function App() {
         <AuthProvider>
             <Routes>
                 <Route path="/login" element={<AuthPage mode="login" />} />
-                <Route
-                    path="/register"
-                    element={<AuthPage mode="register" />}
-                />
+                <Route path="/register" element={<AuthPage mode="register" />} />
                 <Route element={<ProtectedApp />}>
                     <Route path="/" element={<TripDashboard />} />
                     {/* TripWorkspace loads the selected trip and renders the nested feature page via Outlet. */}
                     <Route path="/trips/:id" element={<TripWorkspace />}>
-                        <Route index element={<TripSetupPage />} />
-                        <Route
-                            path="itinerary"
-                            element={<TripItineraryPage />}
-                        />
+                        <Route index element={<TripDetailsPage />} />
+                        <Route path="itinerary" element={<TripItineraryPage />} />
                         <Route path="budget" element={<TripBudgetPage />} />
+                        <Route path="todo" element={<TripTodoPage />} />
                         <Route path="packing" element={<TripPackingPage />} />
                         {/* Retained for links created before Details became the workspace default. */}
-                        <Route path="details" element={<TripSetupPage />} />
+                        <Route path="details" element={<TripDetailsPage />} />
                     </Route>
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

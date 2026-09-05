@@ -2,12 +2,6 @@
 .itinerary-section {
     grid-column: 1 / -1;
 }
-.itinerary-section-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
 .itinerary-section-actions {
     display: flex;
     align-items: center;
@@ -108,7 +102,6 @@
     margin: 0 0 8px;
     color: var(--color-pink-700);
     font-size: 1rem;
-    /*border-bottom: 1px solid var(--color-gray-200)*/
 }
 .itinerary-day-heading {
     display: flex;
@@ -125,11 +118,7 @@
     margin: 0;
 }
 .itinerary-day-add {
-    /*width: 32px;*/
-    /*height: 32px;*/
-    /*margin: 0 6px 0;*/
     color: var(--color-ink);
-    /*border: 1px solid var(--color-gray-200);*/
 }
 .itinerary-day-add:hover {
     background: var(--color-gray-100);
@@ -157,20 +146,10 @@
     align-items: baseline;
     gap: 18px;
 }
-.itinerary-item-category {
-    color: var(--color-gray-500);
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-.itinerary-item-priority {
-    color: var(--color-gray-500);
-    font-size: 0.9rem;
-}
 .itinerary-item-details {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 18px;
-    color: var(--color-gray-500);
 }
 .itinerary-item-details strong {
     color: var(--color-gray-700);
@@ -181,11 +160,6 @@
     color: var(--color-red-500);
     font-size: 0.85rem;
 }
-/*.itinerary-item-actions {*/
-/*    display: flex;*/
-/*    align-items: center;*/
-/*    gap: 4px;*/
-/*}*/
 .itinerary-expanded-details {
     display: grid;
     gap: 6px;
@@ -199,22 +173,14 @@
     color: var(--color-gray-500);
 }
 .itinerary-expanded-details strong {
-    /*color: var(--color-ink);*/
     color: var(--color-gray-700);
 }
 .itinerary-expanded-details a {
     color: var(--color-blue-500);
     overflow-wrap: anywhere;
 }
-.itinerary-section .danger-button {
-    color: var(--color-red-500);
-}
-.itinerary-section .danger-button:hover {
-    background: var(--color-red-100);
-}
 @media (max-width: 600px) {
-    .itinerary-form-row,
-    .itinerary-form-row-essential {
+    .itinerary-form-row {
         grid-template-columns: 1fr;
     }
     .itinerary-notes-field {
