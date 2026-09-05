@@ -1,4 +1,4 @@
-# Authentication and Accounts — Stage 1 Requirements
+# Authentication and Accounts — Stage 1 Feature
 
 ## Purpose
 
@@ -17,10 +17,6 @@ Authentication provides a private workspace in which every trip and its related 
 - Backend authorization is enforced for every trip and trip-scoped endpoint. Another account's trip is returned as not
   found.
 
-## Stage 1 completion
-
-Account behavior, automated coverage, and manual verification are complete.
-
 ## Constraints
 
 The pre-account trip migration has completed. Every new trip must have an owner, and account deletion permanently
@@ -28,5 +24,5 @@ deletes that account's trips and related records.
 
 ## Beyond Stage 1
 
-Future account hardening, shared trips, and collaboration directions are recorded in
-[accounts and collaboration](../future/accounts-and-collaboration.md).
+Future account hardening, shared trips, and collaboration directions are recorded in the
+[product roadmap](../roadmap.md).

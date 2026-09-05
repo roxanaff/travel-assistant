@@ -1,4 +1,4 @@
-# Packing Checklist — Stage 1 Requirements
+# Packing Checklist — Stage 1 Feature
 
 ## Purpose
 
@@ -39,10 +39,6 @@ fully editable:
 
 The default list deliberately does not include a phone.
 
-## Stage 1 completion
-
-Packing implementation, responsive behavior, and manual verification are complete.
-
 ## Beyond Stage 1
 
-Future packing directions are recorded in [budget and packing](../future/budget-and-packing.md).
+Future packing directions are recorded in the [product roadmap](../roadmap.md).

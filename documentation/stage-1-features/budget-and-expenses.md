@@ -1,4 +1,4 @@
-# Budget and Expenses — Stage 1 Requirements
+# Budget and Expenses — Stage 1 Feature
 
 ## Purpose
 
@@ -58,5 +58,4 @@ Activity entry costs are independent from planned costs and expenses during Stag
 
 ## Beyond Stage 1
 
-Future budget and expense directions are recorded in [budget and packing](../future/budget-and-packing.md) and
-[accounts and collaboration](../future/accounts-and-collaboration.md).
+Future budget, expense, and collaboration directions are recorded in the [product roadmap](../roadmap.md).

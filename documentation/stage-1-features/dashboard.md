@@ -1,4 +1,4 @@
-# Dashboard — Stage 1 Requirements
+# Dashboard — Stage 1 Feature
 
 ## Purpose
 
@@ -19,11 +19,6 @@ The dashboard provides an account-level view of trips and the entry point to eac
 - Editing replaces the selected card with its form in the same grid position; cancelling restores the card.
 - Delete failures leave the dashboard visible and report the failed action.
 
-## Stage 1 completion
-
-The dashboard implementation and its manual verification are complete.
-
 ## Beyond Stage 1
 
-Future dashboard directions are recorded in [personal trip planning](../future/personal-trip-planning.md) and
-[accounts and collaboration](../future/accounts-and-collaboration.md).
+Future dashboard and collaboration directions are recorded in the [product roadmap](../roadmap.md).

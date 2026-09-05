@@ -1,4 +1,4 @@
-# Itinerary — Stage 1 Requirements
+# Itinerary — Stage 1 Feature
 
 ## Purpose
 
@@ -13,8 +13,8 @@ The itinerary is a manual, ordered activity plan for one trip. It supports both 
 - Categories are Museum, Tour, Event, Food, Beach, Bar, Attraction, and Other. Priority defaults to Want-to-do.
 - Time requires a date. Duration uses the same native hours-and-minutes control and is stored as total minutes.
 - A blank new-item date remains unset. Its native date picker is restricted to the trip's date range, but the initial
-  date displayed by that browser-controlled picker can differ by device; for example, desktop browsers may show the
-  trip start while phone browsers may show today.
+  date displayed by that browser-controlled picker can differ by device; for example, desktop browsers may show the trip
+  start while phone browsers may show today.
 - The activity form opens with optional details collapsed. Its essential fields are arranged as Name, Price, and
   Priority, followed by Date, Time, and Duration. Category and opening hours share the first optional row; location and
   link share the next. Notes occupies a full row. Optional-field labels use dark gray rather than the primary label
@@ -36,14 +36,6 @@ The itinerary is a manual, ordered activity plan for one trip. It supports both 
 - When trip dates move without shortening the trip, scheduled activities shift by the same number of days. Activities
   outside a shortened trip become unscheduled.
 
-## Stage 1 completion
-
-The itinerary implementation, keyboard behavior, and manual verification are complete.
-
-## Constraints
-
-Activity entry cost is independent from the budget during Stage 1.
-
 ## Beyond Stage 1
 
-Future itinerary directions are recorded in [personal trip planning](../future/personal-trip-planning.md).
+Future itinerary directions are recorded in the [product roadmap](../roadmap.md).

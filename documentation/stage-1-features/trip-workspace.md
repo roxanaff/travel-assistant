@@ -1,4 +1,4 @@
-# Trip Workspace — Stage 1 Requirements
+# Trip Workspace — Stage 1 Feature
 
 ## Purpose
 
@@ -25,15 +25,6 @@ placing every feature on one long page.
 - Switching sections warns before an open add/edit form with unsaved changes is discarded.
 - `/trips/:id/details` remains available as a compatible Details URL.
 
-## Stage 1 completion
-
-The workspace implementation, navigation, and manual verification are complete.
-
-## Constraints
-
-A permanent side panel is not used because it reduces working space on desktop and does not adapt well to mobile.
-
 ## Beyond Stage 1
 
-Future workspace directions are recorded in [personal trip planning](../future/personal-trip-planning.md) and
-[accounts and collaboration](../future/accounts-and-collaboration.md).
+Future workspace and collaboration directions are recorded in the [product roadmap](../roadmap.md).

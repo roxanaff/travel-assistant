@@ -1,4 +1,4 @@
-# Trip Setup — Stage 1 Requirements
+# Trip Setup — Stage 1 Feature
 
 ## Purpose
 
@@ -16,15 +16,6 @@ Trip setup creates and updates the information that defines a trip and its lifec
   Skiing & winter sports; Road trip; Camping; Cabin stay; Cruise; All-inclusive resort; Festival / event; Work trip;
   Visiting friends & family; and Other.
 
-## Stage 1 completion
-
-Trip-details implementation and manual verification are complete.
-
-## Constraints
-
-Hiking is distinct from Mountaineering & climbing: the former covers walks and multi-day hikes, while the latter covers
-technical or summit-focused trips.
-
 ## Beyond Stage 1
 
-Future trip-setup directions are recorded in [personal trip planning](../future/personal-trip-planning.md).
+Future trip-setup directions are recorded in the [product roadmap](../roadmap.md).

@@ -1,4 +1,4 @@
-# Experience and Quality — Stage 1 Requirements
+# Experience and Quality — Stage 1 Feature
 
 This document records the cross-cutting quality baseline for Stage 1. It covers usability improvements, accessibility,
 visual consistency, and verification; it does not introduce new product capabilities.
@@ -20,11 +20,6 @@ visual consistency, and verification; it does not introduce new product capabili
 - The visual system uses sans-serif text, a warm-neutral surface for list items, and consistent typography, colour,
   spacing, and controls.
 
-## Stage 1 completion
-
-Responsive and keyboard-only manual checks are complete. The current colour system is applied consistently: blue is
-reserved for emphasis, pink is used intentionally, and ink is used for neutral text and controls.
-
 ### Engineering consistency
 
 Shared status presentation, trip-type labels, form keyboard behavior, and action-menu presentation are used where the
@@ -43,11 +38,7 @@ behavior is common. Feature-specific API and form workflows remain explicit when
   deployed trip data.
 - Feature-specific manual verification checklists are complete.
 
-## Constraints
-
-This work should improve consistency without obscuring feature-specific behavior or introducing new product
-capabilities.
-
 ## Beyond Stage 1
 
-Later experience changes are recorded with the relevant product direction in [future/](../future/).
+Later experience changes are recorded in the [product roadmap](../roadmap.md) or the
+[maintenance backlog](../maintenance-backlog.md), as appropriate.
