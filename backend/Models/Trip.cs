@@ -36,6 +36,16 @@ public class Trip
     /// </summary>
     public bool HasStartedPackingList { get; set; }
 
+    /// <summary>
+    /// Records that the user has chosen either the default list or an empty to-do checklist.
+    /// </summary>
+    public bool HasStartedTodoList { get; set; }
+
+    /// <summary>
+    /// Indicates that complete trip dates changed and task deadlines should be reviewed.
+    /// </summary>
+    public bool HasPendingTodoDeadlineReview { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public List<Expense> Expenses { get; set; } = [];
@@ -45,6 +55,8 @@ public class Trip
     public List<ItineraryItem> ItineraryItems { get; set; } = [];
 
     public List<PackingItem> PackingItems { get; set; } = [];
+
+    public List<TodoItem> TodoItems { get; set; } = [];
 }
 
 /// <summary>High-level trip styles selected during setup.</summary>

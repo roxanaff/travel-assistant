@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TravelAssistant.Data;
@@ -11,9 +12,11 @@ using TravelAssistant.Data;
 namespace TravelAssistant.Migrations
 {
     [DbContext(typeof(TravelAssistantDbContext))]
-    partial class TravelAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905075128_AddTodoItems")]
+    partial class AddTodoItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,11 +359,6 @@ namespace TravelAssistant.Migrations
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
-
-                    b.Property<bool>("HasPendingTodoDeadlineReview")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<bool>("HasStartedPackingList")
                         .ValueGeneratedOnAdd()

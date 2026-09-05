@@ -18,6 +18,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<PlannedCost> PlannedCosts => Set<PlannedCost>();
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
+    public DbSet<TodoItem> TodoItems => Set<TodoItem>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -39,6 +40,8 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             trip.Property(item => item.Currency).HasMaxLength(3).IsRequired();
             trip.Property(item => item.Note).HasMaxLength(1000);
             trip.Property(item => item.HasStartedPackingList).HasDefaultValue(false);
+            trip.Property(item => item.HasStartedTodoList).HasDefaultValue(false);
+            trip.Property(item => item.HasPendingTodoDeadlineReview).HasDefaultValue(false);
         });
 
         modelBuilder.Entity<User>(user =>
@@ -102,6 +105,18 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             packingItem.Property(item => item.SortOrder).HasDefaultValue(0);
             packingItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.PackingItems)
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TodoItem>(todoItem =>
+        {
+            todoItem.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            todoItem.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
+            todoItem.Property(item => item.IsCompleted).HasDefaultValue(false);
+            todoItem.Property(item => item.SortOrder).HasDefaultValue(0);
+            todoItem.HasOne(item => item.Trip)
+                .WithMany(trip => trip.TodoItems)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

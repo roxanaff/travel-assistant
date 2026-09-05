@@ -17,6 +17,8 @@ public record TripResponse(
     string Currency,
     string? Note,
     bool HasStartedPackingList,
+    bool HasStartedTodoList,
+    bool HasPendingTodoDeadlineReview,
     DateTimeOffset CreatedAtUtc,
     TripLifecycleStatus Status,
     int UnscheduledActivityCount

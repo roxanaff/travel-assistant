@@ -177,6 +177,7 @@ app.MapExpenseEndpoints();
 app.MapPlannedCostEndpoints();
 app.MapItineraryEndpoints();
 app.MapPackingItemEndpoints();
+app.MapTodoItemEndpoints();
 app.MapAuthEndpoints();
 
 app.Run();

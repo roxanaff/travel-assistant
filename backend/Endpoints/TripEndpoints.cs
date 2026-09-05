@@ -91,6 +91,11 @@ public static class TripEndpoints
                 previousStartDate,
                 previousEndDate,
                 database);
+            await ApplyTodoDeadlineDateChanges(
+                trip,
+                previousStartDate,
+                previousEndDate,
+                database);
 
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(trip, unscheduledActivityCount));
@@ -176,6 +181,42 @@ public static class TripEndpoints
         return unscheduledCount;
     }
 
+    /// <summary>
+    /// Assigns a deadline when a draft trip first receives complete dates, but never moves existing deadlines.
+    /// A later change to a complete date range prompts the user to review their saved deadlines.
+    /// </summary>
+    private static async Task ApplyTodoDeadlineDateChanges(
+        Trip trip,
+        DateOnly? previousStartDate,
+        DateOnly? previousEndDate,
+        TravelAssistantDbContext database)
+    {
+        if (trip.StartDate is null || trip.EndDate is null)
+        {
+            return;
+        }
+
+        var previouslyHadCompleteDates = previousStartDate is not null && previousEndDate is not null;
+        if (!previouslyHadCompleteDates)
+        {
+            var tasksWithoutDeadlines = await database.TodoItems
+                .Where(item => item.TripId == trip.Id && item.Deadline == null)
+                .ToListAsync();
+
+            foreach (var task in tasksWithoutDeadlines)
+            {
+                task.Deadline = trip.StartDate;
+            }
+
+            return;
+        }
+
+        if (previousStartDate != trip.StartDate || previousEndDate != trip.EndDate)
+        {
+            trip.HasPendingTodoDeadlineReview = true;
+        }
+    }
+
     /// <summary>Projects a database entity into the API shape, including calculated display values.</summary>
     private static TripResponse ToResponse(Trip trip, int unscheduledActivityCount = 0)
     {
@@ -192,6 +233,8 @@ public static class TripEndpoints
             trip.Currency,
             trip.Note,
             trip.HasStartedPackingList,
+            trip.HasStartedTodoList,
+            trip.HasPendingTodoDeadlineReview,
             trip.CreatedAtUtc,
             status,
             unscheduledActivityCount);
