@@ -1,6 +1,6 @@
 .todo-item {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(140px, 180px) auto;
+    grid-template-columns: 18px auto minmax(0, 1fr) minmax(140px, 180px) auto;
 }
 
 .todo-deadline-guidance {
@@ -14,28 +14,29 @@
 
 @media (max-width: 760px) {
     .todo-item {
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: 18px auto minmax(0, 1fr) auto;
         column-gap: 10px;
         row-gap: 2px;
     }
 
+    .checklist-drag-handle,
     .todo-item-checkbox {
         grid-row: 1 / span 2;
         align-self: center;
     }
 
     .todo-item-name {
-        grid-column: 2;
+        grid-column: 3;
         grid-row: 1;
     }
 
     .todo-item-details {
-        grid-column: 2;
+        grid-column: 3;
         grid-row: 2;
     }
 
     .todo-item .item-actions {
-        grid-column: 3;
+        grid-column: 4;
         grid-row: 1 / span 2;
         align-self: center;
     }

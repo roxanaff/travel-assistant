@@ -153,6 +153,13 @@ Build:
 - Link an activity’s expected cost to a planned cost.
 - Opening-hours hints when an activity has opening hours but no selected start time.
 - Short and expanded layouts appropriate for calendar use.
+- Trip-date change review for scheduled activities. When the trip dates change, ask the traveller which result they
+  want before changing the itinerary:
+  1. **Keep activities on their dates:** leave activities still within the revised trip range exactly where they are;
+     make only activities outside the range unscheduled. This suits a fixed event such as a concert, even when travel
+     plans change.
+  2. **Move itinerary with the trip:** shift activities by the change in the trip start date, using the current
+     automatic-adjustment rules. Activities that cannot fit in a shortened trip become unscheduled.
 
 Note: how to best link related planned costs, expenses, activities, and bookings?
 

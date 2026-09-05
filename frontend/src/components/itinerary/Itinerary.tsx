@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 
 import {
     createItineraryItem,
@@ -11,6 +11,7 @@ import {
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
+import { GroupAddButton } from "../shared/GroupAddButton";
 import { FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { UndoToast } from "../shared/UndoToast";
@@ -673,15 +674,10 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                 <div className="itinerary-day-heading">
                                     <div className="itinerary-day-title">
                                         <h3>{formatDate(day)}</h3>
-                                        <button
-                                            className="icon-button itinerary-day-add"
-                                            type="button"
+                                        <GroupAddButton
+                                            label={`Add an item for ${formatDate(day)}`}
                                             onClick={() => startAdding(day)}
-                                            aria-label={`Add an item for ${formatDate(day)}`}
-                                            title="Add item for this day"
-                                        >
-                                            <Plus size={17} />
-                                        </button>
+                                        />
                                     </div>
                                 </div>
                                 <ul className="list-items">{dayItems.map(renderItem)}</ul>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { createPlannedCost, deletePlannedCost, getPlannedCosts, updatePlannedCost } from "../../api/plannedCostsApi";
 import { createExpense, deleteExpense } from "../../api/expensesApi";
@@ -17,6 +17,7 @@ import { SectionHeader } from "../shared/SectionHeader";
 import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { GroupHeading } from "../shared/GroupHeading";
+import { GroupAddButton } from "../shared/GroupAddButton";
 import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
@@ -386,14 +387,10 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                 title={category.label}
                                 actions={
                                     category.value && (
-                                        <button
-                                            className="icon-button"
-                                            type="button"
+                                        <GroupAddButton
+                                            label={`Add a planned cost to ${category.label}`}
                                             onClick={() => startAdding(category.value)}
-                                            aria-label={`Add a planned cost to ${category.label}`}
-                                        >
-                                            <Plus size={17} />
-                                        </button>
+                                        />
                                     )
                                 }
                                 summary={formatMoney(categoryTotal, trip.currency)}

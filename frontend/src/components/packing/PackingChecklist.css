@@ -1,78 +1,11 @@
-/* Checklist setup, list/category views, drag affordances, and inline item-form styling. */
-.packing-category-group {
-    margin-top: 20px;
-}
-
-.packing-category-group:first-child {
-    margin-top: 0;
-}
-
-.packing-category-group .group-heading {
-    margin-bottom: 8px;
-}
+/* Packing-specific grid layout and inline item-form styling. */
 
 .packing-item {
-    position: relative;
     grid-template-columns: auto 18px minmax(0, 1fr) minmax(140px, 180px) auto;
-}
-
-.packing-item-placeholder {
-    min-height: 42px;
-    background-color: var(--color-gray-100);
-    border-radius: 8px;
-}
-
-.packing-item-placeholder > * {
-    visibility: hidden;
-}
-
-.packing-drop-before::before,
-.packing-drop-after::after {
-    position: absolute;
-    right: 0;
-    left: 0;
-    z-index: 1;
-    height: 1px;
-    background: var(--color-blue-500);
-    content: "";
-}
-
-.packing-drop-before::before {
-    top: -3px;
-}
-
-.packing-drop-after::after {
-    bottom: -3px;
 }
 
 .packing-item-checkbox {
     flex: 0 0 18px;
-}
-
-.packing-drag-handle {
-    display: inline-grid;
-    place-items: center;
-    color: var(--color-gray-500);
-    cursor: grab;
-    touch-action: pan-y;
-    user-select: none;
-}
-.packing-drag-handle:active {
-    cursor: grabbing;
-}
-
-.packing-drag-preview {
-    position: fixed;
-    z-index: 20;
-    box-sizing: border-box;
-    padding: 6px 0;
-    border: 1px solid var(--color-blue-500);
-    border-radius: 8px;
-    background: var(--color-white);
-    color: var(--color-ink);
-    font: inherit;
-    opacity: 0.72;
-    pointer-events: none;
 }
 
 .packing-item-editing .packing-item-form {
@@ -86,7 +19,7 @@
         row-gap: 2px;
     }
 
-    .packing-drag-handle,
+    .checklist-drag-handle,
     .packing-item-checkbox {
         grid-row: 1 / span 2;
         align-self: center;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -20,12 +20,19 @@ import {
 } from "../../types/packingItem";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import {
+    reorderChecklistSection,
+    type ChecklistDropTarget,
+    useChecklistDragReorder,
+} from "../../utils/useChecklistDragReorder";
+import { useChecklistView } from "../../utils/useChecklistView";
 import { ChecklistColumns } from "../shared/ChecklistColumns";
 import { ChecklistHeader } from "../shared/ChecklistHeader";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { GroupingControl } from "../shared/GroupingControl";
 import { GroupHeading } from "../shared/GroupHeading";
+import { GroupAddButton } from "../shared/GroupAddButton";
 import { SectionCard } from "../shared/SectionCard";
 import { UndoToast } from "../shared/UndoToast";
 import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
@@ -36,38 +43,10 @@ type SetupAction = "default" | "empty" | null;
 
 // Packing quantities are stored in a C# Int32, so the browser uses the same upper bound.
 const maximumPackingQuantity = 2_147_483_647;
-type PackingView = "list" | "category";
-
-const packingViewStorageKey = (tripId: string) =>
-    `travel-assistant:packing-view:${tripId}`;
-
-const getStoredPackingView = (tripId: string): PackingView => {
-    try {
-        return window.localStorage.getItem(packingViewStorageKey(tripId)) ===
-            "category"
-            ? "category"
-            : "list";
-    } catch {
-        return "list";
-    }
-};
+const packingViewStorageKey = (tripId: string) => `travel-assistant:packing-view:${tripId}`;
 
 type PendingDeletion = {
     item: PackingItem;
-};
-
-type PackingDrag = {
-    item: PackingItem;
-    sectionItems: PackingItem[];
-    pointerId: number;
-    width: number;
-    offsetX: number;
-    offsetY: number;
-};
-
-type DropTarget = {
-    itemId: string;
-    position: "before" | "after";
 };
 
 const categoryLabel = (category: PackingItem["category"]) =>
@@ -91,23 +70,8 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
     const [isSaving, setIsSaving] = useState(false);
     const [isConfirmingReset, setIsConfirmingReset] = useState(false);
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
-    const [view, setView] = useState<PackingView>(() =>
-        getStoredPackingView(trip.id),
-    );
-    const [drag, setDrag] = useState<PackingDrag | null>(null);
-    const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
-    const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+    const { view, changeView } = useChecklistView(packingViewStorageKey(trip.id));
     const deleteTimerRef = useRef<number | null>(null);
-    const touchDragTimerRef = useRef<number | null>(null);
-    const dropTargetRef = useRef<DropTarget | null>(null);
-    const pendingPointerRef = useRef<{
-        item: PackingItem;
-        sectionItems: PackingItem[];
-        pointerId: number;
-        x: number;
-        y: number;
-        handle: HTMLSpanElement;
-    } | null>(null);
 
     useEffect(() => {
         setHasUnsavedForm(isAdding || editingItemId !== null);
@@ -130,16 +94,6 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
 
         void loadItems();
     }, [trip.id]);
-
-    const changeView = (nextView: PackingView) => {
-        setView(nextView);
-
-        try {
-            window.localStorage.setItem(packingViewStorageKey(trip.id), nextView);
-        } catch {
-            // The checklist still works when browser storage is unavailable.
-        }
-    };
 
     /** Mirrors the API's setup flag in workspace state so this page immediately leaves the setup view. */
     const markChecklistStarted = () => {
@@ -241,6 +195,17 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
         useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
+
+    /** Opens the add form, optionally carrying the category from a grouped-list heading. */
+    const startAdding = (category: PackingItem["category"] = null) => {
+        setEditingItemId(null);
+        setNewItem({
+            ...createEmptyPackingItemForm(),
+            category: category ?? "",
+        });
+        setFormError(null);
+        setIsAdding(true);
+    };
 
     const saveNewItem = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -366,167 +331,13 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
 
     /** Reorders within the packed or unpacked section, then delegates persistence to the API helper. */
     const moveItem = useCallback(
-        (sectionItems: PackingItem[], itemId: string, target: DropTarget) => {
-            const currentIndex = sectionItems.findIndex((item) => item.id === itemId);
-            if (currentIndex < 0) return;
-
-            const reorderedSection = [...sectionItems];
-            const [movedItem] = reorderedSection.splice(currentIndex, 1);
-            const targetIndex = reorderedSection.findIndex((item) => item.id === target.itemId);
-            if (targetIndex < 0) return;
-            reorderedSection.splice(target.position === "before" ? targetIndex : targetIndex + 1, 0, movedItem);
-
-            const otherSection = items.filter((item) => item.isPacked !== movedItem.isPacked);
-            const nextItems = movedItem.isPacked
-                ? [...otherSection, ...reorderedSection]
-                : [...reorderedSection, ...otherSection];
-
-            void persistOrder(nextItems);
+        (sectionItems: PackingItem[], itemId: string, target: ChecklistDropTarget) => {
+            const nextItems = reorderChecklistSection(items, sectionItems, itemId, target);
+            if (nextItems) void persistOrder(nextItems);
         },
         [items, persistOrder],
     );
-
-    const beginPointerDrag = (
-        item: PackingItem,
-        sectionItems: PackingItem[],
-        pointerId: number,
-        handle: HTMLSpanElement,
-        clientX: number,
-        clientY: number,
-    ) => {
-        const row = handle.closest<HTMLElement>(".packing-item");
-        if (!row) return;
-
-        const bounds = row.getBoundingClientRect();
-        handle.setPointerCapture(pointerId);
-        setDrag({
-            item,
-            sectionItems,
-            pointerId,
-            width: bounds.width,
-            offsetX: clientX - bounds.left,
-            offsetY: clientY - bounds.top,
-        });
-        setDragPosition({ x: clientX, y: clientY });
-        setDropTarget(null);
-    };
-
-    const clearPointerDrag = () => {
-        if (touchDragTimerRef.current !== null) {
-            window.clearTimeout(touchDragTimerRef.current);
-            touchDragTimerRef.current = null;
-        }
-        pendingPointerRef.current = null;
-        dropTargetRef.current = null;
-        setDrag(null);
-        setDropTarget(null);
-    };
-
-    const findDropTarget = useCallback(
-        (event: globalThis.PointerEvent) => {
-            if (!drag) return null;
-            const hoveredRow = document
-                .elementFromPoint(event.clientX, event.clientY)
-                ?.closest<HTMLElement>("[data-packing-item-id]");
-            if (!hoveredRow) return null;
-
-            const targetId = hoveredRow.dataset.packingItemId;
-            if (!targetId || targetId === drag.item.id) return null;
-            const availableItems = drag.sectionItems.filter((item) => item.id !== drag.item.id);
-            const targetIndex = availableItems.findIndex((item) => item.id === targetId);
-            const targetItem = availableItems[targetIndex];
-            if (!targetItem || targetItem.isPacked !== drag.item.isPacked) return null;
-
-            const bounds = hoveredRow.getBoundingClientRect();
-            if (event.clientY < bounds.top + bounds.height / 2) {
-                return { itemId: targetId, position: "before" } satisfies DropTarget;
-            }
-
-            const nextItem = availableItems[targetIndex + 1];
-            return nextItem
-                ? ({ itemId: nextItem.id, position: "before" } satisfies DropTarget)
-                : ({ itemId: targetId, position: "after" } satisfies DropTarget);
-        },
-        [drag],
-    );
-
-    useEffect(() => {
-        const updateDrag = (event: globalThis.PointerEvent) => {
-            const pending = pendingPointerRef.current;
-            if (pending && event.pointerId === pending.pointerId) {
-                const moved = Math.hypot(event.clientX - pending.x, event.clientY - pending.y);
-                if (moved > 6) {
-                    if (touchDragTimerRef.current !== null) {
-                        window.clearTimeout(touchDragTimerRef.current);
-                        touchDragTimerRef.current = null;
-                    }
-                    if (event.pointerType !== "touch") {
-                        beginPointerDrag(
-                            pending.item,
-                            pending.sectionItems,
-                            pending.pointerId,
-                            pending.handle,
-                            event.clientX,
-                            event.clientY,
-                        );
-                    }
-                    pendingPointerRef.current = null;
-                }
-                return;
-            }
-            if (!drag || event.pointerId !== drag.pointerId) return;
-            setDragPosition({ x: event.clientX, y: event.clientY });
-            const nextDropTarget = findDropTarget(event);
-            dropTargetRef.current = nextDropTarget;
-            setDropTarget(nextDropTarget);
-        };
-
-        const finishDrag = (event: globalThis.PointerEvent) => {
-            if (drag?.pointerId === event.pointerId && dropTargetRef.current) {
-                moveItem(drag.sectionItems, drag.item.id, dropTargetRef.current);
-            }
-            if (drag?.pointerId === event.pointerId || pendingPointerRef.current?.pointerId === event.pointerId) {
-                clearPointerDrag();
-            }
-        };
-
-        window.addEventListener("pointermove", updateDrag);
-        window.addEventListener("pointerup", finishDrag);
-        window.addEventListener("pointercancel", finishDrag);
-        return () => {
-            window.removeEventListener("pointermove", updateDrag);
-            window.removeEventListener("pointerup", finishDrag);
-            window.removeEventListener("pointercancel", finishDrag);
-        };
-    }, [drag, findDropTarget, moveItem]);
-
-    const startPointerDrag = (event: PointerEvent<HTMLSpanElement>, item: PackingItem, sectionItems: PackingItem[]) => {
-        if (event.button !== 0) return;
-        pendingPointerRef.current = {
-            item,
-            sectionItems,
-            pointerId: event.pointerId,
-            x: event.clientX,
-            y: event.clientY,
-            handle: event.currentTarget,
-        };
-        if (event.pointerType === "touch") {
-            touchDragTimerRef.current = window.setTimeout(() => {
-                const pending = pendingPointerRef.current;
-                if (!pending) return;
-                beginPointerDrag(
-                    pending.item,
-                    pending.sectionItems,
-                    pending.pointerId,
-                    pending.handle,
-                    pending.x,
-                    pending.y,
-                );
-                pendingPointerRef.current = null;
-                touchDragTimerRef.current = null;
-            }, 200);
-        }
-    };
+    const { drag, dragPosition, dropTarget, startPointerDrag } = useChecklistDragReorder(moveItem);
 
     /** Shared add/edit form so both flows enforce the same input behaviour and error display. */
     const form = (
@@ -588,11 +399,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
     const showSetupChoice = !trip.hasStartedPackingList && items.length === 0;
 
     /** Renders either an item row or its inline edit form. */
-    const renderItem = (
-        item: PackingItem,
-        sectionItems: PackingItem[],
-        showCategory = true,
-    ) => {
+    const renderItem = (item: PackingItem, sectionItems: PackingItem[], showCategory = true) => {
         const checkboxId = `packing-item-${item.id}`;
 
         return editingItemId === item.id ? (
@@ -601,12 +408,12 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
             </li>
         ) : (
             <li
-                className={`checklist-item packing-item${item.isPacked ? " is-complete" : ""}${drag?.item.id === item.id ? " packing-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` packing-drop-${dropTarget.position}` : ""}`}
+                className={`checklist-item packing-item${item.isPacked ? " is-complete" : ""}${drag?.item.id === item.id ? " checklist-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` checklist-drop-${dropTarget.position}` : ""}`}
                 key={item.id}
-                data-packing-item-id={item.id}
+                data-checklist-item-id={item.id}
             >
                 <span
-                    className="packing-drag-handle"
+                    className="checklist-drag-handle"
                     onPointerDown={(event) => startPointerDrag(event, item, sectionItems)}
                     aria-label={`Reorder ${item.name}`}
                     title="Drag to reorder within this list"
@@ -663,12 +470,20 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
             if (categoryItems.length === 0) return null;
 
             return (
-                <section className="packing-category-group" key={category.value}>
-                    <GroupHeading title={category.label} />
+                <section className="checklist-category-group" key={category.value}>
+                    <GroupHeading
+                        title={category.label}
+                        actions={
+                            category.value && (
+                                <GroupAddButton
+                                    label={`Add a packing item to ${category.label}`}
+                                    onClick={() => startAdding(category.value)}
+                                />
+                            )
+                        }
+                    />
                     <ul className="list-items">
-                        {categoryItems.map((item) =>
-                            renderItem(item, categoryItems, false),
-                        )}
+                        {categoryItems.map((item) => renderItem(item, categoryItems, false))}
                     </ul>
                 </section>
             );
@@ -679,7 +494,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
         <SectionCard className="checklist-section packing-section">
             {drag && (
                 <div
-                    className="packing-drag-preview"
+                    className="checklist-drag-preview"
                     style={{
                         width: drag.width,
                         left: dragPosition.x - drag.offsetX,
@@ -710,15 +525,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
                             <button className="text-button" type="button" onClick={() => setIsConfirmingReset(true)}>
                                 Reset checklist
                             </button>
-                            <button
-                                className="primary-button"
-                                type="button"
-                                onClick={() => {
-                                    setEditingItemId(null);
-                                    setFormError(null);
-                                    setIsAdding(true);
-                                }}
-                            >
+                            <button className="primary-button" type="button" onClick={() => startAdding()}>
                                 Add item
                             </button>
                         </>

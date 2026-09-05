@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
     createDefaultTodoList,
     createTodoItem,
+    deleteTodoItem,
+    dismissTodoDeadlineReviewNotice,
     getTodoItems,
+    reorderTodoItems,
+    resetTodoList,
     startEmptyTodoList,
     updateTodoItem,
     updateTodoItemCompletedState,
@@ -12,16 +16,33 @@ import {
 import { createEmptyTodoItemForm, todoCategories, type TodoItem, type TodoItemForm } from "../../types/todoItem";
 import type { TripWorkspaceContext } from "../../pages/Workspace";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import {
+    reorderChecklistSection,
+    type ChecklistDropTarget,
+    useChecklistDragReorder,
+} from "../../utils/useChecklistDragReorder";
+import { useChecklistView } from "../../utils/useChecklistView";
 import { formatDate } from "../../utils/format";
 import { ChecklistColumns } from "../shared/ChecklistColumns";
 import { ChecklistHeader } from "../shared/ChecklistHeader";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { GroupingControl } from "../shared/GroupingControl";
+import { GroupHeading } from "../shared/GroupHeading";
+import { GroupAddButton } from "../shared/GroupAddButton";
 import { SectionCard } from "../shared/SectionCard";
+import { UndoToast } from "../shared/UndoToast";
 import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
 
 import "./TodoChecklist.css";
 
 type SetupAction = "default" | "empty" | null;
+
+type PendingDeletion = {
+    item: TodoItem;
+};
+
+const todoViewStorageKey = (tripId: string) => `travel-assistant:todo-view:${tripId}`;
 
 /** Owns the initial setup workflow for one trip's manual to-do checklist. */
 export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
@@ -36,6 +57,11 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
     const [editingItem, setEditingItem] = useState<TodoItemForm>(createEmptyTodoItemForm());
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+    const [isDismissingDeadlineReview, setIsDismissingDeadlineReview] = useState(false);
+    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const deleteTimerRef = useRef<number | null>(null);
+    const { view, changeView } = useChecklistView(todoViewStorageKey(trip.id));
 
     useEffect(() => {
         setHasUnsavedForm(isAdding || editingItemId !== null);
@@ -149,10 +175,12 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
         useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
 
-    const startAdding = () => {
+    /** Opens the add form, optionally carrying the category from a grouped-list heading. */
+    const startAdding = (category: TodoItem["category"] = null) => {
         setEditingItemId(null);
         setNewItem({
             ...createEmptyTodoItemForm(),
+            category: category ?? "",
             deadline: trip.startDate ?? "",
         });
         setIsAdding(true);
@@ -213,8 +241,107 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         }
     };
 
+    /** Permanently deletes a task after its Undo window expires. */
+    const commitDelete = async (item: TodoItem) => {
+        try {
+            await deleteTodoItem(trip.id, item.id);
+        } catch {
+            setItems((current) => [...current, item]);
+            setError("Could not delete this to-do task. It was restored.");
+        } finally {
+            setPendingDeletion((current) => (current?.item.id === item.id ? null : current));
+        }
+    };
+
+    /** Removes a task from the view immediately, keeping it available for five seconds of Undo. */
+    const removeItem = (item: TodoItem) => {
+        if (pendingDeletion) {
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+            void commitDelete(pendingDeletion.item);
+        }
+
+        setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+        setPendingDeletion({ item });
+        deleteTimerRef.current = window.setTimeout(() => {
+            void commitDelete(item);
+            deleteTimerRef.current = null;
+        }, 5000);
+    };
+
+    const undoDelete = () => {
+        if (!pendingDeletion) return;
+        if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+        setItems((current) => [...current, pendingDeletion.item]);
+        setPendingDeletion(null);
+        deleteTimerRef.current = null;
+    };
+
+    const resetChecklist = async () => {
+        setError(null);
+        try {
+            await resetTodoList(trip.id);
+            if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+            setPendingDeletion(null);
+            setItems([]);
+            setTrip((current) =>
+                current
+                    ? { ...current, hasStartedTodoList: false, hasPendingTodoDeadlineReview: false }
+                    : current,
+            );
+            setIsConfirmingReset(false);
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not reset the to-do checklist.");
+        }
+    };
+
+    /** Hides the reminder only after the API records that the saved dates were reviewed. */
+    const dismissDeadlineReviewNotice = async () => {
+        setIsDismissingDeadlineReview(true);
+        setError(null);
+
+        try {
+            await dismissTodoDeadlineReviewNotice(trip.id);
+            setTrip((current) => (current ? { ...current, hasPendingTodoDeadlineReview: false } : current));
+        } catch (exception) {
+            setError(
+                exception instanceof Error ? exception.message : "Could not dismiss the deadline review reminder.",
+            );
+        } finally {
+            setIsDismissingDeadlineReview(false);
+        }
+    };
+
+    /** Optimistically saves a complete ordering and restores the previous order if it is rejected. */
+    const persistOrder = useCallback(
+        async (nextItems: TodoItem[]) => {
+            const previousItems = items;
+            setItems(nextItems.map((item, index) => ({ ...item, sortOrder: index })));
+
+            try {
+                await reorderTodoItems(
+                    trip.id,
+                    nextItems.map((item) => item.id),
+                );
+            } catch {
+                setItems(previousItems);
+                setError("Could not save the new to-do order. It was restored.");
+            }
+        },
+        [items, trip.id],
+    );
+
+    /** Reorders within the complete or incomplete section, then delegates persistence to the API helper. */
+    const moveItem = useCallback(
+        (sectionItems: TodoItem[], itemId: string, target: ChecklistDropTarget) => {
+            const nextItems = reorderChecklistSection(items, sectionItems, itemId, target);
+            if (nextItems) void persistOrder(nextItems);
+        },
+        [items, persistOrder],
+    );
+
+    const { drag, dragPosition, dropTarget, startPointerDrag } = useChecklistDragReorder(moveItem);
+
     const showSetupChoice = !trip.hasStartedTodoList && items.length === 0;
-    const canSetDeadline = trip.startDate !== null && trip.endDate !== null;
     const toDo = items.filter((item) => !item.isCompleted);
     const done = items.filter((item) => item.isCompleted);
 
@@ -251,16 +378,14 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                         ))}
                     </select>
                 </label>
-                {canSetDeadline && (
-                    <label>
-                        <FieldLabel>Complete by</FieldLabel>
-                        <input
-                            type="date"
-                            value={item.deadline}
-                            onChange={(event) => updateForm("deadline", event.target.value, editing)}
-                        />
-                    </label>
-                )}
+                <label>
+                    <FieldLabel>Complete by</FieldLabel>
+                    <input
+                        type="date"
+                        value={item.deadline}
+                        onChange={(event) => updateForm("deadline", event.target.value, editing)}
+                    />
+                </label>
             </FieldRow>
             {formError && <p className="form-error">{formError}</p>}
             <FormActions>
@@ -274,7 +399,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         </FormSurface>
     );
 
-    const renderItem = (item: TodoItem) => {
+    const renderItem = (item: TodoItem, sectionItems: TodoItem[], showCategory = true) => {
         const checkboxId = `todo-item-${item.id}`;
 
         return editingItemId === item.id ? (
@@ -282,7 +407,19 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                 {form(editingItem, saveEdit, true)}
             </li>
         ) : (
-            <li className={`checklist-item todo-item${item.isCompleted ? " is-complete" : ""}`} key={item.id}>
+            <li
+                className={`checklist-item todo-item${item.isCompleted ? " is-complete" : ""}${drag?.item.id === item.id ? " checklist-item-placeholder" : ""}${dropTarget?.itemId === item.id ? ` checklist-drop-${dropTarget.position}` : ""}`}
+                key={item.id}
+                data-checklist-item-id={item.id}
+            >
+                <span
+                    className="checklist-drag-handle"
+                    onPointerDown={(event) => startPointerDrag(event, item, sectionItems)}
+                    aria-label={`Reorder ${item.name}`}
+                    title="Drag to reorder within this list"
+                >
+                    <GripVertical size={17} aria-hidden="true" />
+                </span>
                 <input
                     id={checkboxId}
                     className="todo-item-checkbox checklist-state-toggle"
@@ -295,15 +432,13 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                 <label className="todo-item-name checklist-state-name" htmlFor={checkboxId}>
                     {item.name}
                 </label>
-                {(categoryLabel(item.category) || item.deadline) && (
+                {((showCategory && categoryLabel(item.category)) || item.deadline) && (
                     <div className="todo-item-details item-metadata">
-                        {categoryLabel(item.category) && (
+                        {showCategory && categoryLabel(item.category) && (
                             <span className="todo-category item-metadata-label">{categoryLabel(item.category)}</span>
                         )}
                         {item.deadline && (
-                            <span className="todo-deadline item-metadata-detail">
-                                Complete by {formatDate(item.deadline)}
-                            </span>
+                            <span className="todo-deadline item-metadata-detail">{formatDate(item.deadline)}</span>
                         )}
                     </div>
                 )}
@@ -316,29 +451,110 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                     >
                         <Pencil size={17} />
                     </button>
+                    <button
+                        className="icon-button danger-button"
+                        type="button"
+                        onClick={() => removeItem(item)}
+                        aria-label={`Delete ${item.name}`}
+                    >
+                        <Trash2 size={17} />
+                    </button>
                 </div>
             </li>
         );
     };
 
+    /** Switches between the user's chosen flat-list and category-grouped views. */
+    const renderSectionItems = (sectionItems: TodoItem[]) => {
+        if (view === "list") {
+            return <ul className="list-items">{sectionItems.map((item) => renderItem(item, sectionItems))}</ul>;
+        }
+
+        const categoryGroups = [...todoCategories, { value: null, label: "Not specified" }];
+
+        return categoryGroups.map((category) => {
+            const categoryItems = sectionItems.filter((item) => item.category === category.value);
+            if (categoryItems.length === 0) return null;
+
+            return (
+                <section className="checklist-category-group" key={category.value}>
+                    <GroupHeading
+                        title={category.label}
+                        actions={
+                            category.value && (
+                                <GroupAddButton
+                                    label={`Add a to-do task to ${category.label}`}
+                                    onClick={() => startAdding(category.value)}
+                                />
+                            )
+                        }
+                    />
+                    <ul className="list-items">
+                        {categoryItems.map((item) => renderItem(item, categoryItems, false))}
+                    </ul>
+                </section>
+            );
+        });
+    };
+
     return (
         <SectionCard className="checklist-section todo-section">
+            {drag && (
+                <div
+                    className="checklist-drag-preview"
+                    style={{
+                        width: drag.width,
+                        left: dragPosition.x - drag.offsetX,
+                        top: dragPosition.y - drag.offsetY,
+                    }}
+                    aria-hidden="true"
+                >
+                    {drag.item.name}
+                </div>
+            )}
             <ChecklistHeader
                 title="To-do"
                 completedCount={!isLoading && !showSetupChoice ? done.length : undefined}
                 totalCount={!isLoading && !showSetupChoice ? items.length : undefined}
                 completionLabel="complete"
+                toolbarLeading={
+                    !isLoading && !showSetupChoice ? (
+                        <GroupingControl value={view} onChange={changeView}>
+                            <option value="list">Ungrouped</option>
+                            <option value="category">Category</option>
+                        </GroupingControl>
+                    ) : undefined
+                }
                 actions={
                     !isLoading && !showSetupChoice && !isAdding ? (
-                        <button className="primary-button" type="button" onClick={startAdding}>
-                            Add task
-                        </button>
+                        <>
+                            <button className="text-button" type="button" onClick={() => setIsConfirmingReset(true)}>
+                                Reset checklist
+                            </button>
+                            <button className="primary-button" type="button" onClick={() => startAdding()}>
+                                Add task
+                            </button>
+                        </>
                     ) : undefined
                 }
             />
 
             {isLoading && <p className="detail-message">Loading to-do tasks…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
+
+            {!isLoading && trip.hasPendingTodoDeadlineReview && items.length > 0 && (
+                <div className="inline-notice" role="status">
+                    <p>Trip dates changed. Existing task deadlines were kept, so please review them.</p>
+                    <button
+                        className="text-button"
+                        type="button"
+                        onClick={() => void dismissDeadlineReviewNotice()}
+                        disabled={isDismissingDeadlineReview}
+                    >
+                        {isDismissingDeadlineReview ? "Dismissing…" : "Dismiss"}
+                    </button>
+                </div>
+            )}
 
             {!isLoading && showSetupChoice && (
                 <div className="checklist-empty-state">
@@ -367,9 +583,10 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
             {!isLoading && !showSetupChoice && (
                 <>
                     {isAdding && form(newItem, saveNewItem)}
-                    {!canSetDeadline && (
+                    {pendingDeletion && <UndoToast message="To-do task deleted." onUndo={undoDelete} />}
+                    {!trip.startDate && (
                         <p className="todo-deadline-guidance">
-                            Add trip dates in Details to set deadlines and organise tasks around the trip.
+                            Add trip dates in Details to prefill new task deadlines with the trip's start date.
                         </p>
                     )}
                     {items.length === 0 ? (
@@ -382,7 +599,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                                     toDo.length === 0 ? (
                                         <p className="detail-message">Everything is done.</p>
                                     ) : (
-                                        <ul className="list-items">{toDo.map(renderItem)}</ul>
+                                        renderSectionItems(toDo)
                                     ),
                             }}
                             second={{
@@ -391,13 +608,22 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                                     done.length === 0 ? (
                                         <p className="detail-message">Nothing done yet.</p>
                                     ) : (
-                                        <ul className="list-items">{done.map(renderItem)}</ul>
+                                        renderSectionItems(done)
                                     ),
                             }}
                         />
                     )}
                 </>
             )}
+            <ConfirmDialog
+                isOpen={isConfirmingReset}
+                title="Reset checklist?"
+                confirmLabel="Reset checklist"
+                onCancel={() => setIsConfirmingReset(false)}
+                onConfirm={() => void resetChecklist()}
+            >
+                <p>All current to-do tasks will be permanently removed.</p>
+            </ConfirmDialog>
             <FormDiscardDialog
                 isOpen={isConfirmingDiscard}
                 onCancel={cancelDiscardConfirmation}

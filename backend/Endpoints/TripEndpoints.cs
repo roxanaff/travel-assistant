@@ -213,7 +213,8 @@ public static class TripEndpoints
 
         if (previousStartDate != trip.StartDate || previousEndDate != trip.EndDate)
         {
-            trip.HasPendingTodoDeadlineReview = true;
+            trip.HasPendingTodoDeadlineReview = await database.TodoItems.AnyAsync(item =>
+                item.TripId == trip.Id && item.Deadline != null);
         }
     }
 

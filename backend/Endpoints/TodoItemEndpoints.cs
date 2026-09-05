@@ -218,6 +218,7 @@ public static class TodoItemEndpoints
 
             database.TodoItems.RemoveRange(todoItems);
             trip.HasStartedTodoList = false;
+            trip.HasPendingTodoDeadlineReview = false;
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("ResetTodoList");

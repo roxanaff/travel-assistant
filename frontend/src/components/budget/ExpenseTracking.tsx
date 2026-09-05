@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense } from "../../api/expensesApi";
 import type { Expense, NewExpenseForm } from "../../types/expense";
@@ -9,6 +9,7 @@ import { SectionHeader } from "../shared/SectionHeader";
 import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { GroupHeading } from "../shared/GroupHeading";
+import { GroupAddButton } from "../shared/GroupAddButton";
 import { GroupingControl } from "../shared/GroupingControl";
 import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
@@ -429,9 +430,8 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                     title={group.label}
                                     actions={
                                         (grouping === "category" || grouping === "date") && (
-                                            <button
-                                                className="icon-button"
-                                                type="button"
+                                            <GroupAddButton
+                                                label={`Add an expense to ${group.label}`}
                                                 onClick={() =>
                                                     startAdding({
                                                         category: grouping === "category" ? (group.category ?? "") : "",
@@ -439,10 +439,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                             grouping === "date" ? (group.date ?? "") : localToday(),
                                                     })
                                                 }
-                                                aria-label={`Add an expense to ${group.label}`}
-                                            >
-                                                <Plus size={17} />
-                                            </button>
+                                            />
                                         )
                                     }
                                     summary={formatMoney(subtotal, trip.currency)}

@@ -7,5 +7,5 @@ import type { TripWorkspaceContext } from "./Workspace";
 export function TripTodoPage() {
     const workspace = useOutletContext<TripWorkspaceContext>();
 
-    return <TodoChecklist {...workspace} />;
+    return <TodoChecklist key={workspace.trip.id} {...workspace} />;
 }

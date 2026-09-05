@@ -117,12 +117,6 @@
 .itinerary-day-title h3 {
     margin: 0;
 }
-.itinerary-day-add {
-    color: var(--color-ink);
-}
-.itinerary-day-add:hover {
-    background: var(--color-gray-100);
-}
 .itinerary-item-summary {
     display: flex;
     align-items: center;
