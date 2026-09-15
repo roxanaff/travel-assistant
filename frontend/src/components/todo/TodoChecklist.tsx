@@ -42,6 +42,11 @@ type PendingDeletion = {
     item: TodoItem;
 };
 
+type TodoAddTarget = {
+    category: TodoItem["category"];
+    isCompleted: boolean;
+};
+
 const todoViewStorageKey = (tripId: string) => `travel-assistant:todo-view:${tripId}`;
 
 /** Owns the initial setup workflow for one trip's manual to-do checklist. */
@@ -52,6 +57,8 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
     const [setupAction, setSetupAction] = useState<SetupAction>(null);
     const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [newItemIsCompleted, setNewItemIsCompleted] = useState(false);
+    const [addingForGroup, setAddingForGroup] = useState<TodoAddTarget | null>(null);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [newItem, setNewItem] = useState<TodoItemForm>(createEmptyTodoItemForm());
     const [editingItem, setEditingItem] = useState<TodoItemForm>(createEmptyTodoItemForm());
@@ -164,6 +171,8 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
 
     const cancelAdding = () => {
         setIsAdding(false);
+        setNewItemIsCompleted(false);
+        setAddingForGroup(null);
         setNewItem(createEmptyTodoItemForm());
         setFormError(null);
     };
@@ -176,13 +185,15 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
 
     /** Opens the add form, optionally carrying the category from a grouped-list heading. */
-    const startAdding = (category: TodoItem["category"] = null) => {
+    const startAdding = (category: TodoItem["category"] = null, isCompleted = false) => {
         setEditingItemId(null);
         setNewItem({
             ...createEmptyTodoItemForm(),
             category: category ?? "",
             deadline: trip.startDate ?? "",
         });
+        setNewItemIsCompleted(isCompleted);
+        setAddingForGroup(category ? { category, isCompleted } : null);
         setIsAdding(true);
         setFormError(null);
     };
@@ -198,7 +209,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         setIsSaving(true);
         setFormError(null);
         try {
-            const created = await createTodoItem(trip.id, newItem);
+            const created = await createTodoItem(trip.id, newItem, newItemIsCompleted);
             setItems((current) => [...current, created]);
             cancelAdding();
         } catch (exception) {
@@ -210,6 +221,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
 
     const startEditing = (item: TodoItem) => {
         setIsAdding(false);
+        setAddingForGroup(null);
         setEditingItemId(item.id);
         setEditingItem({
             name: item.name,
@@ -284,9 +296,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
             setPendingDeletion(null);
             setItems([]);
             setTrip((current) =>
-                current
-                    ? { ...current, hasStartedTodoList: false, hasPendingTodoDeadlineReview: false }
-                    : current,
+                current ? { ...current, hasStartedTodoList: false, hasPendingTodoDeadlineReview: false } : current,
             );
             setIsConfirmingReset(false);
         } catch (exception) {
@@ -465,7 +475,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
     };
 
     /** Switches between the user's chosen flat-list and category-grouped views. */
-    const renderSectionItems = (sectionItems: TodoItem[]) => {
+    const renderSectionItems = (sectionItems: TodoItem[], isCompleted: boolean) => {
         if (view === "list") {
             return <ul className="list-items">{sectionItems.map((item) => renderItem(item, sectionItems))}</ul>;
         }
@@ -475,6 +485,8 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         return categoryGroups.map((category) => {
             const categoryItems = sectionItems.filter((item) => item.category === category.value);
             if (categoryItems.length === 0) return null;
+            const isAddingHere =
+                isAdding && addingForGroup?.category === category.value && addingForGroup.isCompleted === isCompleted;
 
             return (
                 <section className="checklist-category-group" key={category.value}>
@@ -484,11 +496,12 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                             category.value && (
                                 <GroupAddButton
                                     label={`Add a to-do task to ${category.label}`}
-                                    onClick={() => startAdding(category.value)}
+                                    onClick={() => startAdding(category.value, isCompleted)}
                                 />
                             )
                         }
                     />
+                    {isAddingHere && form(newItem, saveNewItem)}
                     <ul className="list-items">
                         {categoryItems.map((item) => renderItem(item, categoryItems, false))}
                     </ul>
@@ -582,7 +595,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
 
             {!isLoading && !showSetupChoice && (
                 <>
-                    {isAdding && form(newItem, saveNewItem)}
+                    {isAdding && (!addingForGroup || view !== "category") && form(newItem, saveNewItem)}
                     {pendingDeletion && <UndoToast message="To-do task deleted." onUndo={undoDelete} />}
                     {!trip.startDate && (
                         <p className="todo-deadline-guidance">
@@ -599,7 +612,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                                     toDo.length === 0 ? (
                                         <p className="detail-message">Everything is done.</p>
                                     ) : (
-                                        renderSectionItems(toDo)
+                                        renderSectionItems(toDo, false)
                                     ),
                             }}
                             second={{
@@ -608,7 +621,7 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                                     done.length === 0 ? (
                                         <p className="detail-message">Nothing done yet.</p>
                                     ) : (
-                                        renderSectionItems(done)
+                                        renderSectionItems(done, true)
                                     ),
                             }}
                         />

@@ -135,6 +135,7 @@ public static class TodoItemEndpoints
                 Name = request.Name.Trim(),
                 Category = request.Category,
                 Deadline = request.Deadline ?? trip.StartDate,
+                IsCompleted = request.IsCompleted,
                 SortOrder = lastSortOrder + 1
             };
 

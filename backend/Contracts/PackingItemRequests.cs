@@ -6,7 +6,8 @@ namespace TravelAssistant.Contracts;
 public record CreatePackingItemRequest(
     string Name,
     PackingCategory? Category,
-    int? Quantity
+    int? Quantity,
+    bool IsPacked = false
 );
 
 /// <summary>Payload for changing an item's editable details without changing its order or packed state.</summary>

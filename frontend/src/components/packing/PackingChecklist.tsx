@@ -49,6 +49,11 @@ type PendingDeletion = {
     item: PackingItem;
 };
 
+type PackingAddTarget = {
+    category: PackingItem["category"];
+    isPacked: boolean;
+};
+
 const categoryLabel = (category: PackingItem["category"]) =>
     packingCategories.find((option) => option.value === category)?.label ?? null;
 
@@ -63,6 +68,8 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
     const [setupAction, setSetupAction] = useState<SetupAction>(null);
     const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [newItemIsPacked, setNewItemIsPacked] = useState(false);
+    const [addingForGroup, setAddingForGroup] = useState<PackingAddTarget | null>(null);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [newItem, setNewItem] = useState<PackingItemForm>(createEmptyPackingItemForm());
     const [editingItem, setEditingItem] = useState<PackingItemForm>(createEmptyPackingItemForm());
@@ -185,6 +192,8 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
 
     const cancelAdding = () => {
         setIsAdding(false);
+        setNewItemIsPacked(false);
+        setAddingForGroup(null);
         setNewItem(createEmptyPackingItemForm());
         setFormError(null);
     };
@@ -197,13 +206,15 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
         useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
 
     /** Opens the add form, optionally carrying the category from a grouped-list heading. */
-    const startAdding = (category: PackingItem["category"] = null) => {
+    const startAdding = (category: PackingItem["category"] = null, isPacked = false) => {
         setEditingItemId(null);
         setNewItem({
             ...createEmptyPackingItemForm(),
             category: category ?? "",
         });
         setFormError(null);
+        setNewItemIsPacked(isPacked);
+        setAddingForGroup(category ? { category, isPacked } : null);
         setIsAdding(true);
     };
 
@@ -218,7 +229,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
         setIsSaving(true);
         setFormError(null);
         try {
-            const created = await createPackingItem(trip.id, newItem);
+            const created = await createPackingItem(trip.id, newItem, newItemIsPacked);
             setItems((current) => [...current, created]);
             cancelAdding();
         } catch (exception) {
@@ -230,6 +241,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
 
     const startEditing = (item: PackingItem) => {
         setIsAdding(false);
+        setAddingForGroup(null);
         setEditingItemId(item.id);
         setEditingItem({
             name: item.name,
@@ -459,7 +471,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
     };
 
     /** Switches between the user's chosen flat-list and category-grouped views. */
-    const renderSectionItems = (sectionItems: PackingItem[]) => {
+    const renderSectionItems = (sectionItems: PackingItem[], isPacked: boolean) => {
         if (view === "list")
             return <ul className="list-items">{sectionItems.map((item) => renderItem(item, sectionItems))}</ul>;
 
@@ -468,6 +480,8 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
         return categoryGroups.map((category) => {
             const categoryItems = sectionItems.filter((item) => item.category === category.value);
             if (categoryItems.length === 0) return null;
+            const isAddingHere =
+                isAdding && addingForGroup?.category === category.value && addingForGroup.isPacked === isPacked;
 
             return (
                 <section className="checklist-category-group" key={category.value}>
@@ -477,11 +491,12 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
                             category.value && (
                                 <GroupAddButton
                                     label={`Add a packing item to ${category.label}`}
-                                    onClick={() => startAdding(category.value)}
+                                    onClick={() => startAdding(category.value, isPacked)}
                                 />
                             )
                         }
                     />
+                    {isAddingHere && form(newItem, saveNewItem)}
                     <ul className="list-items">
                         {categoryItems.map((item) => renderItem(item, categoryItems, false))}
                     </ul>
@@ -562,7 +577,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
 
             {!isLoading && !showSetupChoice && (
                 <>
-                    {isAdding && form(newItem, saveNewItem)}
+                    {isAdding && (!addingForGroup || view !== "category") && form(newItem, saveNewItem)}
                     {pendingDeletion && <UndoToast message="Packing item deleted." onUndo={undoDelete} />}
                     {items.length === 0 ? (
                         <p className="detail-message">Your packing list is empty.</p>
@@ -574,7 +589,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
                                     toPack.length === 0 ? (
                                         <p className="detail-message">Everything is packed.</p>
                                     ) : (
-                                        renderSectionItems(toPack)
+                                        renderSectionItems(toPack, false)
                                     ),
                             }}
                             second={{
@@ -583,7 +598,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
                                     packed.length === 0 ? (
                                         <p className="detail-message">Nothing packed yet.</p>
                                     ) : (
-                                        renderSectionItems(packed)
+                                        renderSectionItems(packed, true)
                                     ),
                             }}
                         />

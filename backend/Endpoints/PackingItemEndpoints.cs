@@ -122,6 +122,7 @@ public static class PackingItemEndpoints
                 Name = request.Name.Trim(),
                 Category = request.Category,
                 Quantity = request.Quantity ?? 1,
+                IsPacked = request.IsPacked,
                 SortOrder = lastSortOrder + 1
             };
 

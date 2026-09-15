@@ -71,8 +71,10 @@ Notes / Decisions:
 
 ## Reservations and bookings
 
-- new workspace page
-- A good workspace order could be: `Details - Itinerary - Bookings - Budget & expenses - To-do - Packing`
+- Add a **Bookings** workspace page.
+- When Bookings is introduced, place it between Itinerary and Budget & expenses:
+
+  `Details · Itinerary · Bookings · Budget & expenses · To-do · Packing`
   - maybe think of a new way to access the pages, e.g. group them? sub-pages?
 - supported booking types:
   - Accommodation

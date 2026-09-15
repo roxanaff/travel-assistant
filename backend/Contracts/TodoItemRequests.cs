@@ -6,7 +6,8 @@ namespace TravelAssistant.Contracts;
 public record CreateTodoItemRequest(
     string Name,
     TodoCategory? Category,
-    DateOnly? Deadline
+    DateOnly? Deadline,
+    bool IsCompleted = false
 );
 
 /// <summary>Payload for changing a task's editable details without changing its order or completion state.</summary>

@@ -270,6 +270,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     const startEditing = (item: ItineraryItem) => {
         setIsAdding(false);
+        setAddingForDate(null);
         setEditingItemId(item.id);
         setIsMoreDetailsOpen(false);
         setEditingItem({
@@ -680,8 +681,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                         />
                                     </div>
                                 </div>
-                                <ul className="list-items">{dayItems.map(renderItem)}</ul>
                                 {isAdding && addingForDate === day && form(newItem, saveNewItem)}
+                                <ul className="list-items">{dayItems.map(renderItem)}</ul>
                             </section>
                         );
                     })}

@@ -50,6 +50,11 @@ type ExpenseGroup = {
     expenses: Expense[];
 };
 
+type ExpenseAddTarget = {
+    category: string | null;
+    date: string | null;
+};
+
 /** Returns today's local calendar date for a newly entered expense. */
 const localToday = () => {
     const now = new Date();
@@ -92,6 +97,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [addingForGroup, setAddingForGroup] = useState<ExpenseAddTarget | null>(null);
     const [newExpense, setNewExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
@@ -149,12 +155,14 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
 
     const cancelAdding = () => {
         setIsAdding(false);
+        setAddingForGroup(null);
         setFormError(null);
     };
 
-    const startAdding = (initialValues: Partial<NewExpenseForm> = {}) => {
+    const startAdding = (initialValues: Partial<NewExpenseForm> = {}, target: ExpenseAddTarget | null = null) => {
         setEditingExpenseId(null);
         setNewExpense({ ...createEmptyExpenseForm(), ...initialValues });
+        setAddingForGroup(target);
         setFormError(null);
         setIsAdding(true);
     };
@@ -180,7 +188,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
             const created = await createExpense(trip.id, toRequest(newExpense));
             setExpenses((current) => [...current, created]);
             setNewExpense(createEmptyExpenseForm());
-            setIsAdding(false);
+            cancelAdding();
         } catch (exception) {
             setFormError(
                 exception instanceof Error && exception.message ? exception.message : "Could not save this expense.",
@@ -192,6 +200,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
 
     const startEditing = (expense: Expense) => {
         setIsAdding(false);
+        setAddingForGroup(null);
         setEditingExpenseId(expense.id);
         setEditingExpense({
             name: expense.name,
@@ -336,13 +345,13 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
             label: category.label,
             category: category.value,
             date: null,
-            expenses: sortExpenses(expenses.filter((expense) => expense.category === category.value)),
+            expenses: expenses.filter((expense) => expense.category === category.value),
         })),
         {
             label: "Uncategorised",
             category: null,
             date: null,
-            expenses: sortExpenses(expenses.filter((expense) => expense.category === null)),
+            expenses: expenses.filter((expense) => expense.category === null),
         },
     ].filter((group) => group.expenses.length > 0);
 
@@ -413,7 +422,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                     <option value="date">Date</option>
                 </GroupingControl>
             </div>
-            {isAdding && form(newExpense, saveNewExpense)}
+            {isAdding && !addingForGroup && form(newExpense, saveNewExpense)}
             {isLoading && <p className="detail-message">Loading expenses…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
             {actionError && <p className="detail-message form-error">{actionError}</p>}
@@ -423,6 +432,9 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                 !error &&
                 groups.map((group) => {
                     const subtotal = group.expenses.reduce((total, expense) => total + expense.amount, 0);
+                    const isAddingToGroup =
+                        isAdding && addingForGroup?.category === group.category && addingForGroup?.date === group.date;
+
                     return (
                         <section className="budget-category" key={group.label}>
                             {grouping !== "none" && (
@@ -433,11 +445,18 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                             <GroupAddButton
                                                 label={`Add an expense to ${group.label}`}
                                                 onClick={() =>
-                                                    startAdding({
-                                                        category: grouping === "category" ? (group.category ?? "") : "",
-                                                        expenseDate:
-                                                            grouping === "date" ? (group.date ?? "") : localToday(),
-                                                    })
+                                                    startAdding(
+                                                        {
+                                                            category:
+                                                                grouping === "category" ? (group.category ?? "") : "",
+                                                            expenseDate:
+                                                                grouping === "date" ? (group.date ?? "") : localToday(),
+                                                        },
+                                                        {
+                                                            category: group.category,
+                                                            date: group.date,
+                                                        },
+                                                    )
                                                 }
                                             />
                                         )
@@ -445,6 +464,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                     summary={formatMoney(subtotal, trip.currency)}
                                 />
                             )}
+                            {isAddingToGroup && form(newExpense, saveNewExpense)}
                             <ul className="list-items">
                                 {group.expenses.map((expense) =>
                                     editingExpenseId === expense.id ? (

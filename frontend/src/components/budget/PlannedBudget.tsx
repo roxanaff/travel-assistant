@@ -395,6 +395,10 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                 }
                                 summary={formatMoney(categoryTotal, trip.currency)}
                             />
+                            {isAdding &&
+                                category.value !== null &&
+                                addingForCategory === category.value &&
+                                form(newCost, saveNewCost)}
                             <ul className="list-items">
                                 {categoryCosts.map((cost) =>
                                     editingCostId === cost.id ? (
@@ -456,10 +460,6 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                     ),
                                 )}
                             </ul>
-                            {isAdding &&
-                                category.value !== null &&
-                                addingForCategory === category.value &&
-                                form(newCost, saveNewCost)}
                         </section>
                     );
                 })}

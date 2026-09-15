@@ -12,10 +12,6 @@ useful, without treating tasks as packing items.
 
 - Add a **To-do** section to the trip workspace.
 - Route: `/trips/:id/todo`
-- The planned workspace order is:
-
-  `Details · Itinerary · Bookings · Budget & expenses · To-do · Packing`
-
 - The page handles loading, not-found, and API-error states consistently with existing workspace pages.
 - Switching away from an unsaved add or edit form follows the existing unsaved-changes confirmation behaviour.
 
@@ -33,37 +29,29 @@ Each task has:
 The only task states are **To do** and **Done**. A task that is no longer relevant can be deleted; Skipped and Cancelled
 states are not included.
 
-### Deadline and When
+### Deadline
 
 The deadline represents **Complete by**. A separate Start-by deadline is not included in the first version.
 
-When a trip has complete dates, a new task's deadline defaults to the trip start date. The user can edit the date
-without restriction.
-
-The app derives **When** from a task's deadline and the trip dates. It is not a user-editable task field:
-
-- A deadline on or before the trip start is **Before trip**.
-- A deadline after the trip start through the trip end is **During trip**.
-- A deadline after the trip end is **After trip**.
+When a trip has a start date, a new task's deadline defaults to that date. Otherwise, the deadline starts blank. The
+user can add, edit, or clear a deadline without restriction.
 
 ## Draft trips and changed dates
 
 Tasks can be created for Draft trips.
 
-- When a trip has no complete dates, deadline input is unavailable.
-- The task does not show a When detail while trip dates are unavailable.
-- The page explains: “Add trip dates in Details to set deadlines and organise tasks around the trip.”
+- Deadline input remains available when a trip has no dates.
+- The page explains that adding trip dates in Details prefills future task deadlines with the trip start date.
 - When complete trip dates are added, tasks without deadlines are assigned the trip start date automatically.
-- If trip dates are removed later, stored deadlines remain saved, but deadline editing and When details are hidden until
-  complete trip dates exist again.
+- If trip dates are removed later, stored deadlines remain saved and editable.
 
-Deadlines do not move automatically when trip dates change. The app recalculates When using the changed trip dates and
-shows a dismissible message:
+Deadlines do not move automatically when trip dates change. If at least one task has a saved deadline, the app shows a
+dismissible message:
 
-> Trip dates have changed. Check that your task deadlines are still correct.
+> Trip dates changed. Existing task deadlines were kept, so please review them.
 
-The message remains visible until closed with its `×` control. It is not shown again unless the trip dates change
-another time.
+The message remains visible until dismissed. It is not shown again unless the trip dates change another time. Resetting
+the checklist clears any pending review reminder.
 
 ## Categories
 
@@ -80,27 +68,19 @@ Categories are optional. The initial fixed list is:
 
 Custom and free-text categories are deferred.
 
-## Display, grouping, sorting, and progress
+## Display, grouping, and progress
 
 - One underlying task list is displayed as **To do** and **Done** sections.
 - Completing or reopening a task moves it between sections without changing its saved manual order.
-- Each task shows its name, optional category, deadline when available, and When detail when it can be derived.
+- Each task shows its name, optional category, and deadline when one is set.
 - A whole-page **Group by** control offers:
-  - None
-  - When
-  - Category
-- In ungrouped view, When appears as secondary task detail.
-- The grouping modes are mutually exclusive; the first version does not group by both When and Category.
-- A whole-page sort control offers:
-  - Manual order, the default
-  - Deadline, earliest first
-- Tasks without deadlines sort last and retain manual order among themselves.
-- Done tasks follow the same selected sort.
+    - Ungrouped
+    - Category
+- The selected grouped or ungrouped view is remembered separately for each trip.
+- In grouped view, a category heading replaces the repeated category detail on each row. Each named category heading has
+  a `+` action that opens an item form with that category selected.
 - To do and Done appear side by side on desktop and stack on narrow screens.
 - The page header always shows overall completion, for example `8 of 14 complete`.
-- In ungrouped view, no additional progress is shown.
-- When grouped by When or Category, each group heading shows a compact count, for example
-  `Before trip — 5 of 8 complete` or `Documents & money — 3 of 5 complete`.
 
 ## Add, edit, reorder, and delete
 
@@ -108,9 +88,11 @@ Custom and free-text categories are deferred.
 - The name is required.
 - Add and edit forms use the established form keyboard behaviour: focus on open, Enter submits a single-line form,
   Escape cancels an unchanged form, and changed forms require discard confirmation.
-- Tasks can be reordered from a drag grip only within their current To do or Done section.
-- Dragging does not move a task between Before trip, During trip, or After trip; those are derived from the deadline.
+- Tasks can be reordered from a drag grip only within their current To do or Done section. In grouped view, reordering
+  stays within the current category group.
 - A drop outside a valid position restores the original order.
+- Adding through a category `+` in the Done section creates a Done task in that category; the equivalent Packing action
+  creates a Packed item.
 - Individual deletion is optimistic and offers Undo for five seconds.
 - A failed individual deletion restores the task and reports the failure.
 
