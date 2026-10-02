@@ -20,6 +20,9 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 
 ## Usability and interaction improvements
 
+- [P2] Budget — After changing a planned cost that has a linked expense, show a one-time dismissible note offering to
+  adjust the expense amount. Closing the note deliberately keeps actual spending unchanged; show it again after a later
+  planned-cost amount change.
 - [P2] Packing — Move surrounding rows live while an item is dragged.
 - [P1] Packing — Allow touch drag-and-drop to place an item in its intended position without moving sideways to avoid
   the original drop target.

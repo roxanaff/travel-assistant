@@ -19,6 +19,6 @@ through the **Data** context, then returns a response.
 
 ## Data relationships
 
-`Trip` is the parent record. Deleting it cascades to its planned costs, actual expenses, itinerary items, and packing
+`Trip` is the parent record. Deleting it cascades to its planned costs, actual expenses, activities, and packing
 items. A `PlannedCost` can have at most one linked `Expense` (an actual expense); removing the plan keeps that recorded
 expense, but removes its link.

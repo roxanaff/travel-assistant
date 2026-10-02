@@ -33,7 +33,7 @@ behavior is common. Feature-specific API and form workflows remain explicit when
 - Backend integration coverage includes registration, authenticated trip creation, and account ownership when reading a
   trip. The tests use a disposable SQLite database and ephemeral data-protection keys; production remains PostgreSQL
   with database-backed key protection.
-- Chromium smoke coverage includes registration, sign-in, creating a trip, adding an itinerary item, recording an
+- Chromium smoke coverage includes registration, sign-in, creating a trip, adding an activity, recording an
   expense, and adding a packing item. It starts a test-only API host with an in-memory database and never uses local or
   deployed trip data.
 - Feature-specific manual verification checklists are complete.

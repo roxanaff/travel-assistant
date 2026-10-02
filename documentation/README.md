@@ -28,6 +28,7 @@ The `requirements/` folder contains detailed requirements for features that are 
 features move to their own completed feature documentation when appropriate.
 
 - [To-do checklist](requirements/to-do-checklist.md)
+- [Bookings](requirements/bookings.md)
 
 ## Product planning
 

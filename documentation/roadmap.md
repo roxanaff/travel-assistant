@@ -80,7 +80,8 @@ Notes / Decisions:
   - Accommodation
   - Flight
   - Train / bus / ferry
-  - Local transport / car hire
+  - Local transport
+  - Car hire
   - Museum / attraction
   - Tour / activity
   - Concert / event
@@ -95,48 +96,37 @@ Core fields for every booking:
 - Name
 - Type
 - Booking status
-- Payment status
 - Provider
 - Confirmation/reference number
 - Start and end date/time, as applicable
 - Location
-- Link to booking / document
+- Link
   - Later: allow upload of pdf
   - Later: use link / pdf doc for auto-complete
 - Notes
-- Total price, currency, and optional amount paid
-- Optional link to an itinerary activity
+- Total cost in the trip currency, optional amount paid, and cancellation/refund information
+- Optional links to activities and one planned cost; any related expense is reached through that planned cost
 
 Type-specific fields appear only when relevant, e.g.:
 
-| Booking type     | Extra fields                                                    |
-| ---------------- | --------------------------------------------------------------- |
-| Accommodation    | Check-in/out, address, guest count                              |
-| Flight/transport | Departure and arrival location/time, carrier, booking reference |
-| Event/activity   | Start/end time, attendee count, venue                           |
-| Restaurant       | Reservation time, party size                                    |
-| Car hire         | Pick-up/drop-off location and time                              |
+| Booking type        | Extra fields or labels                                            |
+| ------------------- | ----------------------------------------------------------------- |
+| Accommodation       | Check-in/out and address; guest count later                       |
+| Flight/transport    | Departure/arrival location and time; optional return journey      |
+| Local transport     | Valid from/until for tickets, passes, or subscriptions            |
+| Event/activity      | Start/end time; attendee count later                              |
+| Restaurant          | Start/end time; party size later                                  |
+| Car hire            | Pick-up/drop-off location and time                                |
 
 Notes / Decisions:
 
-- Booked versus paid:
-  - a confirmed booking can be: unpaid, partially paid, fully paid, cancelled, or refunded.
-- Status fields - still needs refinement
-  - Booking status: Idea, Requested, Confirmed, Cancelled (Default Idea)
-  - Payment status: (Default not specified - optional field)
-    - Not required, Unpaid, Partially paid, Paid - idea/confirmed/cancelled bookings
-    - Refunded - cancelled bookings
-  - How to enforce? warnings, errors, automatically switch
-
-Notes / Decisions:
-
-- Add option to move items to itinerary, planned cost, expense
-  - similar to planned cost
-  - only paid booking to expense, unpaid to planned, any to itinerary
-  - complete fields as far as possible with info from booking item
-- Later: A booking may have multiple payments eventually, such as a deposit and final balance.
-
-For the first version, simplified to one optional “amount paid” and one linked expense. - expand idea
+- Booking status is optional: Requested, Confirmed, or Cancelled. Ideas belong in To-do or the itinerary.
+- Financial status is derived from Total cost, Amount paid, cancellation, and refund values rather than edited directly.
+- Add and link activities and planned costs from either relevant workspace page, with prefilled forms and no silent
+  synchronization afterward. Add an expense through the planned-cost relationship.
+- The first version supports one aggregate amount paid and one expense in the booking's linear financial chain.
+  Multiple payments and payment schedules are deferred.
+- Detailed first-version behaviour is defined in the [Bookings requirements](requirements/bookings.md).
 
 ## Itinerary extension
 
@@ -232,6 +222,14 @@ multi-destination dashboard cards are implemented.
 - Add search, filtering, and alternative sorting when lifecycle ordering alone is no longer enough.
 - Show multiple destinations clearly on dashboard cards.
 
+## Feedback
+
+- Add a feedback action to the account/profile menu.
+- Let a signed-in user submit a free-text message without leaving the app.
+- Provide a private, reliable way for the app owner to receive and review submissions.
+- Before implementation, decide the delivery mechanism, abuse protection, privacy notice, and whether submissions
+  include account, trip, browser, or diagnostic context.
+
 ## Packing templates and rules
 
 Build on the existing default list:
@@ -264,6 +262,22 @@ Add:
 - Multiple currencies - should be carefully scoped.
   - First: manually entered exchange rates saved per transaction;
   - no recalculation of historical trips from a live rate.
+
+## Unified transaction model
+
+Revisit booking, planned-cost, expense, payment, and refund relationships as a separate feature after the first
+Bookings release has been used in real trips. The first version deliberately keeps one linear financial chain and one
+aggregate payment amount.
+
+Potential scope:
+
+- Multiple payments for one booking, such as a deposit and final balance.
+- Multiple expenses and refunds connected to one booking.
+- Explicit transaction dates and payment methods.
+- Partial refunds and non-refundable fees represented as transactions.
+- Allocating shared booking costs across several activities or travellers.
+- Clear planned-versus-actual history without silently rewriting transactions.
+- Migration of the first-version booking/planned-cost/expense links without duplicating spending.
 
 ---
 
