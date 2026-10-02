@@ -11,6 +11,12 @@ public class PlannedCost
 
     public Trip Trip { get; set; } = null!;
 
+    public Guid? BookingId { get; set; }
+
+    public Booking? Booking { get; set; }
+
+    public bool HasPendingDeletedBookingNotice { get; set; }
+
     public string Name { get; set; } = "Cost item";
 
     public PlannedCostCategory? Category { get; set; }

@@ -19,6 +19,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
+    public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +55,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             expense.Property(item => item.Name).HasMaxLength(150).IsRequired();
             expense.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             expense.Property(item => item.Amount).HasPrecision(12, 2);
+            expense.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
             // An actual expense can represent at most one planned cost.
             expense.HasIndex(item => item.PlannedCostId).IsUnique();
             expense.HasOne(item => item.Trip)
@@ -71,10 +73,16 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             plannedCost.Property(item => item.Name).HasMaxLength(150).IsRequired();
             plannedCost.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             plannedCost.Property(item => item.Amount).HasPrecision(12, 2);
+            plannedCost.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
+            plannedCost.HasIndex(item => item.BookingId).IsUnique();
             plannedCost.HasOne(item => item.Trip)
                 .WithMany(trip => trip.PlannedCosts)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
+            plannedCost.HasOne(item => item.Booking)
+                .WithOne(booking => booking.PlannedCost)
+                .HasForeignKey<PlannedCost>(item => item.BookingId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ItineraryItem>(itineraryItem =>
@@ -86,8 +94,41 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             itineraryItem.Property(item => item.ExternalLink).HasMaxLength(2000);
             itineraryItem.Property(item => item.Priority).HasConversion<string>().HasMaxLength(30).IsRequired();
             itineraryItem.Property(item => item.Note).HasMaxLength(1000);
+            itineraryItem.Property(item => item.BookingRole).HasConversion<string>().HasMaxLength(20);
+            itineraryItem.Property(item => item.BookingRequired).HasDefaultValue(false);
+            itineraryItem.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
             itineraryItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.ItineraryItems)
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+            itineraryItem.HasOne(item => item.Booking)
+                .WithMany(booking => booking.Activities)
+                .HasForeignKey(item => item.BookingId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Booking>(booking =>
+        {
+            booking.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            booking.Property(item => item.Type).HasConversion<string>().HasMaxLength(30);
+            booking.Property(item => item.Status).HasConversion<string>().HasMaxLength(20);
+            booking.Property(item => item.Provider).HasMaxLength(200);
+            booking.Property(item => item.ConfirmationNumber).HasMaxLength(100);
+            booking.Property(item => item.Location).HasMaxLength(300);
+            booking.Property(item => item.StartLocation).HasMaxLength(300);
+            booking.Property(item => item.EndLocation).HasMaxLength(300);
+            booking.Property(item => item.ReturnStartLocation).HasMaxLength(300);
+            booking.Property(item => item.ReturnEndLocation).HasMaxLength(300);
+            booking.Property(item => item.ExternalLink).HasMaxLength(2000);
+            booking.Property(item => item.Note).HasMaxLength(1000);
+            booking.Property(item => item.TotalCost).HasPrecision(12, 2);
+            booking.Property(item => item.AmountPaid).HasPrecision(12, 2).HasDefaultValue(0);
+            booking.Property(item => item.AmountRefunded).HasPrecision(12, 2);
+            booking.Property(item => item.HasPendingDeletedActivityNotice).HasDefaultValue(false);
+            booking.Property(item => item.HasPendingDeletedPlannedCostNotice).HasDefaultValue(false);
+            booking.Property(item => item.HasPendingDeletedExpenseNotice).HasDefaultValue(false);
+            booking.HasOne(item => item.Trip)
+                .WithMany(trip => trip.Bookings)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

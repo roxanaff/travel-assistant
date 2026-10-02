@@ -36,7 +36,9 @@ public static class PlannedCostEndpoints
                     cost.CreatedAtUtc,
                     // The UI uses this derived flag to show whether a planned cost has been spent.
                     ExpenseAdded = cost.Expense != null,
-                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null
+                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null,
+                    cost.BookingId,
+                    cost.HasPendingDeletedBookingNotice
                 })
                 .ToListAsync();
 
@@ -96,16 +98,47 @@ public static class PlannedCostEndpoints
         routes.MapDelete("/planned-costs/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var plannedCost = await database.PlannedCosts
+                .Include(cost => cost.Expense)
                 .SingleOrDefaultAsync(cost => cost.Id == id && cost.TripId == tripId);
             if (plannedCost is null)
             {
                 return Results.NotFound();
             }
 
+            if (plannedCost.BookingId is not null)
+            {
+                var booking = await database.Bookings.FindAsync(plannedCost.BookingId);
+                if (booking is not null)
+                {
+                    booking.HasPendingDeletedPlannedCostNotice = true;
+                    if (plannedCost.Expense is not null)
+                    {
+                        booking.HasPendingDeletedExpenseNotice = true;
+                    }
+                }
+            }
+
             database.PlannedCosts.Remove(plannedCost);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeletePlannedCost");
+
+        routes.MapPost("/planned-costs/{id:guid}/dismiss-deleted-booking-notice", async (
+            Guid tripId,
+            Guid id,
+            TravelAssistantDbContext database) =>
+        {
+            var plannedCost = await database.PlannedCosts.SingleOrDefaultAsync(cost =>
+                cost.Id == id && cost.TripId == tripId);
+            if (plannedCost is null)
+            {
+                return Results.NotFound();
+            }
+
+            plannedCost.HasPendingDeletedBookingNotice = false;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissPlannedCostDeletedBookingNotice");
 
         return app;
     }

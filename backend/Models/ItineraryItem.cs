@@ -11,6 +11,16 @@ public class ItineraryItem
 
     public Trip Trip { get; set; } = null!;
 
+    public Guid? BookingId { get; set; }
+
+    public Booking? Booking { get; set; }
+
+    public BookingActivityRole? BookingRole { get; set; }
+
+    public bool BookingRequired { get; set; }
+
+    public bool HasPendingDeletedBookingNotice { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     public DateOnly? Date { get; set; }

@@ -63,7 +63,8 @@ public static class ItineraryEndpoints
                 Location = NormalizeOptionalText(request.Location),
                 ExternalLink = NormalizeOptionalText(request.ExternalLink),
                 Priority = request.Priority,
-                Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
+                Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                BookingRequired = request.BookingRequired
             };
 
             database.ItineraryItems.Add(itineraryItem);
@@ -103,6 +104,7 @@ public static class ItineraryEndpoints
             itineraryItem.ExternalLink = NormalizeOptionalText(request.ExternalLink);
             itineraryItem.Priority = request.Priority;
             itineraryItem.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            itineraryItem.BookingRequired = request.BookingRequired;
 
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(itineraryItem));
@@ -116,10 +118,36 @@ public static class ItineraryEndpoints
                 return Results.NotFound();
             }
 
+            if (itineraryItem.BookingId is not null)
+            {
+                var booking = await database.Bookings.FindAsync(itineraryItem.BookingId);
+                if (booking is not null)
+                {
+                    booking.HasPendingDeletedActivityNotice = true;
+                }
+            }
+
             database.ItineraryItems.Remove(itineraryItem);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeleteItineraryItem");
+
+        routes.MapPost("/itinerary-items/{id:guid}/dismiss-deleted-booking-notice", async (
+            Guid tripId,
+            Guid id,
+            TravelAssistantDbContext database) =>
+        {
+            var itineraryItem = await database.ItineraryItems.SingleOrDefaultAsync(item =>
+                item.Id == id && item.TripId == tripId);
+            if (itineraryItem is null)
+            {
+                return Results.NotFound();
+            }
+
+            itineraryItem.HasPendingDeletedBookingNotice = false;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissActivityDeletedBookingNotice");
 
         return app;
     }
@@ -145,6 +173,10 @@ public static class ItineraryEndpoints
         item.ExternalLink,
         item.Priority,
         item.Note,
+        item.BookingRequired,
+        item.BookingId,
+        item.BookingRole,
+        item.HasPendingDeletedBookingNotice,
         item.CreatedAtUtc
     };
 }

@@ -57,6 +57,8 @@ public class Trip
     public List<PackingItem> PackingItems { get; set; } = [];
 
     public List<TodoItem> TodoItems { get; set; } = [];
+
+    public List<Booking> Bookings { get; set; } = [];
 }
 
 /// <summary>High-level trip styles selected during setup.</summary>

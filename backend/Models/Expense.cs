@@ -17,6 +17,8 @@ public class Expense
 
     public PlannedCost? PlannedCost { get; set; }
 
+    public bool HasPendingDeletedBookingNotice { get; set; }
+
     public ExpenseCategory? Category { get; set; }
 
     public decimal Amount { get; set; }

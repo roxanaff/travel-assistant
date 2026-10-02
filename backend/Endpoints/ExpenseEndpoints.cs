@@ -104,16 +104,43 @@ public static class ExpenseEndpoints
 
         routes.MapDelete("/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
-            var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            var expense = await database.Expenses
+                .Include(item => item.PlannedCost)
+                .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)
             {
                 return Results.NotFound();
+            }
+
+            if (expense.PlannedCost?.BookingId is not null)
+            {
+                var booking = await database.Bookings.FindAsync(expense.PlannedCost.BookingId);
+                if (booking is not null)
+                {
+                    booking.HasPendingDeletedExpenseNotice = true;
+                }
             }
 
             database.Expenses.Remove(expense);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeleteExpense");
+
+        routes.MapPost("/expenses/{id:guid}/dismiss-deleted-booking-notice", async (
+            Guid tripId,
+            Guid id,
+            TravelAssistantDbContext database) =>
+        {
+            var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            if (expense is null)
+            {
+                return Results.NotFound();
+            }
+
+            expense.HasPendingDeletedBookingNotice = false;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissExpenseDeletedBookingNotice");
 
         return app;
     }

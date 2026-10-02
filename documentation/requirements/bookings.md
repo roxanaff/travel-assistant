@@ -450,4 +450,17 @@ The first version does not include:
 
 ## Status
 
-Requirements discussion is in progress. No implementation has started.
+Implementation is in progress.
+
+Completed in the backend foundation chunk:
+
+- Booking storage, type-specific dates and locations, return journeys, cost/payment/refund data, validation, and
+  migration.
+- Authenticated trip-owned booking CRUD endpoints with chronological ordering and derived financial status.
+- One-booking-to-many-activities links with general, outbound, and return roles.
+- One-to-one booking/planned-cost links, with an expense reached through the existing planned-cost relationship.
+- Persistent deleted-link notice state and dismissal endpoints.
+- Focused validation and API tests.
+
+Remaining work includes the Bookings page and cards, forms, activity and budget interactions, review messages,
+navigation highlighting, frontend tests, full verification, and user testing.

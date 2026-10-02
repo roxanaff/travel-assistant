@@ -15,5 +15,6 @@ public record CreateItineraryItemRequest(
     string? Location,
     string? ExternalLink,
     ItineraryPriority Priority,
-    string? Note
+    string? Note,
+    bool BookingRequired = false
 );
