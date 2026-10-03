@@ -19,5 +19,15 @@ export async function throwIfApiError(
 ) {
     if (response.ok) return;
 
-    throw new Error((await response.text()) || fallbackMessage);
+    const responseText = await response.text();
+    if (!responseText) throw new Error(fallbackMessage);
+
+    let message = responseText;
+    try {
+        const parsed = JSON.parse(responseText);
+        if (typeof parsed === "string") message = parsed;
+    } catch {
+        // Plain-text API responses are already suitable for display.
+    }
+    throw new Error(message);
 }

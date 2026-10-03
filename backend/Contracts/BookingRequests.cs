@@ -4,7 +4,7 @@ namespace TravelAssistant.Contracts;
 
 public record SaveBookingRequest(
     string Name,
-    BookingType? Type,
+    BookingCategory? Category,
     BookingStatus? Status,
     string? Provider,
     string? ConfirmationNumber,

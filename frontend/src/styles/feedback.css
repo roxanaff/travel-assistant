@@ -1,6 +1,39 @@
 .form-error {
     margin: 0;
-    color: var(--color-red-500);
+}
+
+.inline-message,
+.form-error,
+.form-field-error {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.inline-message-error,
+.form-error,
+.form-field-error {
+    border-color: var(--color-red-500);
+    background: var(--color-red-100);
+    color: var(--color-red-700) !important;
+}
+
+.form-field-error {
+    display: block;
+}
+
+.inline-message-warning {
+    border-color: #e9a23b;
+    background: #fff4dc;
+    color: #7a4a00 !important;
+}
+
+.inline-message-info {
+    padding: 0;
+    color: var(--color-gray-500) !important;
 }
 
 .detail-message {

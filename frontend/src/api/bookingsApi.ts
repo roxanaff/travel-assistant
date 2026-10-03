@@ -8,7 +8,7 @@ const optional = (value: string) => value.trim() || null;
 
 export const toBookingRequest = (form: BookingForm) => ({
     name: form.name.trim(),
-    type: form.type || null,
+    category: form.category || null,
     status: form.status || null,
     provider: optional(form.provider),
     confirmationNumber: optional(form.confirmationNumber),
@@ -27,10 +27,18 @@ export const toBookingRequest = (form: BookingForm) => ({
     returnEndLocation: form.hasReturnJourney ? optional(form.returnEndLocation) : null,
     externalLink: optional(form.externalLink),
     note: optional(form.note),
-    totalCost: form.isFree ? 0 : form.totalCost === "" ? null : Number(form.totalCost),
-    amountPaid: form.isFree || form.amountPaid === "" ? 0 : Number(form.amountPaid),
+    totalCost:
+        form.costState === "Free"
+            ? 0
+            : form.costState === "NotEntered" || form.totalCost === ""
+              ? null
+              : Number(form.totalCost),
+    amountPaid:
+        form.costState !== "HasCost" || form.amountPaid === ""
+            ? 0
+            : Number(form.amountPaid),
     amountRefunded:
-        form.isFree || !form.isRefunded || form.amountRefunded === ""
+        form.costState !== "HasCost" || !form.isRefunded || form.amountRefunded === ""
             ? null
             : Number(form.amountRefunded),
 });

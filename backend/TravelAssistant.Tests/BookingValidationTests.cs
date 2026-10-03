@@ -37,7 +37,7 @@ public class BookingValidationTests
     public void Validate_RejectsReturnJourneyForRestaurant()
     {
         var request = ValidRequest(
-            type: BookingType.Restaurant,
+            category: BookingCategory.Restaurant,
             returnStartDate: new DateOnly(2027, 4, 4));
 
         Assert.Equal(
@@ -57,8 +57,30 @@ public class BookingValidationTests
         Assert.Null(BookingValidation.Validate(request));
     }
 
+    [Fact]
+    public void Validate_AcceptsEndTimeWithoutStartTime()
+    {
+        var request = ValidRequest(endTime: new TimeOnly(12, 0)) with
+        {
+            StartTime = null
+        };
+
+        Assert.Null(BookingValidation.Validate(request));
+    }
+
+    [Fact]
+    public void Validate_AcceptsReturnArrivalTimeWithoutReturnDepartureTime()
+    {
+        var request = ValidRequest(returnStartDate: new DateOnly(2027, 4, 4)) with
+        {
+            ReturnEndTime = new TimeOnly(12, 0)
+        };
+
+        Assert.Null(BookingValidation.Validate(request));
+    }
+
     private static SaveBookingRequest ValidRequest(
-        BookingType? type = BookingType.Flight,
+        BookingCategory? category = BookingCategory.Flight,
         BookingStatus? status = BookingStatus.Confirmed,
         DateOnly? endDate = null,
         TimeOnly? endTime = null,
@@ -67,7 +89,7 @@ public class BookingValidationTests
         decimal amountPaid = 0,
         decimal? amountRefunded = null) => new(
             "Flight to Rome",
-            type,
+            category,
             status,
             "Airline",
             "ABC123",

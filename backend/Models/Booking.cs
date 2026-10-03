@@ -11,7 +11,7 @@ public class Booking
 
     public string Name { get; set; } = string.Empty;
 
-    public BookingType? Type { get; set; }
+    public BookingCategory? Category { get; set; }
 
     public BookingStatus? Status { get; set; }
 
@@ -69,11 +69,11 @@ public class Booking
     public PlannedCost? PlannedCost { get; set; }
 }
 
-public enum BookingType
+public enum BookingCategory
 {
     Accommodation,
     Flight,
-    TrainBusFerry,
+    RailBusFerry,
     LocalTransport,
     CarHire,
     MuseumAttraction,

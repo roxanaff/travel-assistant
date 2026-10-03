@@ -110,7 +110,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         modelBuilder.Entity<Booking>(booking =>
         {
             booking.Property(item => item.Name).HasMaxLength(150).IsRequired();
-            booking.Property(item => item.Type).HasConversion<string>().HasMaxLength(30);
+            booking.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
             booking.Property(item => item.Status).HasConversion<string>().HasMaxLength(20);
             booking.Property(item => item.Provider).HasMaxLength(200);
             booking.Property(item => item.ConfirmationNumber).HasMaxLength(100);

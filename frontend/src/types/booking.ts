@@ -1,7 +1,7 @@
-export type BookingType =
+export type BookingCategory =
     | "Accommodation"
     | "Flight"
-    | "TrainBusFerry"
+    | "RailBusFerry"
     | "LocalTransport"
     | "CarHire"
     | "MuseumAttraction"
@@ -33,7 +33,7 @@ export type Booking = {
     id: string;
     tripId: string;
     name: string;
-    type: BookingType | null;
+    category: BookingCategory | null;
     status: BookingStatus | null;
     provider: string | null;
     confirmationNumber: string | null;
@@ -68,7 +68,7 @@ export type Booking = {
 
 export type BookingForm = {
     name: string;
-    type: BookingType | "";
+    category: BookingCategory | "";
     status: BookingStatus | "";
     provider: string;
     confirmationNumber: string;
@@ -88,7 +88,7 @@ export type BookingForm = {
     returnEndLocation: string;
     externalLink: string;
     note: string;
-    isFree: boolean;
+    costState: "NotEntered" | "Free" | "HasCost";
     totalCost: string;
     amountPaid: string;
     isRefunded: boolean;
@@ -97,7 +97,7 @@ export type BookingForm = {
 
 export const createEmptyBookingForm = (): BookingForm => ({
     name: "",
-    type: "",
+    category: "",
     status: "",
     provider: "",
     confirmationNumber: "",
@@ -117,7 +117,7 @@ export const createEmptyBookingForm = (): BookingForm => ({
     returnEndLocation: "",
     externalLink: "",
     note: "",
-    isFree: false,
+    costState: "NotEntered",
     totalCost: "",
     amountPaid: "",
     isRefunded: false,

@@ -40,6 +40,38 @@
     list-style: none;
 }
 
+/* Expandable record cards use more breathing room than compact budget and checklist rows. */
+.list-items.card-list {
+    gap: 16px;
+}
+
+.expandable-card-actions {
+    width: 104px;
+}
+
+.expanded-card-details {
+    display: grid;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--color-gray-200);
+    color: var(--color-gray-500);
+    font-size: 0.9rem;
+}
+
+.expanded-card-details p {
+    margin: 0;
+    color: var(--color-gray-500);
+}
+
+.expanded-card-details strong {
+    color: var(--color-gray-700);
+}
+
+.expanded-card-details a {
+    color: var(--color-blue-500);
+    overflow-wrap: anywhere;
+}
+
 .list-row {
     display: flex;
     align-items: center;
@@ -72,5 +104,6 @@
 .status-pill {
     padding: 6px 9px;
     border-radius: 999px;
-    background: var(--color-blue-100);
+    background: var(--color-pink-100);
+    color: var(--color-ink);
 }

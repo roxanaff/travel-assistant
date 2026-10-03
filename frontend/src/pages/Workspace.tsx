@@ -4,6 +4,7 @@ import { getTrip } from "../api/tripsApi";
 import { formatDateRange } from "../utils/format";
 import type { Trip } from "../types/trip";
 import { ConfirmDialog } from "../components/shared/ConfirmDialog";
+import { StatusPill } from "../components/shared/StatusPill";
 import "./Workspace.css";
 
 /** Data shared by every section nested inside one trip workspace. */
@@ -98,7 +99,7 @@ export function TripWorkspace() {
                     <h1>{trip.name}</h1>
                 </div>
                 <div className="workspace-meta">
-                    <span className="status-pill">{trip.status}</span>
+                    <StatusPill>{trip.status}</StatusPill>
                     {trip.startDate && trip.endDate && (
                         <p className="trip-dates">{formatDateRange(trip.startDate, trip.endDate)}</p>
                     )}

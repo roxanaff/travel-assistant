@@ -160,7 +160,7 @@ public static class BookingEndpoints
             }
 
             if (request.Role != BookingActivityRole.General
-                && booking.Type is not BookingType.Flight and not BookingType.TrainBusFerry)
+                && booking.Category is not BookingCategory.Flight and not BookingCategory.RailBusFerry)
             {
                 return Results.BadRequest("Journey-leg links are available only for flight, train, bus, or ferry bookings.");
             }
@@ -277,7 +277,7 @@ public static class BookingEndpoints
     private static void ApplyRequest(Booking booking, SaveBookingRequest request)
     {
         booking.Name = request.Name.Trim();
-        booking.Type = request.Type;
+        booking.Category = request.Category;
         booking.Status = request.Status;
         booking.Provider = NormalizeOptionalText(request.Provider);
         booking.ConfirmationNumber = NormalizeOptionalText(request.ConfirmationNumber);
@@ -309,7 +309,7 @@ public static class BookingEndpoints
         booking.Id,
         booking.TripId,
         booking.Name,
-        booking.Type,
+        booking.Category,
         booking.Status,
         booking.Provider,
         booking.ConfirmationNumber,

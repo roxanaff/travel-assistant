@@ -60,11 +60,6 @@ public static class BookingValidation
             return "Refunds can be recorded only for a cancelled booking.";
         }
 
-        if (request.EndTime is not null && request.StartTime is null)
-        {
-            return "An end time requires a start time.";
-        }
-
         var endError = ValidateRange(
             request.StartDate,
             request.StartTime,
@@ -93,7 +88,7 @@ public static class BookingValidation
             return null;
         }
 
-        if (request.Type is not BookingType.Flight and not BookingType.TrainBusFerry)
+        if (request.Category is not BookingCategory.Flight and not BookingCategory.RailBusFerry)
         {
             return "Return journeys are available only for flight, train, bus, or ferry bookings.";
         }
@@ -101,11 +96,6 @@ public static class BookingValidation
         if (request.ReturnStartDate is null)
         {
             return "A return journey requires a departure date.";
-        }
-
-        if (request.ReturnEndTime is not null && request.ReturnStartTime is null)
-        {
-            return "A return arrival time requires a return departure time.";
         }
 
         if (request.ReturnStartDate < request.StartDate)

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 
 import {
     createItineraryItem,
@@ -13,10 +12,16 @@ import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
 import { GroupAddButton } from "../shared/GroupAddButton";
 import { FormActions, FormSurface } from "../shared/FormPrimitives";
+import { ExpandableCardActions } from "../shared/ExpandableCardActions";
+import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
+import { FormDetailsToggle } from "../shared/FormDetailsToggle";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { InlineMessage } from "../shared/InlineMessage";
+import { StatusPill } from "../shared/StatusPill";
 import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import { useExpandableCards } from "../../utils/useExpandableCards";
 import type { Trip } from "../../types/trip";
 import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
 import { createEmptyItineraryItemForm } from "../../types/itineraryItem";
@@ -62,8 +67,17 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [newItem, setNewItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
-    const [expandedItemIds, setExpandedItemIds] = useState<Set<string>>(new Set());
     const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
+    const expandableItemIds = items
+        .filter((item) => item.openingTime || item.closingTime || item.location || item.externalLink || item.note)
+        .map((item) => item.id);
+    const {
+        areAllExpanded: areAllExpandableItemsExpanded,
+        collapse,
+        isExpanded,
+        toggleAll: toggleAllDetails,
+        toggleExpanded: toggleDetails,
+    } = useExpandableCards(expandableItemIds);
 
     useEffect(() => {
         setHasUnsavedForm?.(isAdding || editingItemId !== null);
@@ -242,11 +256,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
         setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
 
-        setExpandedItemIds((current) => {
-            const updated = new Set(current);
-            updated.delete(item.id);
-            return updated;
-        });
+        collapse(item.id);
 
         setPendingDeletion({ item });
 
@@ -313,30 +323,6 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
         useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
-
-    const toggleDetails = (itemId: string) => {
-        setExpandedItemIds((current) => {
-            const updated = new Set(current);
-
-            if (updated.has(itemId)) {
-                updated.delete(itemId);
-            } else {
-                updated.add(itemId);
-            }
-
-            return updated;
-        });
-    };
-
-    const expandableItemIds = items
-        .filter((item) => item.openingTime || item.closingTime || item.location || item.externalLink || item.note)
-        .map((item) => item.id);
-    const areAllExpandableItemsExpanded =
-        expandableItemIds.length > 0 && expandableItemIds.every((itemId) => expandedItemIds.has(itemId));
-
-    const toggleAllDetails = () => {
-        setExpandedItemIds(areAllExpandableItemsExpanded ? new Set() : new Set(expandableItemIds));
-    };
 
     /** Shared inline activity form for both adding and editing. */
     const form = (
@@ -447,15 +433,11 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     Add trip dates in Details before scheduling activities. This draft item will stay unscheduled.
                 </p>
             ) : null}
-            <button
-                className="text-button itinerary-more-details-toggle"
-                type="button"
-                aria-expanded={isMoreDetailsOpen}
-                aria-controls={editing ? "itinerary-edit-more-details" : "itinerary-add-more-details"}
-                onClick={() => setIsMoreDetailsOpen((current) => !current)}
-            >
-                {isMoreDetailsOpen ? "Hide details" : "More details"}
-            </button>
+            <FormDetailsToggle
+                isExpanded={isMoreDetailsOpen}
+                controlsId={editing ? "itinerary-edit-more-details" : "itinerary-add-more-details"}
+                onToggle={() => setIsMoreDetailsOpen((current) => !current)}
+            />
             {isMoreDetailsOpen && (
                 <div
                     className="itinerary-form-row itinerary-form-row-details"
@@ -541,7 +523,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         ].filter(Boolean);
         const openingHours = formatOpeningHours(item);
         const hasAdditionalDetails = Boolean(openingHours || item.location || item.externalLink || item.note);
-        const isExpanded = expandedItemIds.has(item.id);
+        const itemIsExpanded = isExpanded(item.id);
         const detailsId = `itinerary-details-${item.id}`;
         const openingHoursWarning = getOpeningHoursWarning(item);
 
@@ -552,14 +534,9 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         <div className="itinerary-item-title">
                             <strong>{item.name}</strong>
                         </div>
-                        {(item.category || item.priority) && (
+                        {item.category && (
                             <div className="itinerary-item-meta">
-                                {item.category && (
-                                    <span className="item-metadata-label">{formatCategory(item.category)}</span>
-                                )}
-                                {item.priority && (
-                                    <span className="item-metadata-detail">{formatPriority(item.priority)}</span>
-                                )}
+                                <span className="item-metadata-label">{formatCategory(item.category)}</span>
                             </div>
                         )}
                         {summaryDetails.length > 0 && (
@@ -574,45 +551,30 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             </span>
                         )}
                         {openingHoursWarning && (
-                            <p className="itinerary-warning" role="status">
+                            <InlineMessage variant="warning">
                                 {openingHoursWarning}
-                            </p>
+                            </InlineMessage>
                         )}
                     </div>
-                    <div className="item-actions">
-                        {hasAdditionalDetails && (
-                            <button
-                                className="icon-button"
-                                type="button"
-                                onClick={() => toggleDetails(item.id)}
-                                aria-label={`${isExpanded ? "Collapse" : "Expand"} ${item.name} details`}
-                                aria-expanded={isExpanded}
-                                aria-controls={detailsId}
-                                title={isExpanded ? "Collapse details" : "Expand details"}
-                            >
-                                {isExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-                            </button>
+                    <div className="itinerary-item-controls">
+                        {item.priority && (
+                            <StatusPill>
+                                {formatPriority(item.priority)}
+                            </StatusPill>
                         )}
-                        <button
-                            className="icon-button"
-                            onClick={() => startEditing(item)}
-                            aria-label={`Edit ${item.name}`}
-                            title="Edit itinerary item"
-                        >
-                            <Pencil size={17} />
-                        </button>
-                        <button
-                            className="icon-button danger-button"
-                            onClick={() => void deleteItem(item)}
-                            aria-label={`Delete ${item.name}`}
-                            title="Delete itinerary item"
-                        >
-                            <Trash2 size={17} />
-                        </button>
+                        <ExpandableCardActions
+                            itemName={item.name}
+                            hasAdditionalDetails={hasAdditionalDetails}
+                            isExpanded={itemIsExpanded}
+                            detailsId={detailsId}
+                            onToggle={() => toggleDetails(item.id)}
+                            onEdit={() => startEditing(item)}
+                            onDelete={() => void deleteItem(item)}
+                        />
                     </div>
                 </div>
-                {isExpanded && (
-                    <div className="itinerary-expanded-details" id={detailsId}>
+                {itemIsExpanded && (
+                    <ExpandedCardDetails className="itinerary-expanded-details" id={detailsId}>
                         {openingHours && (
                             <p>
                                 <strong>Opening hours:</strong> {openingHours}
@@ -636,7 +598,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                 <strong>Notes:</strong> {item.note}
                             </p>
                         )}
-                    </div>
+                    </ExpandedCardDetails>
                 )}
             </li>
         );
@@ -682,14 +644,14 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                     </div>
                                 </div>
                                 {isAdding && addingForDate === day && form(newItem, saveNewItem)}
-                                <ul className="list-items">{dayItems.map(renderItem)}</ul>
+                                <ul className="list-items card-list">{dayItems.map(renderItem)}</ul>
                             </section>
                         );
                     })}
                     {sortUnscheduledItems(items.filter((item) => !item.date)).length > 0 && (
                         <section className="itinerary-day itinerary-unscheduled">
                             <h3>Unscheduled</h3>
-                            <ul className="list-items">
+                            <ul className="list-items card-list">
                                 {sortUnscheduledItems(items.filter((item) => !item.date)).map(renderItem)}
                             </ul>
                         </section>

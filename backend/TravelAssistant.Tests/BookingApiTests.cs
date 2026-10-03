@@ -160,7 +160,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         decimal? totalCost = null,
         decimal amountPaid = 0) => new(
             name,
-            BookingType.Flight,
+            BookingCategory.Flight,
             BookingStatus.Confirmed,
             "Airline",
             "ABC123",

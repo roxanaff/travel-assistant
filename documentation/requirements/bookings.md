@@ -18,10 +18,10 @@ reservation stage belong in the To-do checklist or itinerary instead.
 The booking name and start date are required. A booking has:
 
 - A required name.
-- An optional type. The form starts at **Not specified**, following the existing category-field pattern.
+- An optional category. The form starts at **Not specified**, following the existing category-field pattern.
 - An optional booking status. The form starts at **Not specified**.
 - An optional provider.
-- An optional confirmation or reference number.
+- An optional confirmation number.
 - A required start date, with an optional start time.
 - An optional end date and time.
 - An optional location.
@@ -37,19 +37,19 @@ The booking name and start date are required. A booking has:
 
 Keep the concise field labels **Provider** and **Link**. Both fields are optional and include helpful placeholder text:
 
-- Provider: `Hotel, airline, restaurant, or booking platform`.
+- Provider: `Hotel, airline, or restaurant`.
 - Link: `Booking page, ticket, or confirmation link`.
 
 The link may point to any useful booking, ticket, or confirmation page. A booking does not need a link. File and PDF
 uploads are deferred; when introduced, they will be separate from the link rather than overloading the link field.
 
-## Booking types
+## Booking categories
 
-The initial types are:
+The initial categories are:
 
 - Accommodation
 - Flight
-- Train / bus / ferry
+- Rail, bus & ferry
 - Local transport
 - Car hire
 - Museum / attraction
@@ -58,7 +58,7 @@ The initial types are:
 - Restaurant
 - Other
 
-Flight and Train / bus / ferry support an optional return journey. Multi-city and journeys with more than two legs are
+Flight and Rail, bus & ferry support an optional return journey. Multi-city and journeys with more than two legs are
 deferred.
 
 ## Booking and financial status
@@ -82,15 +82,17 @@ the interface derives one financial state from the cost, payment, cancellation, 
 - Amount paid equal to total cost: **Paid**.
 - A cancelled paid booking uses the derived refund states described below instead of a paid-state label.
 
-The form has a **Free** checkbox. It is unchecked by default:
+The form has two compact Cost choices: **Free** and **Has cost**, shown as pill buttons with black text. Neither is
+selected by default, which represents cost information not being entered:
 
-- When Free is unchecked, Total cost starts blank. Blank means that cost information has not been entered.
-- Selecting Free stores a zero total cost and hides Total cost, Amount paid, and refund controls.
-- If payment or refund values already exist, selecting Free asks for confirmation before clearing them.
-- Clearing Free shows an empty Total cost field again.
+- Not entered stores a blank total cost and shows no financial state.
+- Free stores a zero total cost and hides Total cost, Amount paid, and refund controls.
+- Has cost reveals Total cost. Amount paid appears only after a positive Total cost has been entered.
 - Amount paid is shown only for a positive total cost and starts at zero.
 - Clearing Amount paid treats it as zero and derives Unpaid.
-- Amount paid cannot be negative or exceed total cost.
+- Increasing Amount paid above Total cost also increases Total cost and shows a short informational message.
+- Reducing Total cost below Amount paid is blocked until one of the values is corrected; Amount paid is never silently
+  reduced because it records what was actually paid.
 
 Currency is fixed to the trip currency, matching the existing budget model. Forms show the currency in labels such as
 `Total cost (EUR)` and do not offer a separate currency selector.
@@ -121,30 +123,31 @@ refunded remains hidden until Refunded is selected.
 - Every booking has a required first/start date. Times, arrival/end dates, and arrival/end times are optional except
   that selecting a return journey requires its return departure date.
 - An end time without an end date applies to the start date.
-- End time requires a start time so the order can be validated.
+- An end or arrival time without a start or departure time is allowed and does not show a warning.
 - End date without an end time is allowed.
 - The effective end must not precede the start.
-- A booking may fall outside the trip dates, but the form shows a warning before it is saved.
-- All types allow an optional end; no booking type requires one.
+- A booking may fall outside the trip dates, but the form shows a warning as soon as any entered start, end, or return
+  date falls outside the trip range. Each warning appears immediately beneath the affected date row and names that
+  specific part of the journey, such as **outbound departure** or **return arrival**. It does not prevent saving.
+- All categories allow an optional end; no booking category requires one.
 
-The interface uses type-specific labels while retaining a shared underlying date model:
+The interface uses category-specific labels while retaining a shared underlying date model. Each start/end date and
+time pair is displayed on one row beneath a shared field label:
 
-| Booking type                                      | Start fields                          | Optional end fields                  |
+| Booking category                                  | Start fields                          | Optional end fields                  |
 | ------------------------------------------------- | ------------------------------------- | ------------------------------------ |
 | Accommodation                                     | Check-in date and time                | Check-out date and time              |
 | Flight                                             | Departure date, time, and location    | Arrival date, time, and location     |
-| Train / bus / ferry                                | Departure date, time, and location    | Arrival date, time, and location     |
+| Rail, bus & ferry                                  | Departure date, time, and location    | Arrival date, time, and location     |
 | Local transport                                    | Valid from date and time              | Valid until date and time            |
 | Car hire                                           | Pick-up date, time, and location      | Drop-off date, time, and location    |
 | Museum / attraction, Tour / activity, Concert / event, Restaurant, Other | Start date and time | End date and time |
 
-Accommodation, transport, Local transport, and Car hire show their optional end fields immediately. For museums,
-tours, activities, concerts, events, restaurants, and Other, keep the optional end fields behind an **Add end time**
-control initially to reduce form crowding.
+All categories show their optional end date and time row immediately.
 
 ### Return journeys
 
-Flight and Train / bus / ferry offer **Add return journey**:
+Flight and Rail, bus & ferry offer **Add return journey**:
 
 - The first leg is labelled Outbound and contains optional arrival details in addition to its required departure date.
 - Adding a return journey reveals a Return leg with required departure date and optional departure time/location and
@@ -181,7 +184,7 @@ actions; restaurant spending or another purchase can still be recorded independe
   amount: Amount paid minus Amount refunded.
 - Either action opens a short prefilled form inside the expanded booking card, directly beneath its related-record
   actions. It is not a modal, side panel, or separate Budget & expenses page.
-- The form prefills the name from the booking and suggests a category from the booking type. The user can review and
+- The form prefills the name from the booking and suggests a financial category from the booking category. The user can review and
   change every prefilled value before creating the record.
 - The expense date defaults to today because the booking's start date is not normally the payment date.
 - After creation, the booking shows its linked planned cost and, when present, the expense belonging to that planned
@@ -189,14 +192,14 @@ actions; restaurant spending or another purchase can still be recorded independe
 - Only one related-record form is open at a time. Starting another action or leaving the page follows the established
   unsaved-changes confirmation behaviour.
 
-Booking types map to suggested financial categories as follows:
+Booking categories map to suggested financial categories as follows:
 
-| Booking type                 | Suggested planned-cost and expense category |
+| Booking category             | Suggested planned-cost and expense category |
 | ---------------------------- | ------------------------------------------- |
 | Not specified                | Not specified                               |
 | Accommodation                | Accommodation                               |
 | Flight                       | Travel to/from                              |
-| Train / bus / ferry          | Travel to/from                              |
+| Rail, bus & ferry            | Travel to/from                              |
 | Local transport              | Local transport                             |
 | Car hire                     | Local transport                             |
 | Museum / attraction          | Activities & museums                        |
@@ -205,7 +208,7 @@ Booking types map to suggested financial categories as follows:
 | Restaurant                   | Food                                        |
 | Other                        | Other                                       |
 
-Every booking type therefore has a usable suggested category. The mapping is a convenience rather than an enforced
+Every booking category therefore has a usable suggested financial category. The mapping is a convenience rather than an enforced
 classification; transport and events can be context-dependent, so the user can change the suggestion before saving.
 
 The booking, planned cost, and expense form one connected chain. A traveller cannot create two expenses for the same
@@ -279,9 +282,9 @@ destination card or heading, and respect reduced-motion preferences.
 
 Creating from either direction opens a prefilled form inside the source card. The mappings are:
 
-- Activity to booking: name; suggested booking type from category; date/time; calculated end from duration; location;
+- Activity to booking: name; suggested booking category from category; date/time; calculated end from duration; location;
   link; notes; and Total cost from itinerary cost. The user chooses booking status.
-- Booking to activity: name; suggested activity category from type; date/time; duration calculated from the booking's
+- Booking to activity: name; suggested activity category from booking category; date/time; duration calculated from the booking's
   start and end; location; link; and notes. Priority uses the normal middle default. For a simple booking expected to
   have one activity, prefill itinerary cost from Total cost. For return journeys or a booking that already has another
   linked activity, show Total cost as reference but leave activity cost blank so the same booking cost is not counted
@@ -357,15 +360,50 @@ When the amount of a planned cost with a linked expense changes:
 
 ## Display and interaction
 
+The create/edit form uses compact inline field labels. Name takes approximately two thirds of its row beside the
+shorter Category field. Status, Provider, and Confirmation number share the next row. For categories without separate
+start and end locations, both date/time groups share one row. Flights, Rail, bus & ferry, and Car hire instead use one
+row per departure/pick-up or arrival/drop-off, with location beside the date and time. A pink **More details / Hide
+details** disclosure after the schedule contains the shared location when applicable, link, cost information, and
+notes; related activities and budget records are card sections rather than form fields.
+
+Schedule rows use consistent label, date, time, and location columns so corresponding fields align even when their
+labels have different lengths. Messages beneath a field group span the full form width. The Link and Cost sections are
+not separated by a divider. Outbound and return journey fields are also not separated by a divider.
+
+Warnings use a separate full-width orange message row directly beside the field group they describe. Validation errors
+use a shared full-width pale-red message with a red border, dark-red normal-sized text, and their own row so neighboring
+fields do not move. Informational messages use normal gray text. These semantic message treatments are shared across
+the app wherever the message serves the same purpose. Loading text, empty states, undo toasts, and confirmation dialogs
+remain separate patterns.
+
+Contradictions between values already entered are validated immediately, including date ordering, payment/refund
+limits, and return-journey ordering. An invalid link is shown after leaving its field. Required empty fields do not turn
+red while the traveller is still completing the form; they are validated after Save is pressed. When Save finds an
+error, open More details when necessary, smoothly scroll the first invalid field into view, and move keyboard focus to
+it. When **Has cost** is selected, Total cost uses the required-field treatment with bold label and an asterisk.
+
 Each booking is displayed as an expandable card, following the established itinerary-card pattern:
 
-- The collapsed summary keeps the page scannable and shows the booking name plus its most useful date, type, booking
+- The collapsed summary keeps the page scannable and shows the booking name plus its most useful date, category, booking
   status, payment/refund state, and cost information.
-- Expanding a card reveals secondary details such as provider, confirmation number, full dates and times, location,
-  link, notes, payment breakdown, related records, and related-record actions.
+- A same-day start and end show the date only once. For a return booking, the collapsed summary shows separate Outbound
+  and Return rows. The complete collapsed area uses four aligned columns: name and journey details, price, status pills,
+  and actions. This makes prices line up vertically across booking cards. The booking's total price is larger and
+  right-aligned as booking-level information rather than being attached to either journey row. The booking-status and
+  financial-status pills are stacked, with booking status above financial status. A free booking relies on its
+  **Free** pill and does not repeat `Free` in the detail row.
+- Expanding a card reveals secondary details such as provider, confirmation number, category, link, notes, payment
+  breakdown, return journey information, related records, and related-record actions.
+- Information already shown in the persistent card summary, including its date range, location, and total cost, is not
+  repeated in the expanded details.
 - Add to planned costs and Add to expenses automatically expand the relevant card and show their prefilled form inside
   it.
 - Edit remains a distinct action and uses the app's established inline-form and unsaved-changes behaviour.
+- While editing, the form replaces the booking card rather than opening inside it, matching itinerary activities.
+- Show the expand control only when the booking has secondary information to reveal. Its action order matches itinerary:
+  expand/collapse, edit, then delete.
+- Booking and itinerary cards use the same spacing between list entries.
 - The page supports expanding and collapsing individual cards and provides **Expand all / Collapse all**, matching the
   Itinerary page.
 - Expand all opens the booking cards themselves but does not open nested related-activity or financial disclosures and
@@ -380,9 +418,13 @@ Booking cards use the same pill treatment as trip statuses. A card shows at most
 - One optional derived financial-status pill: **Free**, **Unpaid**, **Partially paid**, **Paid**, **Not refunded**,
   **Partially refunded**, or **Fully refunded**. No financial-status pill is shown when Total cost is blank.
 
-For a cancelled booking with money paid, the refund-state pill replaces the ordinary payment-state pill. Booking type
+For a cancelled booking with money paid, the refund-state pill replaces the ordinary payment-state pill. Booking category
 is descriptive metadata, not a third status pill. Warnings and linked-record indicators also remain separate from the
 status pills.
+
+All status pills use the same pink treatment in the first version. Semantic colors are deferred; later, states may use
+meaningful colors such as blue or green for Confirmed/Paid, gray for Cancelled/Free, and pink for Requested or
+Partially paid.
 
 ### Cancelled bookings
 
@@ -398,7 +440,7 @@ status pills.
 
 The first version does not add filters or further grouping. Chronological ordering and the separate Cancelled section
 provide sufficient structure for the expected number of bookings without adding persistent controls to the page.
-Search, type/status filters, or additional grouping can be added later if real trips become difficult to scan.
+Search, category/status filters, or additional grouping can be added later if real trips become difficult to scan.
 
 ### Empty state
 
@@ -454,7 +496,7 @@ Implementation is in progress.
 
 Completed in the backend foundation chunk:
 
-- Booking storage, type-specific dates and locations, return journeys, cost/payment/refund data, validation, and
+- Booking storage, category-specific dates and locations, return journeys, cost/payment/refund data, validation, and
   migration.
 - Authenticated trip-owned booking CRUD endpoints with chronological ordering and derived financial status.
 - One-booking-to-many-activities links with general, outbound, and return roles.
@@ -467,7 +509,7 @@ Completed in the first frontend chunk:
 - A Bookings workspace tab and route between Itinerary and Budget & expenses.
 - The empty state, chronological active list, separate subdued Cancelled section, expandable cards, and Expand all /
   Collapse all controls.
-- Create and edit forms with type-specific schedule labels, optional return journeys, provider and link guidance,
+- Create and edit forms with category-specific schedule labels, optional return journeys, provider and link guidance,
   trip-currency costs, Free handling, derived payment/refund inputs, outside-trip warnings, and inline validation.
 - Booking status and derived financial status pills, expanded reservation/payment details, and linked-aware deletion
   messaging.

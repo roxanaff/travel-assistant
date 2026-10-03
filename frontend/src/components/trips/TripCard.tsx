@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { formatDateRange, formatMoney } from "../../utils/format";
 import { formatTripType } from "../../utils/tripType";
 import type { Trip } from "../../types/trip";
+import { StatusPill } from "../shared/StatusPill";
 
 type Props = {
     trip: Trip;
@@ -23,7 +24,7 @@ export function TripCard({ trip, isDeleting, onEdit, onDelete }: Props) {
         >
             <div className="trip-card-summary">
                 <div className="card-topline">
-                    <span className="status-pill">{trip.status}</span>
+                    <StatusPill>{trip.status}</StatusPill>
                 </div>
                 <Link className="trip-name-link" to={`/trips/${trip.id}`}>
                     <h3>{trip.name}</h3>

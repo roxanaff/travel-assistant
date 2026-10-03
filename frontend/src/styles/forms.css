@@ -64,6 +64,20 @@
     resize: vertical;
 }
 
+.form-surface input[type="checkbox"] {
+    accent-color: var(--color-blue-500);
+}
+
+.form-details-toggle {
+    justify-self: start;
+    padding: 0;
+    color: var(--color-pink-500) !important;
+}
+
+.form-details-toggle:hover {
+    color: var(--color-pink-700) !important;
+}
+
 @media (max-width: 700px) {
     .form-row {
         flex-direction: column;
