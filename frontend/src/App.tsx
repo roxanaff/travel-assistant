@@ -4,6 +4,7 @@ import { useAuth } from "./auth/useAuth";
 import { Header } from "./components/Header";
 import { TripDashboard } from "./pages/Dashboard";
 import { TripBudgetPage } from "./pages/BudgetPage";
+import { TripBookingsPage } from "./pages/BookingsPage";
 import { TripItineraryPage } from "./pages/ItineraryPage";
 import { TripPackingPage } from "./pages/PackingPage";
 import { TripDetailsPage } from "./pages/DetailsPage";
@@ -25,6 +26,7 @@ function App() {
                     <Route path="/trips/:id" element={<TripWorkspace />}>
                         <Route index element={<TripDetailsPage />} />
                         <Route path="itinerary" element={<TripItineraryPage />} />
+                        <Route path="bookings" element={<TripBookingsPage />} />
                         <Route path="budget" element={<TripBudgetPage />} />
                         <Route path="todo" element={<TripTodoPage />} />
                         <Route path="packing" element={<TripPackingPage />} />

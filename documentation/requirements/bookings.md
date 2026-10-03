@@ -462,5 +462,15 @@ Completed in the backend foundation chunk:
 - Persistent deleted-link notice state and dismissal endpoints.
 - Focused validation and API tests.
 
-Remaining work includes the Bookings page and cards, forms, activity and budget interactions, review messages,
-navigation highlighting, frontend tests, full verification, and user testing.
+Completed in the first frontend chunk:
+
+- A Bookings workspace tab and route between Itinerary and Budget & expenses.
+- The empty state, chronological active list, separate subdued Cancelled section, expandable cards, and Expand all /
+  Collapse all controls.
+- Create and edit forms with type-specific schedule labels, optional return journeys, provider and link guidance,
+  trip-currency costs, Free handling, derived payment/refund inputs, outside-trip warnings, and inline validation.
+- Booking status and derived financial status pills, expanded reservation/payment details, and linked-aware deletion
+  messaging.
+
+Remaining work includes activity and budget interactions, review messages, navigation highlighting, dedicated frontend
+tests, full browser verification, and user testing.

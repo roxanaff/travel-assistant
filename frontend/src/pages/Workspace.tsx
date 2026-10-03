@@ -114,6 +114,9 @@ export function TripWorkspace() {
                 <NavLink to={`/trips/${trip.id}/itinerary`} onClick={confirmSectionChange}>
                     Itinerary
                 </NavLink>
+                <NavLink to={`/trips/${trip.id}/bookings`} onClick={confirmSectionChange}>
+                    Bookings
+                </NavLink>
                 <NavLink to={`/trips/${trip.id}/budget`} onClick={confirmSectionChange}>
                     Budget &amp; expenses
                 </NavLink>
