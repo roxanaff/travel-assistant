@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { Link } from "react-router-dom";
 
+import {
+    getBookings,
+    linkBookingActivity,
+    unlinkBookingActivity,
+    type BookingActivityRole,
+} from "../../api/bookingsApi";
 import {
     createItineraryItem,
     deleteItineraryItem,
@@ -23,6 +30,7 @@ import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import { useExpandableCards } from "../../utils/useExpandableCards";
 import type { Trip } from "../../types/trip";
+import type { Booking } from "../../types/booking";
 import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
 import { createEmptyItineraryItemForm } from "../../types/itineraryItem";
 import {
@@ -55,6 +63,7 @@ type PendingDeletion = {
 /** Renders and coordinates all activities belonging to the current trip. */
 export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [items, setItems] = useState<ItineraryItem[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
@@ -68,8 +77,21 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
     const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
+    const [linkingActivityId, setLinkingActivityId] = useState<string | null>(null);
+    const [selectedBookingId, setSelectedBookingId] = useState("");
+    const [selectedBookingRole, setSelectedBookingRole] = useState<BookingActivityRole>("General");
+    const [bookingLinkError, setBookingLinkError] = useState<string | null>(null);
+    const [isLinkingBooking, setIsLinkingBooking] = useState(false);
     const expandableItemIds = items
-        .filter((item) => item.openingTime || item.closingTime || item.location || item.externalLink || item.note)
+        .filter((item) =>
+            item.openingTime
+            || item.closingTime
+            || item.location
+            || item.externalLink
+            || item.note
+            || item.bookingRequired
+            || item.bookingId,
+        )
         .map((item) => item.id);
     const {
         areAllExpanded: areAllExpandableItemsExpanded,
@@ -88,6 +110,11 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         const loadItems = async () => {
             try {
                 setItems(await getItineraryItems(trip.id));
+                try {
+                    setBookings(await getBookings(trip.id));
+                } catch {
+                    setBookings([]);
+                }
             } catch {
                 setError("Could not load itinerary items.");
             } finally {
@@ -279,6 +306,81 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
         restoreItem(pendingDeletion.item);
         setPendingDeletion(null);
+    };
+
+    const startLinkingBooking = (itemId: string) => {
+        setLinkingActivityId(itemId);
+        setSelectedBookingId("");
+        setSelectedBookingRole("General");
+        setBookingLinkError(null);
+    };
+
+    const linkSelectedBooking = async (item: ItineraryItem) => {
+        const booking = bookings.find((candidate) => candidate.id === selectedBookingId);
+        if (!booking) return;
+
+        setIsLinkingBooking(true);
+        setBookingLinkError(null);
+        try {
+            await linkBookingActivity(trip.id, booking.id, item.id, selectedBookingRole);
+            setItems((current) => current.map((candidate) => candidate.id === item.id
+                ? {
+                    ...candidate,
+                    bookingRequired: true,
+                    bookingId: booking.id,
+                    bookingRole: selectedBookingRole,
+                    bookingName: booking.name,
+                    bookingStatus: booking.status,
+                }
+                : candidate));
+            setBookings((current) => current.map((candidate) => candidate.id === booking.id
+                ? {
+                    ...candidate,
+                    activityLinks: [
+                        ...candidate.activityLinks.filter((link) => link.id !== item.id),
+                        {
+                            id: item.id,
+                            name: item.name,
+                            date: item.date,
+                            startTime: item.startTime,
+                            role: selectedBookingRole,
+                        },
+                    ],
+                }
+                : candidate));
+            setLinkingActivityId(null);
+        } catch (exception) {
+            setBookingLinkError(exception instanceof Error ? exception.message : "Could not link this booking.");
+        } finally {
+            setIsLinkingBooking(false);
+        }
+    };
+
+    const unlinkBooking = async (item: ItineraryItem) => {
+        if (!item.bookingId) return;
+
+        setIsLinkingBooking(true);
+        setBookingLinkError(null);
+        try {
+            await unlinkBookingActivity(trip.id, item.bookingId, item.id);
+            setItems((current) => current.map((candidate) => candidate.id === item.id
+                ? {
+                    ...candidate,
+                    bookingId: null,
+                    bookingRole: null,
+                    bookingName: null,
+                    bookingStatus: null,
+                }
+                : candidate));
+            setBookings((current) => current.map((booking) => ({
+                ...booking,
+                activityLinks: booking.activityLinks.filter((link) => link.id !== item.id),
+            })));
+        } catch (exception) {
+            setBookingLinkError(exception instanceof Error ? exception.message : "Could not unlink this booking.");
+        } finally {
+            setIsLinkingBooking(false);
+        }
     };
 
     const startEditing = (item: ItineraryItem) => {
@@ -538,26 +640,46 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                 : null,
         ].filter(Boolean);
         const openingHours = formatOpeningHours(item);
-        const hasAdditionalDetails = Boolean(openingHours || item.location || item.externalLink || item.note);
+        const hasAdditionalDetails = Boolean(
+            openingHours
+            || item.location
+            || item.externalLink
+            || item.note
+            || item.bookingRequired
+            || item.bookingId,
+        );
         const itemIsExpanded = isExpanded(item.id);
         const detailsId = `itinerary-details-${item.id}`;
         const openingHoursWarning = getOpeningHoursWarning(item);
         const bookingState = getBookingState(item);
+        const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
+        const roleOptions = getAvailableBookingRoles(selectedBooking);
 
         return (
             <li className="item-card" key={item.id}>
                 <div className="itinerary-item-summary">
-                    <div>
+                    <div
+                        className={hasAdditionalDetails ? "itinerary-item-main itinerary-item-main-expandable" : "itinerary-item-main"}
+                        role={hasAdditionalDetails ? "button" : undefined}
+                        tabIndex={hasAdditionalDetails ? 0 : undefined}
+                        aria-expanded={hasAdditionalDetails ? itemIsExpanded : undefined}
+                        aria-controls={hasAdditionalDetails ? detailsId : undefined}
+                        onClick={hasAdditionalDetails ? () => toggleDetails(item.id) : undefined}
+                        onKeyDown={hasAdditionalDetails ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                toggleDetails(item.id);
+                            }
+                        } : undefined}
+                    >
                         <div className="itinerary-item-title">
                             <strong>{item.name}</strong>
                         </div>
-                        {item.category && (
-                            <div className="itinerary-item-meta">
+                        {(item.category || summaryDetails.length > 0) && (
+                            <div className="itinerary-item-meta item-metadata-detail">
+                                {item.category && (
                                 <span className="item-metadata-label">{formatCategory(item.category)}</span>
-                            </div>
-                        )}
-                        {summaryDetails.length > 0 && (
-                            <span className="itinerary-item-details item-metadata-detail">
+                                )}
                                 {summaryDetails.map((detail) =>
                                     detail ? (
                                         <span key={detail.label}>
@@ -565,7 +687,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                         </span>
                                     ) : null,
                                 )}
-                            </span>
+                            </div>
                         )}
                         {openingHoursWarning && (
                             <InlineMessage variant="warning">
@@ -608,14 +730,96 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         {item.externalLink && (
                             <p>
                                 <strong>Link:</strong>{" "}
-                                <a href={item.externalLink} target="_blank" rel="noreferrer">
+                                <a
+                                    className="itinerary-inline-link"
+                                    href={item.externalLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
                                     {item.externalLink}
                                 </a>
                             </p>
                         )}
+                        {(item.bookingRequired || item.bookingId) && (
+                            <section className="itinerary-booking-section">
+                                <strong>Booking:</strong>
+                                {item.bookingId ? (
+                                    <div className="itinerary-linked-booking">
+                                        <Link
+                                            className="itinerary-inline-link"
+                                            to={`/trips/${trip.id}/bookings?focus=${item.bookingId}`}
+                                        >
+                                            {item.bookingName ?? "View booking"}
+                                        </Link>
+                                        <button
+                                            className="text-button"
+                                            type="button"
+                                            disabled={isLinkingBooking}
+                                            onClick={() => void unlinkBooking(item)}
+                                        >
+                                            Unlink
+                                        </button>
+                                    </div>
+                                ) : linkingActivityId === item.id ? (
+                                    <div className="itinerary-booking-link-form">
+                                        <select
+                                            aria-label="Booking"
+                                            value={selectedBookingId}
+                                            onChange={(event) => {
+                                                setSelectedBookingId(event.target.value);
+                                                setSelectedBookingRole("General");
+                                            }}
+                                        >
+                                            <option value="" disabled hidden>Select a booking</option>
+                                            {bookings.map((booking) => (
+                                                <option key={booking.id} value={booking.id}>{booking.name}</option>
+                                            ))}
+                                        </select>
+                                        {roleOptions.length > 1 && (
+                                            <select
+                                                aria-label="Journey part"
+                                                value={selectedBookingRole}
+                                                onChange={(event) => setSelectedBookingRole(event.target.value as BookingActivityRole)}
+                                            >
+                                                {roleOptions.map((role) => (
+                                                    <option key={role} value={role}>{formatBookingRole(role)}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <button
+                                            className="primary-button"
+                                            type="button"
+                                            disabled={!selectedBookingId || isLinkingBooking}
+                                            onClick={() => void linkSelectedBooking(item)}
+                                        >
+                                            {isLinkingBooking ? "Linking…" : "Link booking"}
+                                        </button>
+                                        <button
+                                            className="text-button"
+                                            type="button"
+                                            onClick={() => setLinkingActivityId(null)}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    bookings.length > 0 ? (
+                                        <button
+                                            className="text-button"
+                                            type="button"
+                                            onClick={() => startLinkingBooking(item.id)}
+                                        >
+                                            Link existing booking
+                                        </button>
+                                    ) : <span>No bookings yet</span>
+                                )}
+                                {bookingLinkError && <InlineMessage variant="error">{bookingLinkError}</InlineMessage>}
+                            </section>
+                        )}
                         {item.note && (
-                            <p>
-                                <strong>Notes:</strong> {item.note}
+                            <p className="itinerary-detail-row itinerary-notes-detail">
+                                <strong>Notes:</strong>
+                                <span>{item.note}</span>
                             </p>
                         )}
                     </ExpandedCardDetails>
@@ -696,4 +900,23 @@ function getBookingState(item: ItineraryItem) {
     }
 
     return item.bookingRequired ? "Booking required" : null;
+}
+
+function getAvailableBookingRoles(booking: Booking | undefined): BookingActivityRole[] {
+    if (!booking || (booking.category !== "Flight" && booking.category !== "RailBusFerry")) {
+        return ["General"];
+    }
+
+    const usedRoles = new Set(booking.activityLinks.map((link) => link.role));
+    return [
+        "General",
+        ...(!usedRoles.has("Outbound") ? ["Outbound" as const] : []),
+        ...(booking.returnStartDate && !usedRoles.has("Return") ? ["Return" as const] : []),
+    ];
+}
+
+function formatBookingRole(role: BookingActivityRole) {
+    if (role === "Outbound") return "Outbound journey";
+    if (role === "Return") return "Return journey";
+    return "General activity";
 }

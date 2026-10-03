@@ -8,6 +8,12 @@
 
 .item-metadata-label,
 .item-metadata-detail {
+    color: var(--color-gray-700);
+    font-size: 0.9rem;
+    gap: 32px;
+}
+
+.item-metadata-list {
     color: var(--color-gray-500);
     font-size: 0.85rem;
 }

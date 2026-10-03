@@ -8,7 +8,9 @@ export const formatDuration = (durationMinutes: number) => {
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
 
-    return `${hours}:${minutes.toString().padStart(2, "0")}`;
+    if (hours === 0) return `${minutes}min`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}min`;
 };
 
 export const formatCategory = (category: string) =>

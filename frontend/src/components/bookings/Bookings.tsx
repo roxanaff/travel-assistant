@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createBooking, deleteBooking, getBookings, updateBooking } from "../../api/bookingsApi";
 import type { Booking, BookingCategory, BookingForm } from "../../types/booking";
 import { createEmptyBookingForm } from "../../types/booking";
@@ -169,6 +170,7 @@ const toForm = (booking: Booking): BookingForm => ({
 
 /** Renders the trip's reservation register and its create/edit workflow. */
 export function Bookings({ trip, setHasUnsavedForm }: Props) {
+    const [searchParams] = useSearchParams();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -180,7 +182,9 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
     const [isSaving, setIsSaving] = useState(false);
     const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
     const [costInfo, setCostInfo] = useState<string | null>(null);
+    const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
+    const handledFocusIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         setHasUnsavedForm?.(isAdding || editingId !== null);
@@ -218,6 +222,28 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
         toggleAll,
         toggleExpanded,
     } = useExpandableCards(expandableBookingIds);
+
+    useEffect(() => {
+        const focusId = searchParams.get("focus");
+        if (!focusId || handledFocusIdRef.current === focusId) return;
+        if (!bookings.some((booking) => booking.id === focusId)) return;
+
+        handledFocusIdRef.current = focusId;
+        let timer: number | undefined;
+        const frame = window.requestAnimationFrame(() => {
+            expand(focusId);
+            setHighlightedBookingId(focusId);
+            document.getElementById(`booking-${focusId}`)?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+            timer = window.setTimeout(() => setHighlightedBookingId(null), 2200);
+        });
+        return () => {
+            window.cancelAnimationFrame(frame);
+            if (timer !== undefined) window.clearTimeout(timer);
+        };
+    }, [bookings, expand, searchParams]);
 
     const updateField = (field: keyof BookingForm, value: string | boolean) => {
         if ((field === "totalCost" || field === "amountPaid" || field === "amountRefunded") && typeof value === "string") {
@@ -798,9 +824,25 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
             booking.returnEndLocation,
         );
         return (
-            <li className={`item-card booking-card${booking.status === "Cancelled" ? " booking-card-cancelled" : ""}`} key={booking.id}>
+            <li
+                id={`booking-${booking.id}`}
+                className={`item-card booking-card${booking.status === "Cancelled" ? " booking-card-cancelled" : ""}${highlightedBookingId === booking.id ? " booking-card-highlighted" : ""}`}
+                key={booking.id}
+            >
                 <div className="booking-card-header">
-                    <div className="booking-card-main">
+                    <div
+                        className={hasAdditionalDetails ? "booking-card-main booking-card-main-expandable" : "booking-card-main"}
+                        role={hasAdditionalDetails ? "button" : undefined}
+                        tabIndex={hasAdditionalDetails ? 0 : undefined}
+                        aria-expanded={hasAdditionalDetails ? expanded : undefined}
+                        onClick={hasAdditionalDetails ? () => toggleExpanded(booking.id) : undefined}
+                        onKeyDown={hasAdditionalDetails ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                toggleExpanded(booking.id);
+                            }
+                        } : undefined}
+                    >
                         <strong className="booking-card-name">{booking.name}</strong>
                         <div className="booking-summary-details">
                             <div className="booking-journey-summary">
@@ -878,6 +920,7 @@ function hasAdditionalBookingDetails(booking: Booking) {
         || booking.category
         || booking.amountPaid > 0
         || booking.amountRefunded !== null
+        || booking.activityLinks.length > 0
         || booking.externalLink
         || booking.note,
     );

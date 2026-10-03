@@ -1,6 +1,8 @@
 import type { Booking, BookingForm } from "../types/booking";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
+export type BookingActivityRole = "General" | "Outbound" | "Return";
+
 const bookingsUrl = (tripId: string) =>
     `${apiBaseUrl}/api/trips/${tripId}/bookings`;
 
@@ -78,5 +80,30 @@ export async function deleteBooking(tripId: string, bookingId: string): Promise<
         method: "DELETE",
     });
     await throwIfApiError(response, "Could not delete this booking.");
+}
+
+export async function linkBookingActivity(
+    tripId: string,
+    bookingId: string,
+    activityId: string,
+    role: BookingActivityRole,
+): Promise<void> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/activities/${activityId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+    });
+    await throwIfApiError(response, "Could not link this booking.");
+}
+
+export async function unlinkBookingActivity(
+    tripId: string,
+    bookingId: string,
+    activityId: string,
+): Promise<void> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/activities/${activityId}`, {
+        method: "DELETE",
+    });
+    await throwIfApiError(response, "Could not unlink this booking.");
 }
 

@@ -403,6 +403,8 @@ Each booking is displayed as an expandable card, following the established itine
 - While editing, the form replaces the booking card rather than opening inside it, matching itinerary activities.
 - Show the expand control only when the booking has secondary information to reveal. Its action order matches itinerary:
   expand/collapse, edit, then delete.
+- Clicking or keyboard-activating the name and main-details area also expands or collapses booking and activity cards;
+  edit, delete, status, and relationship controls remain separate targets.
 - Booking and itinerary cards use the same spacing between list entries.
 - The page supports expanding and collapsing individual cards and provides **Expand all / Collapse all**, matching the
   Itinerary page.
@@ -519,6 +521,8 @@ Completed in the itinerary integration foundation:
 - Activities can be marked **Booking required** in their create/edit form.
 - Activity cards derive and display **Booking required**, **Booking linked**, **Booking requested**, **Booked**, or
   **Booking cancelled** from their stored booking relationship and the linked booking's current status.
+- A booking-required activity can link an existing booking, choose a general/outbound/return relationship when
+  applicable, navigate to the linked booking with a brief highlight, and unlink it without deleting either record.
 
 Remaining work includes activity and budget interactions, review messages, navigation highlighting, dedicated frontend
 tests, full browser verification, and user testing.

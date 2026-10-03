@@ -445,10 +445,10 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
                 {((showCategory && categoryLabel(item.category)) || item.deadline) && (
                     <div className="todo-item-details item-metadata">
                         {showCategory && categoryLabel(item.category) && (
-                            <span className="todo-category item-metadata-label">{categoryLabel(item.category)}</span>
+                            <span className="todo-category item-metadata-list">{categoryLabel(item.category)}</span>
                         )}
                         {item.deadline && (
-                            <span className="todo-deadline item-metadata-detail">{formatDate(item.deadline)}</span>
+                            <span className="todo-deadline item-metadata-list">{formatDate(item.deadline)}</span>
                         )}
                     </div>
                 )}

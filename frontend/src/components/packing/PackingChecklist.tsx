@@ -446,7 +446,7 @@ export function PackingChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorks
                     {item.name}
                 </label>
                 {showCategory && categoryLabel(item.category) && (
-                    <span className="packing-category item-metadata-label">{categoryLabel(item.category)}</span>
+                    <span className="packing-category item-metadata-list">{categoryLabel(item.category)}</span>
                 )}
                 <div className="item-actions">
                     <button
