@@ -1,5 +1,5 @@
 import type { PlannedCost, PlannedCostCategory } from "../types/plannedCost";
-import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type PlannedCostRequest = {
     name: string | null;
@@ -26,10 +26,7 @@ export async function createPlannedCost(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save this planned cost.",
-        );
+    await throwIfApiError(response, "Could not save this planned cost.");
     return response.json();
 }
 
@@ -43,10 +40,7 @@ export async function updatePlannedCost(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save these changes.",
-        );
+    await throwIfApiError(response, "Could not save these changes.");
     return response.json();
 }
 

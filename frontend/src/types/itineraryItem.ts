@@ -13,6 +13,12 @@ export type ItineraryItem = {
     externalLink: string | null;
     priority: string;
     note: string | null;
+    bookingRequired: boolean;
+    bookingId: string | null;
+    bookingRole: "General" | "Outbound" | "Return" | null;
+    bookingName: string | null;
+    bookingStatus: "Requested" | "Confirmed" | "Cancelled" | null;
+    hasPendingDeletedBookingNotice: boolean;
     createdAtUtc: string;
 };
 
@@ -29,6 +35,7 @@ export type ItineraryItemForm = {
     externalLink: string;
     priority: string;
     note: string;
+    bookingRequired: boolean;
 };
 
 /** Returns a fresh form object so separate create/edit panels never share mutable state. */
@@ -45,4 +52,5 @@ export const createEmptyItineraryItemForm = (): ItineraryItemForm => ({
     externalLink: "",
     priority: "WouldLikeToDo",
     note: "",
+    bookingRequired: false,
 });

@@ -164,6 +164,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseExceptionHandler(exceptionHandler =>
+    exceptionHandler.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "An unexpected error occurred. Please try again."
+        });
+    }));
 app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();

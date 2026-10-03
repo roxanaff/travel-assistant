@@ -97,9 +97,9 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         void loadItems();
     }, [trip.id]);
 
-    const updateForm = (field: keyof ItineraryItemForm, value: string, editing = false) => {
+    const updateForm = (field: keyof ItineraryItemForm, value: string | boolean, editing = false) => {
         if (field === "cost") {
-            const normalized = normalizeMoneyInput(value);
+            const normalized = normalizeMoneyInput(value as string);
             if (normalized === null) return;
             value = normalized;
         }
@@ -126,6 +126,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         externalLink: item.externalLink.trim() || null,
         priority: item.priority,
         note: item.note.trim() || null,
+        bookingRequired: item.bookingRequired,
     });
 
     const getDurationInMinutes = (item: ItineraryItemForm) => {
@@ -141,6 +142,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
         if (!item.name.trim()) {
             errors.name = "Enter an activity name.";
+        } else if (item.name.trim().length > 150) {
+            errors.name = "Activity name cannot exceed 150 characters.";
         }
         if (item.startTime && !item.date) {
             errors.startTime = "Choose a date before setting a start time.";
@@ -157,7 +160,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     /** Maps known backend validation messages back to the corresponding browser form field. */
     const getResponseFormErrors = (message: string): ItineraryFormErrors => {
-        if (message.includes("name is required")) return { name: message };
+        if (message.toLowerCase().includes("name")) return { name: message };
         if (message.includes("start time requires")) return { startTime: message };
         if (message.includes("date must fall")) return { date: message };
         if (message.includes("Duration")) return { duration: message };
@@ -300,6 +303,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             externalLink: item.externalLink ?? "",
             priority: item.priority,
             note: item.note ?? "",
+            bookingRequired: item.bookingRequired,
         });
     };
 
@@ -336,6 +340,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     <span className="field-label field-label-required">Name</span>
                     <input
                         value={item.name}
+                        maxLength={150}
                         onChange={(event) => updateForm("name", event.target.value, editing)}
                         placeholder="e.g. Sagrada Família"
                         required
@@ -428,6 +433,14 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     {formErrors.cost && <span className="form-field-error">{formErrors.cost}</span>}
                 </label>
             </div>
+            <label className="itinerary-booking-required">
+                <input
+                    type="checkbox"
+                    checked={item.bookingRequired}
+                    onChange={(event) => updateForm("bookingRequired", event.target.checked, editing)}
+                />
+                Booking required
+            </label>
             {!trip.startDate || !trip.endDate ? (
                 <p className="detail-message">
                     Add trip dates in Details before scheduling activities. This draft item will stay unscheduled.
@@ -465,6 +478,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         <span className="field-label">Location</span>
                         <input
                             value={item.location}
+                            maxLength={300}
                             onChange={(event) => updateForm("location", event.target.value, editing)}
                             placeholder="e.g. Carrer de Mallorca, 401"
                         />
@@ -474,6 +488,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         <input
                             type="url"
                             value={item.externalLink}
+                            maxLength={2000}
                             onChange={(event) => updateForm("externalLink", event.target.value, editing)}
                             placeholder="https://…"
                         />
@@ -482,6 +497,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         <span className="field-label">Notes</span>
                         <textarea
                             value={item.note}
+                            maxLength={1000}
                             onChange={(event) => updateForm("note", event.target.value, editing)}
                             rows={2}
                         />
@@ -526,6 +542,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         const itemIsExpanded = isExpanded(item.id);
         const detailsId = `itinerary-details-${item.id}`;
         const openingHoursWarning = getOpeningHoursWarning(item);
+        const bookingState = getBookingState(item);
 
         return (
             <li className="item-card" key={item.id}>
@@ -557,11 +574,14 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         )}
                     </div>
                     <div className="itinerary-item-controls">
-                        {item.priority && (
-                            <StatusPill>
-                                {formatPriority(item.priority)}
-                            </StatusPill>
-                        )}
+                        <div className="itinerary-statuses">
+                            {item.priority && (
+                                <StatusPill>
+                                    {formatPriority(item.priority)}
+                                </StatusPill>
+                            )}
+                            {bookingState && <StatusPill>{bookingState}</StatusPill>}
+                        </div>
                         <ExpandableCardActions
                             itemName={item.name}
                             hasAdditionalDetails={hasAdditionalDetails}
@@ -665,4 +685,15 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             />
         </SectionCard>
     );
+}
+
+function getBookingState(item: ItineraryItem) {
+    if (item.bookingId) {
+        if (item.bookingStatus === "Requested") return "Booking requested";
+        if (item.bookingStatus === "Confirmed") return "Booked";
+        if (item.bookingStatus === "Cancelled") return "Booking cancelled";
+        return "Booking linked";
+    }
+
+    return item.bookingRequired ? "Booking required" : null;
 }

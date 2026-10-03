@@ -514,5 +514,11 @@ Completed in the first frontend chunk:
 - Booking status and derived financial status pills, expanded reservation/payment details, and linked-aware deletion
   messaging.
 
+Completed in the itinerary integration foundation:
+
+- Activities can be marked **Booking required** in their create/edit form.
+- Activity cards derive and display **Booking required**, **Booking linked**, **Booking requested**, **Booked**, or
+  **Booking cancelled** from their stored booking relationship and the linked booking's current status.
+
 Remaining work includes activity and budget interactions, review messages, navigation highlighting, dedicated frontend
 tests, full browser verification, and user testing.

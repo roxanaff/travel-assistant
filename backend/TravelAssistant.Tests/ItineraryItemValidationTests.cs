@@ -14,6 +14,23 @@ public class ItineraryItemValidationTests
         Assert.Equal("Itinerary item name is required.", ItineraryItemValidation.Validate(CreateRequest(name: " "), DatedTrip));
 
     [Fact]
+    public void Validate_ReturnsError_WhenTextExceedsDatabaseLimits()
+    {
+        Assert.Equal(
+            "Activity name cannot exceed 150 characters.",
+            ItineraryItemValidation.Validate(CreateRequest(name: new string('a', 151)), DatedTrip));
+        Assert.Equal(
+            "Location cannot exceed 300 characters.",
+            ItineraryItemValidation.Validate(CreateRequest(location: new string('a', 301)), DatedTrip));
+        Assert.Equal(
+            "Link cannot exceed 2000 characters.",
+            ItineraryItemValidation.Validate(CreateRequest(externalLink: new string('a', 2001)), DatedTrip));
+        Assert.Equal(
+            "Notes cannot exceed 1000 characters.",
+            ItineraryItemValidation.Validate(CreateRequest(note: new string('a', 1001)), DatedTrip));
+    }
+
+    [Fact]
     public void Validate_ReturnsError_WhenTimeHasNoDate() =>
         Assert.Equal("A start time requires a date.", ItineraryItemValidation.Validate(CreateRequest(startTime: new TimeOnly(9, 0)), DatedTrip));
 
@@ -48,6 +65,25 @@ public class ItineraryItemValidationTests
         Assert.Null(ItineraryItemValidation.Validate(CreateRequest(), DatedTrip));
 
     private static CreateItineraryItemRequest CreateRequest(
-        DateOnly? date = null, TimeOnly? startTime = null, int? duration = null, decimal? cost = null, string name = "Museum") =>
-        new(name, date, startTime, duration, null, null, null, cost, null, null, ItineraryPriority.Optional, null);
+        DateOnly? date = null,
+        TimeOnly? startTime = null,
+        int? duration = null,
+        decimal? cost = null,
+        string name = "Museum",
+        string? location = null,
+        string? externalLink = null,
+        string? note = null) =>
+        new(
+            name,
+            date,
+            startTime,
+            duration,
+            null,
+            null,
+            null,
+            cost,
+            location,
+            externalLink,
+            ItineraryPriority.Optional,
+            note);
 }

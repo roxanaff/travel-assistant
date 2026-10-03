@@ -117,7 +117,9 @@
 }
 .itinerary-item-summary > div:first-child {
     display: grid;
+    flex: 1 1 auto;
     gap: 6px;
+    min-width: 0;
 }
 .itinerary-item-title {
     display: flex;
@@ -135,8 +137,40 @@
 
 .itinerary-item-controls {
     display: flex;
+    flex: 0 0 260px;
     align-items: center;
+    justify-content: flex-end;
     gap: 10px;
+}
+
+.itinerary-statuses {
+    display: grid;
+    flex: 1 0 auto;
+    justify-items: end;
+    gap: 6px;
+}
+
+.itinerary-statuses .status-pill {
+    white-space: nowrap;
+}
+
+.itinerary-form .itinerary-booking-required {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 8px;
+    width: fit-content;
+    white-space: nowrap;
+}
+
+.itinerary-form .itinerary-booking-required input {
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--color-blue-500);
 }
 
 .itinerary-item-details {
@@ -154,5 +188,15 @@
     }
     .itinerary-notes-field {
         grid-column: auto;
+    }
+
+    .itinerary-item-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .itinerary-item-controls {
+        flex-basis: auto;
+        width: 100%;
     }
 }

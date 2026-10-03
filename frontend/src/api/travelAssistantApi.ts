@@ -12,12 +12,16 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
     return fetch(input, { ...init, credentials: "include" });
 }
 
-/** Throws one consistent API error while retaining any useful server message. */
+/** Keeps internal server failures private while retaining safe validation messages. */
 export async function throwIfApiError(
     response: Response,
     fallbackMessage: string,
 ) {
     if (response.ok) return;
+
+    if (response.status >= 500) {
+        throw new Error(fallbackMessage);
+    }
 
     const responseText = await response.text();
     if (!responseText) throw new Error(fallbackMessage);

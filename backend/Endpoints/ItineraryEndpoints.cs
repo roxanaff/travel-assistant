@@ -25,6 +25,7 @@ public static class ItineraryEndpoints
 
             var itineraryItems = await database.ItineraryItems
                 .Where(item => item.TripId == tripId)
+                .Include(item => item.Booking)
                 // Scheduled activities come first in chronological order; unscheduled ideas follow.
                 .OrderBy(item => item.Date == null)
                 .ThenBy(item => item.Date)
@@ -86,7 +87,9 @@ public static class ItineraryEndpoints
                 return Results.BadRequest(validationError);
             }
 
-            var itineraryItem = await database.ItineraryItems.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            var itineraryItem = await database.ItineraryItems
+                .Include(item => item.Booking)
+                .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (itineraryItem is null)
             {
                 return Results.NotFound();
@@ -176,6 +179,8 @@ public static class ItineraryEndpoints
         item.BookingRequired,
         item.BookingId,
         item.BookingRole,
+        BookingName = item.Booking?.Name,
+        BookingStatus = item.Booking?.Status,
         item.HasPendingDeletedBookingNotice,
         item.CreatedAtUtc
     };

@@ -16,6 +16,26 @@ public static class ItineraryItemValidation
             return "Itinerary item name is required.";
         }
 
+        if (request.Name.Trim().Length > 150)
+        {
+            return "Activity name cannot exceed 150 characters.";
+        }
+
+        if (request.Location?.Trim().Length > 300)
+        {
+            return "Location cannot exceed 300 characters.";
+        }
+
+        if (request.ExternalLink?.Trim().Length > 2000)
+        {
+            return "Link cannot exceed 2000 characters.";
+        }
+
+        if (request.Note?.Trim().Length > 1000)
+        {
+            return "Notes cannot exceed 1000 characters.";
+        }
+
         if (request.StartTime is not null && request.Date is null)
         {
             return "A start time requires a date.";

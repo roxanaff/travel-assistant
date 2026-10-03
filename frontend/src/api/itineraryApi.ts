@@ -1,5 +1,5 @@
 import type { ItineraryItem } from "../types/itineraryItem";
-import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 /** Payload accepted by the itinerary endpoints when creating or editing an activity. */
 export type ItineraryItemRequest = {
@@ -15,6 +15,7 @@ export type ItineraryItemRequest = {
     externalLink: string | null;
     priority: string;
     note: string | null;
+    bookingRequired: boolean;
 };
 
 const itineraryUrl = (tripId: string) =>
@@ -41,10 +42,7 @@ export async function createItineraryItem(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save this itinerary item.",
-        );
+    await throwIfApiError(response, "Could not save this itinerary item.");
 
     return response.json();
 }
@@ -60,10 +58,7 @@ export async function updateItineraryItem(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save these changes.",
-        );
+    await throwIfApiError(response, "Could not save these changes.");
 
     return response.json();
 }

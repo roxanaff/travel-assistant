@@ -1,5 +1,5 @@
 import type { Trip, TripRequest } from "../types/trip";
-import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 // HTTP client for the top-level trip resource.
 // Pages use these named operations instead of owning URLs.
@@ -35,9 +35,7 @@ export async function createTrip(request: TripRequest): Promise<Trip> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok) {
-        throw new Error((await response.text()) || "Unable to save this trip.");
-    }
+    await throwIfApiError(response, "Unable to save this trip.");
 
     return response.json();
 }
@@ -52,9 +50,7 @@ export async function updateTrip(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok) {
-        throw new Error((await response.text()) || "Unable to save this trip.");
-    }
+    await throwIfApiError(response, "Unable to save this trip.");
 
     return response.json();
 }

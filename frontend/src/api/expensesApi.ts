@@ -1,5 +1,5 @@
 import type { Expense } from "../types/expense";
-import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
+import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type ExpenseRequest = {
     name: string;
@@ -28,10 +28,7 @@ export async function createExpense(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save this expense.",
-        );
+    await throwIfApiError(response, "Could not save this expense.");
 
     return response.json();
 }
@@ -46,10 +43,7 @@ export async function updateExpense(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    if (!response.ok)
-        throw new Error(
-            (await response.text()) || "Could not save these changes.",
-        );
+    await throwIfApiError(response, "Could not save these changes.");
 
     return response.json();
 }
