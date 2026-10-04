@@ -506,6 +506,14 @@ Completed in the backend foundation chunk:
 - Persistent deleted-link notice state and dismissal endpoints.
 - Focused validation and API tests.
 
+Completed in the booking budget API chunk:
+
+- Atomic creation of a booking's linked planned cost, plus atomic expense creation that creates the planned cost when
+  needed or uses the booking's existing linked plan.
+- Budget-chain eligibility, validation, relationship uniqueness, and concurrent-creation conflict handling at the API
+  boundary.
+- Stable response shapes for the planned cost and expense records created from a booking, with focused API coverage.
+
 Completed in the first frontend chunk:
 
 - A Bookings workspace tab and route between Itinerary and Budget & expenses.

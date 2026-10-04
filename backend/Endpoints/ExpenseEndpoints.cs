@@ -54,7 +54,7 @@ public static class ExpenseEndpoints
                     item.PlannedCostId == request.PlannedCostId);
                 if (!plannedCostExists || expenseAlreadyAdded)
                 {
-                    return Results.BadRequest("This planned cost has already been added to expenses.");
+                    return Results.Conflict("This planned cost has already been added to expenses.");
                 }
             }
 
@@ -69,7 +69,16 @@ public static class ExpenseEndpoints
             };
 
             database.Expenses.Add(expense);
-            await database.SaveChangesAsync();
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (
+                BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception))
+            {
+                return Results.Conflict("This planned cost has already been added to expenses.");
+            }
+
             return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", expense);
         }).WithName("CreateExpense");
 

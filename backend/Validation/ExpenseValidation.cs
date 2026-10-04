@@ -8,6 +8,11 @@ public static class ExpenseValidation
     /// <summary>Returns a user-facing validation message, or <c>null</c> when the request is valid.</summary>
     public static string? Validate(CreateExpenseRequest request)
     {
+        if (request.Name?.Trim().Length > 150)
+        {
+            return "Expense name cannot be longer than 150 characters.";
+        }
+
         if (request.Amount <= 0)
         {
             return "Expense amount must be greater than zero.";

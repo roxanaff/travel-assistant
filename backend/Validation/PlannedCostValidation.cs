@@ -8,6 +8,11 @@ public static class PlannedCostValidation
     /// <summary>Returns a user-facing validation message, or <c>null</c> when the request is valid.</summary>
     public static string? Validate(CreatePlannedCostRequest request)
     {
+        if (request.Name?.Trim().Length > 150)
+        {
+            return "Planned cost name cannot be longer than 150 characters.";
+        }
+
         if (request.Amount <= 0)
         {
             return "Planned cost amount must be greater than zero.";

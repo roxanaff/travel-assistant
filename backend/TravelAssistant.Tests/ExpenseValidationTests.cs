@@ -24,6 +24,12 @@ public class BudgetValidationTests
             ExpenseValidation.Validate(new CreateExpenseRequest("Hotel", ExpenseCategory.Accommodation, 1_000_000_000m, null, null)));
 
     [Fact]
+    public void ExpenseValidate_ReturnsError_WhenNameIsTooLong() =>
+        Assert.Equal(
+            "Expense name cannot be longer than 150 characters.",
+            ExpenseValidation.Validate(new CreateExpenseRequest(new string('x', 151), null, 100, null, null)));
+
+    [Fact]
     public void PlannedCostValidate_AllowsMissingCategory() =>
         Assert.Null(PlannedCostValidation.Validate(new CreatePlannedCostRequest("Hotel", null, 100)));
 
@@ -42,4 +48,10 @@ public class BudgetValidationTests
     public void PlannedCostValidate_ReturnsError_WhenAmountExceedsSupportedMaximum() =>
         Assert.Equal("Planned cost amount exceeds the supported maximum.",
             PlannedCostValidation.Validate(new CreatePlannedCostRequest("Hotel", PlannedCostCategory.Accommodation, 1_000_000_000m)));
+
+    [Fact]
+    public void PlannedCostValidate_ReturnsError_WhenNameIsTooLong() =>
+        Assert.Equal(
+            "Planned cost name cannot be longer than 150 characters.",
+            PlannedCostValidation.Validate(new CreatePlannedCostRequest(new string('x', 151), null, 100)));
 }
