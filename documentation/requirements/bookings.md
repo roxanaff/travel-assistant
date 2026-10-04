@@ -256,17 +256,15 @@ separately:
 Linking a booking replaces Booking required with the appropriate linked-booking state. Unlinking returns to Booking
 required when that choice remains selected.
 
-Related entries use a second disclosure inside the already expandable itinerary or booking card so a long relationship
-list does not crowd the main card details:
+Related entries appear directly inside the expanded card details:
 
-- In an itinerary card, a collapsed **Show related booking** control expands the Booking section. When no booking is
-  linked, the control reads **Show booking options** instead.
-- In a booking card, a collapsed **Show related activities** control expands the Itinerary section and includes the
-  number of linked activities when useful, for example `Show related activities (2)`. When there are no links, it reads
-  **Show itinerary options** instead.
-- The controls change to the corresponding **Hide** labels while their section is open.
-- The nested disclosure state is independent from the whole-card expanded state; collapsing the card hides the related
-  section without removing any links.
+- In an itinerary card, the Booking row shows the linked booking or the available booking actions.
+- In an expanded booking card, linked activities are grouped as **Outbound activities**, **Return activities**, and
+  **Other activities**, without an additional outer Activities label. Links are stacked directly beside their group
+  name, and each includes an adjacent **Unlink** action. Non-journey bookings use **Activities** as their single group;
+  **Other activities** is used only alongside the journey-specific groups. Dates and times are not repeated in the
+  normal linked row.
+- Relationship lists do not add another nested expand/collapse control.
 
 Inside an unlinked itinerary card's expanded Booking section, show **Create booking** and **Link booking**. Once linked,
 show the booking name as a navigation control, its derived booking state, and a separate **Unlink** action.
@@ -278,7 +276,8 @@ activity** are section-level actions because they do not belong to an existing l
 Selecting a linked record's name navigates to the other workspace page, expands the destination card, and briefly
 emphasises it so the destination remains obvious even when it was already visible and no scrolling occurred. Scroll
 only when needed. Use a short outline/background emphasis rather than rapid flashing, move keyboard focus to the
-destination card or heading, and respect reduced-motion preferences.
+destination card or heading, and respect reduced-motion preferences. The emphasis is a one-use result of selecting the
+link: selecting it again repeats the emphasis, while reloading the destination page does not.
 
 Creating from either direction opens a prefilled form inside the source card. The mappings are:
 
@@ -293,18 +292,19 @@ Creating from either direction opens a prefilled form inside the source card. Th
 The user reviews and can change all prefilled values before saving. The new record is linked automatically after it is
 created.
 
-Outbound and Return each provide their own **Add to itinerary** and **Link existing activity** actions and each leg
-links to at most one activity. Store whether the relationship represents Outbound, Return, or a general activity so
-later date/time review applies only to the relevant activity.
+Each relationship records whether it represents Outbound, Return, or a general/other activity. Every group can contain
+multiple activities; the interface does not restrict how travellers choose to represent a journey. Date/time and
+location change notices apply only to activities in the relevant journey group.
 
 If the booking date falls outside the trip dates, or the trip does not yet have complete dates, the prefilled activity
 remains Unscheduled and the form explains why the date was not copied. The booking date is preserved unchanged.
 
-After linking, the two records remain independent. Changes never silently rewrite the linked record. When a shared
-field such as name, date/time, location, link, or cost changes, show a dismissible contextual note beside the changed
-record with an explicit action to update the linked record. Notes remain independent and do not trigger a review. If a
-booking links to several activities, review affected activities separately because they may intentionally use different
-parts of the booking's schedule.
+After linking, the two records remain independent. Changes never rewrite the linked record. Date/time, duration/end,
+location, and cost changes create a persistent, dismissible contextual notice beside the relationship on the other
+record. The notice shows the current relevant details so the traveller can decide whether to edit that record manually.
+Names, categories, notes, statuses, providers, confirmation numbers, and links remain independent and do not trigger a
+notice. Journey date/time and location notices are limited to activities connected to the changed leg; booking-wide
+cost changes may notify every related activity.
 
 ### Review changes from a booking
 
@@ -522,7 +522,16 @@ Completed in the itinerary integration foundation:
 - Activity cards derive and display **Booking required**, **Booking linked**, **Booking requested**, **Booked**, or
   **Booking cancelled** from their stored booking relationship and the linked booking's current status.
 - A booking-required activity can link an existing booking, choose a general/outbound/return relationship when
-  applicable, navigate to the linked booking with a brief highlight, and unlink it without deleting either record.
+  applicable, create a prefilled booking in place, navigate to the linked booking with a brief highlight, and unlink it
+  without deleting either record.
+- Expanded booking cards list their linked activities, navigate to and briefly highlight an activity, and
+  unlink each relationship independently. They can also link an existing activity or create a prefilled activity in
+  place. Both normal and prefilled activity workflows use the same form component.
+- Surviving activities and bookings show persistent, dismissible notices when a linked record was deleted.
+- Editing schedule, duration/end time, location, or cost never changes the linked record. Instead, a persistent,
+  dismissible notice appears beside the relationship on the other record and shows its current relevant details.
+- Flight and Rail, bus & ferry bookings group related activities as Outbound, Return, or Other and allow multiple
+  activities in every group. Booking changes notify only the relevant journey group, except booking-wide cost changes.
 
-Remaining work includes activity and budget interactions, review messages, navigation highlighting, dedicated frontend
-tests, full browser verification, and user testing.
+The booking/activity itinerary integration is complete for the first version. Remaining booking-feature work concerns
+budget interactions, broader browser coverage, and user testing rather than the itinerary relationship itself.

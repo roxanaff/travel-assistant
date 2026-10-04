@@ -27,6 +27,10 @@ export type BookingActivityLink = {
     date: string | null;
     startTime: string | null;
     role: "General" | "Outbound" | "Return" | null;
+    hasPendingBookingUpdateReview: boolean;
+    hasPendingActivityUpdateReview: boolean;
+    pendingBookingChangeFields: string | null;
+    pendingActivityChangeFields: string | null;
 };
 
 export type Booking = {

@@ -89,6 +89,21 @@ public static class BookingEndpoints
                 return Results.Conflict("Remove or delete the linked budget entries before clearing this booking's cost.");
             }
 
+            foreach (var activity in booking.Activities)
+            {
+                var changedFields = GetChangedFields(
+                    booking,
+                    request,
+                    activity.BookingRole ?? BookingActivityRole.General);
+                if (changedFields.Count > 0)
+                {
+                    activity.HasPendingActivityUpdateReview = true;
+                    activity.PendingActivityChangeFields = MergeChangeFields(
+                        activity.PendingActivityChangeFields,
+                        changedFields);
+                }
+            }
+
             ApplyRequest(booking, request);
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(booking));
@@ -170,22 +185,14 @@ public static class BookingEndpoints
                 return Results.BadRequest("Add a return journey before linking a return activity.");
             }
 
-            if (request.Role != BookingActivityRole.General)
-            {
-                var roleIsUsed = await database.ItineraryItems.AnyAsync(item =>
-                    item.BookingId == booking.Id
-                    && item.Id != activity.Id
-                    && item.BookingRole == request.Role);
-                if (roleIsUsed)
-                {
-                    return Results.Conflict($"This booking already has an activity for its {request.Role.ToString().ToLowerInvariant()} journey.");
-                }
-            }
-
             activity.BookingId = booking.Id;
             activity.BookingRole = request.Role;
             activity.BookingRequired = true;
             activity.HasPendingDeletedBookingNotice = false;
+            activity.HasPendingBookingUpdateReview = false;
+            activity.HasPendingActivityUpdateReview = false;
+            activity.PendingBookingChangeFields = null;
+            activity.PendingActivityChangeFields = null;
             await database.SaveChangesAsync();
 
             return Results.Ok(new { activity.Id, activity.BookingId, activity.BookingRole });
@@ -206,9 +213,51 @@ public static class BookingEndpoints
 
             activity.BookingId = null;
             activity.BookingRole = null;
+            activity.HasPendingBookingUpdateReview = false;
+            activity.HasPendingActivityUpdateReview = false;
+            activity.PendingBookingChangeFields = null;
+            activity.PendingActivityChangeFields = null;
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("UnlinkBookingActivity");
+
+        routes.MapPost("/bookings/{id:guid}/activities/{activityId:guid}/dismiss-booking-update-review", async (
+            Guid tripId,
+            Guid id,
+            Guid activityId,
+            TravelAssistantDbContext database) =>
+        {
+            var activity = await database.ItineraryItems.SingleOrDefaultAsync(item =>
+                item.Id == activityId && item.BookingId == id && item.TripId == tripId);
+            if (activity is null)
+            {
+                return Results.NotFound();
+            }
+
+            activity.HasPendingBookingUpdateReview = false;
+            activity.PendingBookingChangeFields = null;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissBookingUpdateReview");
+
+        routes.MapPost("/bookings/{id:guid}/activities/{activityId:guid}/dismiss-activity-update-review", async (
+            Guid tripId,
+            Guid id,
+            Guid activityId,
+            TravelAssistantDbContext database) =>
+        {
+            var activity = await database.ItineraryItems.SingleOrDefaultAsync(item =>
+                item.Id == activityId && item.BookingId == id && item.TripId == tripId);
+            if (activity is null)
+            {
+                return Results.NotFound();
+            }
+
+            activity.HasPendingActivityUpdateReview = false;
+            activity.PendingActivityChangeFields = null;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissActivityUpdateReview");
 
         routes.MapPost("/bookings/{id:guid}/planned-costs/{plannedCostId:guid}", async (
             Guid tripId,
@@ -304,6 +353,49 @@ public static class BookingEndpoints
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static List<string> GetChangedFields(
+        Booking booking,
+        SaveBookingRequest request,
+        BookingActivityRole role)
+    {
+        var fields = new List<string>();
+        var costChanged = booking.TotalCost != request.TotalCost;
+        if (role == BookingActivityRole.Return)
+        {
+            var returnScheduleChanged = booking.ReturnStartDate != request.ReturnStartDate
+                || booking.ReturnStartTime != request.ReturnStartTime
+                || booking.ReturnEndDate != request.ReturnEndDate
+                || booking.ReturnEndTime != request.ReturnEndTime;
+            var returnLocationChanged = booking.ReturnStartLocation != NormalizeOptionalText(request.ReturnStartLocation)
+                || booking.ReturnEndLocation != NormalizeOptionalText(request.ReturnEndLocation);
+            if (returnScheduleChanged) fields.Add("schedule");
+            if (returnLocationChanged) fields.Add("location");
+            if (costChanged) fields.Add("cost");
+            return fields;
+        }
+
+        var scheduleChanged = booking.StartDate != request.StartDate
+            || booking.StartTime != request.StartTime
+            || booking.EndDate != request.EndDate
+            || booking.EndTime != request.EndTime;
+        var locationChanged = role == BookingActivityRole.Outbound
+            ? booking.StartLocation != NormalizeOptionalText(request.StartLocation)
+                || booking.EndLocation != NormalizeOptionalText(request.EndLocation)
+            : booking.Location != NormalizeOptionalText(request.Location);
+
+        if (scheduleChanged) fields.Add("schedule");
+        if (locationChanged) fields.Add("location");
+        if (costChanged) fields.Add("cost");
+        return fields;
+    }
+
+    private static string MergeChangeFields(string? existing, IEnumerable<string> changedFields) =>
+        string.Join(",", (existing ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Concat(changedFields)
+            .Distinct(StringComparer.Ordinal)
+            .Order());
+
     private static object ToResponse(Booking booking) => new
     {
         booking.Id,
@@ -342,7 +434,11 @@ public static class BookingEndpoints
             activity.Name,
             activity.Date,
             activity.StartTime,
-            Role = activity.BookingRole
+            Role = activity.BookingRole,
+            activity.HasPendingBookingUpdateReview,
+            activity.HasPendingActivityUpdateReview,
+            activity.PendingBookingChangeFields,
+            activity.PendingActivityChangeFields
         }),
         PlannedCostId = booking.PlannedCost?.Id,
         ExpenseId = booking.PlannedCost?.Expense?.Id,

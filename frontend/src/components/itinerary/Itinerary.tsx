@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import {
     getBookings,
+    dismissBookingActivityUpdateReview,
     linkBookingActivity,
     unlinkBookingActivity,
     type BookingActivityRole,
@@ -10,25 +11,40 @@ import {
 import {
     createItineraryItem,
     deleteItineraryItem,
+    dismissActivityDeletedBookingNotice,
     getItineraryItems,
     updateItineraryItem,
-    type ItineraryItemRequest,
 } from "../../api/itineraryApi";
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
 import { GroupAddButton } from "../shared/GroupAddButton";
-import { FormActions, FormSurface } from "../shared/FormPrimitives";
 import { ExpandableCardActions } from "../shared/ExpandableCardActions";
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
-import { FormDetailsToggle } from "../shared/FormDetailsToggle";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { InlineMessage } from "../shared/InlineMessage";
+import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { StatusPill } from "../shared/StatusPill";
 import { UndoToast } from "../shared/UndoToast";
+import { Bookings } from "../bookings/Bookings";
 import { normalizeMoneyInput } from "../../utils/numberInput";
+import { formatLinkChangeFields } from "../../utils/linkChangeNotice";
+import {
+    formatBookingRole,
+    getAvailableBookingRoles,
+} from "../../utils/bookingActivityLinks";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import { useExpandableCards } from "../../utils/useExpandableCards";
+import {
+    getItineraryResponseFormErrors,
+    itineraryFormToRequest,
+    validateItineraryForm,
+    type ItineraryFormErrors,
+} from "../../utils/itineraryForm";
+import {
+    createCardFocusState,
+    useNavigationCardFocus,
+} from "../../utils/useNavigationCardFocus";
 import type { Trip } from "../../types/trip";
 import type { Booking } from "../../types/booking";
 import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
@@ -44,6 +60,7 @@ import {
     sortDatedItems,
     sortUnscheduledItems,
 } from "./itineraryUtils";
+import { ActivityForm } from "./ActivityForm";
 
 import "./Itinerary.css";
 
@@ -52,10 +69,34 @@ type ItineraryProps = {
     setHasUnsavedForm?: Dispatch<SetStateAction<boolean>>;
 };
 
-type ItineraryFormErrors = Partial<Record<keyof ItineraryItemForm, string>>;
-
 type PendingDeletion = {
     item: ItineraryItem;
+};
+
+const describeBookingDetails = (
+    booking: Booking,
+    role: BookingActivityRole,
+    currency: string,
+) => {
+    const isReturn = role === "Return";
+    const date = isReturn ? booking.returnStartDate : booking.startDate;
+    const time = isReturn ? booking.returnStartTime : booking.startTime;
+    const location = isReturn
+        ? booking.returnStartLocation
+        : role === "Outbound"
+            ? booking.startLocation
+            : booking.location;
+    const details = [
+        date ? `${formatDate(date)}${time ? ` at ${time.slice(0, 5)}` : ""}` : null,
+        location,
+        booking.totalCost !== null
+            ? booking.totalCost === 0
+                ? "Free"
+                : formatMoney(booking.totalCost, currency)
+            : null,
+    ];
+
+    return details.filter(Boolean).join(" · ");
 };
 
 // This component owns the itinerary workflow: scheduling, optional activity details, inline editing, and Undo.
@@ -80,8 +121,14 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [linkingActivityId, setLinkingActivityId] = useState<string | null>(null);
     const [selectedBookingId, setSelectedBookingId] = useState("");
     const [selectedBookingRole, setSelectedBookingRole] = useState<BookingActivityRole>("General");
-    const [bookingLinkError, setBookingLinkError] = useState<string | null>(null);
+    const [bookingLinkError, setBookingLinkError] = useState<{
+        activityId: string;
+        message: string;
+    } | null>(null);
     const [isLinkingBooking, setIsLinkingBooking] = useState(false);
+    const [creatingBookingForActivityId, setCreatingBookingForActivityId] = useState<string | null>(null);
+    const [dismissingDeletedNoticeId, setDismissingDeletedNoticeId] = useState<string | null>(null);
+    const [dismissingBookingChangeId, setDismissingBookingChangeId] = useState<string | null>(null);
     const expandableItemIds = items
         .filter((item) =>
             item.openingTime
@@ -96,15 +143,26 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const {
         areAllExpanded: areAllExpandableItemsExpanded,
         collapse,
+        expand,
         isExpanded,
         toggleAll: toggleAllDetails,
         toggleExpanded: toggleDetails,
     } = useExpandableCards(expandableItemIds);
 
+    const highlightedActivityId = useNavigationCardFocus({
+        availableIds: items.map((item) => item.id),
+        elementIdPrefix: "activity",
+        expand,
+    });
+
     useEffect(() => {
-        setHasUnsavedForm?.(isAdding || editingItemId !== null);
+        setHasUnsavedForm?.(
+            isAdding
+            || editingItemId !== null
+            || creatingBookingForActivityId !== null,
+        );
         return () => setHasUnsavedForm?.(false);
-    }, [editingItemId, isAdding, setHasUnsavedForm]);
+    }, [creatingBookingForActivityId, editingItemId, isAdding, setHasUnsavedForm]);
 
     useEffect(() => {
         const loadItems = async () => {
@@ -140,62 +198,6 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setFormErrors((current) => ({ ...current, [field]: undefined }));
     };
 
-    const toRequest = (item: ItineraryItemForm): ItineraryItemRequest => ({
-        name: item.name.trim(),
-        date: trip.startDate && trip.endDate ? item.date || null : null,
-        startTime: trip.startDate && trip.endDate && item.date ? item.startTime || null : null,
-        durationMinutes: getDurationInMinutes(item),
-        openingTime: item.openingTime || null,
-        closingTime: item.closingTime || null,
-        category: item.category || null,
-        cost: item.cost === "" ? null : Number(item.cost),
-        location: item.location.trim() || null,
-        externalLink: item.externalLink.trim() || null,
-        priority: item.priority,
-        note: item.note.trim() || null,
-        bookingRequired: item.bookingRequired,
-    });
-
-    const getDurationInMinutes = (item: ItineraryItemForm) => {
-        if (!item.duration) return null;
-
-        const [hours, minutes] = item.duration.split(":").map(Number);
-
-        return hours === 0 && minutes === 0 ? null : hours * 60 + minutes;
-    };
-
-    const validateForm = (item: ItineraryItemForm): ItineraryFormErrors => {
-        const errors: ItineraryFormErrors = {};
-
-        if (!item.name.trim()) {
-            errors.name = "Enter an activity name.";
-        } else if (item.name.trim().length > 150) {
-            errors.name = "Activity name cannot exceed 150 characters.";
-        }
-        if (item.startTime && !item.date) {
-            errors.startTime = "Choose a date before setting a start time.";
-        }
-        if (item.date && trip.startDate && trip.endDate && (item.date < trip.startDate || item.date > trip.endDate)) {
-            errors.date = "Choose a date within the trip dates.";
-        }
-        if (item.cost && Number(item.cost) < 0) {
-            errors.cost = "Cost cannot be negative.";
-        }
-
-        return errors;
-    };
-
-    /** Maps known backend validation messages back to the corresponding browser form field. */
-    const getResponseFormErrors = (message: string): ItineraryFormErrors => {
-        if (message.toLowerCase().includes("name")) return { name: message };
-        if (message.includes("start time requires")) return { startTime: message };
-        if (message.includes("date must fall")) return { date: message };
-        if (message.includes("Duration")) return { duration: message };
-        if (message.includes("Cost")) return { cost: message };
-
-        return {};
-    };
-
     const restoreItem = (item: ItineraryItem) => {
         setItems((current) => [...current, item]);
     };
@@ -214,7 +216,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     const saveNewItem = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const validationErrors = validateForm(newItem);
+        const validationErrors = validateItineraryForm(newItem, trip);
         if (Object.keys(validationErrors).length > 0) {
             setFormErrors(validationErrors);
             return;
@@ -224,7 +226,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setFormError(null);
         setFormErrors({});
         try {
-            const created = await createItineraryItem(trip.id, toRequest(newItem));
+            const created = await createItineraryItem(trip.id, itineraryFormToRequest(newItem, trip));
             setItems((current) =>
                 [...current, created].sort(
                     (a, b) =>
@@ -237,7 +239,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             setAddingForDate(null);
         } catch (exception) {
             const message = exception instanceof Error ? exception.message : "Could not save this itinerary item.";
-            const responseErrors = getResponseFormErrors(message);
+            const responseErrors = getItineraryResponseFormErrors(message);
             if (Object.keys(responseErrors).length > 0) setFormErrors(responseErrors);
             else setFormError(message);
         } finally {
@@ -248,7 +250,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!editingItemId) return;
-        const validationErrors = validateForm(editingItem);
+        const validationErrors = validateItineraryForm(editingItem, trip);
         if (Object.keys(validationErrors).length > 0) {
             setFormErrors(validationErrors);
             return;
@@ -259,12 +261,16 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setFormErrors({});
 
         try {
-            const updated = await updateItineraryItem(trip.id, editingItemId, toRequest(editingItem));
+            const updated = await updateItineraryItem(
+                trip.id,
+                editingItemId,
+                itineraryFormToRequest(editingItem, trip),
+            );
             setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
             setEditingItemId(null);
         } catch (exception) {
             const message = exception instanceof Error ? exception.message : "Could not save these changes.";
-            const responseErrors = getResponseFormErrors(message);
+            const responseErrors = getItineraryResponseFormErrors(message);
             if (Object.keys(responseErrors).length > 0) {
                 setFormErrors(responseErrors);
             } else {
@@ -344,13 +350,20 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             date: item.date,
                             startTime: item.startTime,
                             role: selectedBookingRole,
+                            hasPendingBookingUpdateReview: false,
+                            hasPendingActivityUpdateReview: false,
+                            pendingBookingChangeFields: null,
+                            pendingActivityChangeFields: null,
                         },
                     ],
                 }
                 : candidate));
             setLinkingActivityId(null);
         } catch (exception) {
-            setBookingLinkError(exception instanceof Error ? exception.message : "Could not link this booking.");
+            setBookingLinkError({
+                activityId: item.id,
+                message: exception instanceof Error ? exception.message : "Could not link this booking.",
+            });
         } finally {
             setIsLinkingBooking(false);
         }
@@ -377,9 +390,56 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                 activityLinks: booking.activityLinks.filter((link) => link.id !== item.id),
             })));
         } catch (exception) {
-            setBookingLinkError(exception instanceof Error ? exception.message : "Could not unlink this booking.");
+            setBookingLinkError({
+                activityId: item.id,
+                message: exception instanceof Error ? exception.message : "Could not unlink this booking.",
+            });
         } finally {
             setIsLinkingBooking(false);
+        }
+    };
+
+    const dismissDeletedBookingNotice = async (itemId: string) => {
+        setDismissingDeletedNoticeId(itemId);
+        try {
+            await dismissActivityDeletedBookingNotice(trip.id, itemId);
+            setItems((current) => current.map((item) => item.id === itemId
+                ? { ...item, hasPendingDeletedBookingNotice: false }
+                : item));
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not dismiss this message.");
+        } finally {
+            setDismissingDeletedNoticeId(null);
+        }
+    };
+
+    const dismissLinkedBookingChangeNotice = async (item: ItineraryItem) => {
+        if (!item.bookingId) return;
+
+        setDismissingBookingChangeId(item.id);
+        try {
+            await dismissBookingActivityUpdateReview(
+                trip.id,
+                item.bookingId,
+                item.id,
+                "activity",
+            );
+            setItems((current) => current.map((candidate) => candidate.id === item.id
+                ? {
+                    ...candidate,
+                    hasPendingActivityUpdateReview: false,
+                    pendingActivityChangeFields: null,
+                }
+                : candidate));
+        } catch (exception) {
+            setBookingLinkError({
+                activityId: item.id,
+                message: exception instanceof Error
+                    ? exception.message
+                    : "Could not dismiss this review.",
+            });
+        } finally {
+            setDismissingBookingChangeId(null);
         }
     };
 
@@ -436,186 +496,21 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         submit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>,
         editing = false,
     ) => (
-        <FormSurface formRef={formRef} className="itinerary-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
-            <div className="itinerary-form-row itinerary-form-row-name">
-                <label className="itinerary-field itinerary-name-field">
-                    <span className="field-label field-label-required">Name</span>
-                    <input
-                        value={item.name}
-                        maxLength={150}
-                        onChange={(event) => updateForm("name", event.target.value, editing)}
-                        placeholder="e.g. Sagrada Família"
-                        required
-                        aria-invalid={Boolean(formErrors.name)}
-                    />
-                    {formErrors.name && <span className="form-field-error">{formErrors.name}</span>}
-                </label>
-            </div>
-            <div className="itinerary-form-row itinerary-form-row-schedule">
-                {trip.startDate && trip.endDate ? (
-                    <>
-                        <label className="itinerary-field itinerary-date-field">
-                            <span className="field-label">Date</span>
-                            <input
-                                type="date"
-                                min={trip.startDate}
-                                max={trip.endDate}
-                                value={item.date}
-                                onChange={(event) => {
-                                    updateForm("date", event.target.value, editing);
-                                    if (!event.target.value) updateForm("startTime", "", editing);
-                                }}
-                                aria-invalid={Boolean(formErrors.date)}
-                            />
-                            {formErrors.date && <span className="form-field-error">{formErrors.date}</span>}
-                        </label>
-                        <label className="itinerary-field itinerary-time-field">
-                            <span className="field-label">Time</span>
-                            <input
-                                type="time"
-                                value={item.startTime}
-                                disabled={!item.date}
-                                onChange={(event) => updateForm("startTime", event.target.value, editing)}
-                                aria-invalid={Boolean(formErrors.startTime)}
-                            />
-                            {formErrors.startTime && <span className="form-field-error">{formErrors.startTime}</span>}
-                        </label>
-                    </>
-                ) : null}
-                <label className="itinerary-field itinerary-duration-field">
-                    <span className="field-label">Duration</span>
-                    <input
-                        type="time"
-                        step="60"
-                        value={item.duration}
-                        onChange={(event) => updateForm("duration", event.target.value, editing)}
-                        aria-invalid={Boolean(formErrors.duration)}
-                    />
-                    {formErrors.duration && <span className="form-field-error">{formErrors.duration}</span>}
-                </label>
-            </div>
-            <div className="itinerary-form-row itinerary-form-row-planning">
-                <label className="itinerary-field itinerary-priority-field">
-                    <span className="field-label">Priority</span>
-                    <select
-                        value={item.priority}
-                        onChange={(event) => updateForm("priority", event.target.value, editing)}
-                    >
-                        <option value="MustDo">Must do</option>
-                        <option value="WouldLikeToDo">Want to do</option>
-                        <option value="Optional">Optional</option>
-                    </select>
-                </label>
-                <label className="itinerary-field itinerary-category-field">
-                    <span className="field-label">Category</span>
-                    <select
-                        value={item.category}
-                        onChange={(event) => updateForm("category", event.target.value, editing)}
-                    >
-                        <option value="">Not specified</option>
-                        <option value="Museum">Museum</option>
-                        <option value="Tour">Tour</option>
-                        <option value="Event">Event</option>
-                        <option value="Food">Food</option>
-                        <option value="Beach">Beach</option>
-                        <option value="Bar">Bar</option>
-                        <option value="Attraction">Attraction</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </label>
-                <label className="itinerary-field itinerary-price-field">
-                    <span className="field-label">Price ({trip.currency})</span>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        value={item.cost}
-                        onChange={(event) => updateForm("cost", event.target.value, editing)}
-                        aria-invalid={Boolean(formErrors.cost)}
-                    />
-                    {formErrors.cost && <span className="form-field-error">{formErrors.cost}</span>}
-                </label>
-            </div>
-            <label className="itinerary-booking-required">
-                <input
-                    type="checkbox"
-                    checked={item.bookingRequired}
-                    onChange={(event) => updateForm("bookingRequired", event.target.checked, editing)}
-                />
-                Booking required
-            </label>
-            {!trip.startDate || !trip.endDate ? (
-                <p className="detail-message">
-                    Add trip dates in Details before scheduling activities. This draft item will stay unscheduled.
-                </p>
-            ) : null}
-            <FormDetailsToggle
-                isExpanded={isMoreDetailsOpen}
-                controlsId={editing ? "itinerary-edit-more-details" : "itinerary-add-more-details"}
-                onToggle={() => setIsMoreDetailsOpen((current) => !current)}
-            />
-            {isMoreDetailsOpen && (
-                <div
-                    className="itinerary-form-row itinerary-form-row-details"
-                    id={editing ? "itinerary-edit-more-details" : "itinerary-add-more-details"}
-                >
-                    <label className="itinerary-field itinerary-opening-hours-field">
-                        <span className="field-label">Opening hours</span>
-                        <span className="opening-hours">
-                            <input
-                                type="time"
-                                aria-label="Opening time"
-                                value={item.openingTime}
-                                onChange={(event) => updateForm("openingTime", event.target.value, editing)}
-                            />
-                            <span aria-hidden="true">–</span>
-                            <input
-                                type="time"
-                                aria-label="Closing time"
-                                value={item.closingTime}
-                                onChange={(event) => updateForm("closingTime", event.target.value, editing)}
-                            />
-                        </span>
-                    </label>
-                    <label className="itinerary-field">
-                        <span className="field-label">Location</span>
-                        <input
-                            value={item.location}
-                            maxLength={300}
-                            onChange={(event) => updateForm("location", event.target.value, editing)}
-                            placeholder="e.g. Carrer de Mallorca, 401"
-                        />
-                    </label>
-                    <label className="itinerary-field">
-                        <span className="field-label">Link</span>
-                        <input
-                            type="url"
-                            value={item.externalLink}
-                            maxLength={2000}
-                            onChange={(event) => updateForm("externalLink", event.target.value, editing)}
-                            placeholder="https://…"
-                        />
-                    </label>
-                    <label className="itinerary-field itinerary-notes-field">
-                        <span className="field-label">Notes</span>
-                        <textarea
-                            value={item.note}
-                            maxLength={1000}
-                            onChange={(event) => updateForm("note", event.target.value, editing)}
-                            rows={2}
-                        />
-                    </label>
-                </div>
-            )}
-            {formError && <p className="form-error">{formError}</p>}
-            <FormActions>
-                <button className="text-button" type="button" onClick={cancelForm}>
-                    Cancel
-                </button>
-                <button className="primary-button" type="submit" disabled={isSaving}>
-                    {isSaving ? "Saving…" : editing ? "Save changes" : "Save"}
-                </button>
-            </FormActions>
-        </FormSurface>
+        <ActivityForm
+            trip={trip}
+            value={item}
+            errors={formErrors}
+            generalError={formError}
+            isSaving={isSaving}
+            isEditing={editing}
+            isMoreDetailsOpen={isMoreDetailsOpen}
+            formRef={formRef}
+            onKeyDown={onFormKeyDown}
+            onChange={(field, value) => updateForm(field, value, editing)}
+            onToggleMoreDetails={() => setIsMoreDetailsOpen((current) => !current)}
+            onCancel={cancelForm}
+            onSubmit={(event) => void submit(event)}
+        />
     );
 
     /** Renders a compact itinerary card, with secondary details available on demand. */
@@ -653,10 +548,15 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         const openingHoursWarning = getOpeningHoursWarning(item);
         const bookingState = getBookingState(item);
         const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
+        const linkedBooking = bookings.find((booking) => booking.id === item.bookingId);
         const roleOptions = getAvailableBookingRoles(selectedBooking);
 
         return (
-            <li className="item-card" key={item.id}>
+            <li
+                id={`activity-${item.id}`}
+                className={`item-card${highlightedActivityId === item.id ? " itinerary-item-highlighted" : ""}`}
+                key={item.id}
+            >
                 <div className="itinerary-item-summary">
                     <div
                         className={hasAdditionalDetails ? "itinerary-item-main itinerary-item-main-expandable" : "itinerary-item-main"}
@@ -715,6 +615,17 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         />
                     </div>
                 </div>
+                {item.hasPendingDeletedBookingNotice && (
+                    <InlineMessage
+                        className="itinerary-deleted-link-notice"
+                        variant="warning"
+                        dismissLabel="Dismiss deleted booking message"
+                        isDismissDisabled={dismissingDeletedNoticeId === item.id}
+                        onDismiss={() => void dismissDeletedBookingNotice(item.id)}
+                    >
+                        The linked booking was deleted. This activity was kept.
+                    </InlineMessage>
+                )}
                 {itemIsExpanded && (
                     <ExpandedCardDetails className="itinerary-expanded-details" id={detailsId}>
                         {openingHours && (
@@ -744,66 +655,95 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             <section className="itinerary-booking-section">
                                 <strong>Booking:</strong>
                                 {item.bookingId ? (
-                                    <div className="itinerary-linked-booking">
-                                        <Link
-                                            className="itinerary-inline-link"
-                                            to={`/trips/${trip.id}/bookings?focus=${item.bookingId}`}
-                                        >
-                                            {item.bookingName ?? "View booking"}
-                                        </Link>
+                                    <>
+                                        <div className="itinerary-linked-booking">
+                                            <Link
+                                                className="internal-record-link"
+                                                to={`/trips/${trip.id}/bookings`}
+                                                state={createCardFocusState(item.bookingId)}
+                                            >
+                                                {item.bookingName ?? "View booking"}
+                                                {item.bookingRole && item.bookingRole !== "General"
+                                                    ? ` · ${formatBookingRole(item.bookingRole)}`
+                                                    : ""}
+                                            </Link>
+                                            <button
+                                                className="text-button"
+                                                type="button"
+                                                disabled={isLinkingBooking}
+                                                onClick={() => void unlinkBooking(item)}
+                                            >
+                                                Unlink
+                                            </button>
+                                        </div>
+                                        {item.hasPendingActivityUpdateReview && linkedBooking && (
+                                            <InlineMessage
+                                                variant="warning"
+                                                dismissLabel="Dismiss linked booking change notice"
+                                                isDismissDisabled={dismissingBookingChangeId === item.id}
+                                                onDismiss={() => void dismissLinkedBookingChangeNotice(item)}
+                                            >
+                                                The linked booking’s{" "}
+                                                {formatLinkChangeFields(
+                                                    item.pendingActivityChangeFields,
+                                                    item.bookingRole === "Return"
+                                                        ? "return schedule"
+                                                        : item.bookingRole === "Outbound"
+                                                            ? "outbound schedule"
+                                                            : "schedule",
+                                                )}{" "}
+                                                changed. Current details:{" "}
+                                                {describeBookingDetails(
+                                                    linkedBooking,
+                                                    item.bookingRole ?? "General",
+                                                    trip.currency,
+                                                ) || "No schedule, location, or cost information."}
+                                            </InlineMessage>
+                                        )}
+                                    </>
+                                ) : linkingActivityId === item.id ? (
+                                    <ExistingRecordLinkForm
+                                        ariaLabel="Booking"
+                                        value={selectedBookingId}
+                                        options={bookings.map((booking) => ({
+                                            value: booking.id,
+                                            label: booking.name,
+                                        }))}
+                                        onChange={(value) => {
+                                            setSelectedBookingId(value);
+                                            setSelectedBookingRole("General");
+                                        }}
+                                        placeholder="Select a booking"
+                                        actionLabel="Link booking"
+                                        pendingActionLabel="Linking…"
+                                        isPending={isLinkingBooking}
+                                        onSubmit={() => void linkSelectedBooking(item)}
+                                        onCancel={() => setLinkingActivityId(null)}
+                                        secondarySelect={roleOptions.length > 1 ? {
+                                            ariaLabel: "Journey part",
+                                            value: selectedBookingRole,
+                                            options: roleOptions.map((role) => ({
+                                                value: role,
+                                                label: formatBookingRole(role),
+                                            })),
+                                            onChange: (value) => {
+                                                setSelectedBookingRole(value as BookingActivityRole);
+                                            },
+                                        } : undefined}
+                                    />
+                                ) : creatingBookingForActivityId !== item.id ? (
+                                    <div className="itinerary-booking-actions">
                                         <button
                                             className="text-button"
                                             type="button"
-                                            disabled={isLinkingBooking}
-                                            onClick={() => void unlinkBooking(item)}
-                                        >
-                                            Unlink
-                                        </button>
-                                    </div>
-                                ) : linkingActivityId === item.id ? (
-                                    <div className="itinerary-booking-link-form">
-                                        <select
-                                            aria-label="Booking"
-                                            value={selectedBookingId}
-                                            onChange={(event) => {
-                                                setSelectedBookingId(event.target.value);
-                                                setSelectedBookingRole("General");
+                                            onClick={() => {
+                                                setLinkingActivityId(null);
+                                                setCreatingBookingForActivityId(item.id);
                                             }}
                                         >
-                                            <option value="" disabled hidden>Select a booking</option>
-                                            {bookings.map((booking) => (
-                                                <option key={booking.id} value={booking.id}>{booking.name}</option>
-                                            ))}
-                                        </select>
-                                        {roleOptions.length > 1 && (
-                                            <select
-                                                aria-label="Journey part"
-                                                value={selectedBookingRole}
-                                                onChange={(event) => setSelectedBookingRole(event.target.value as BookingActivityRole)}
-                                            >
-                                                {roleOptions.map((role) => (
-                                                    <option key={role} value={role}>{formatBookingRole(role)}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <button
-                                            className="primary-button"
-                                            type="button"
-                                            disabled={!selectedBookingId || isLinkingBooking}
-                                            onClick={() => void linkSelectedBooking(item)}
-                                        >
-                                            {isLinkingBooking ? "Linking…" : "Link booking"}
+                                            Create booking
                                         </button>
-                                        <button
-                                            className="text-button"
-                                            type="button"
-                                            onClick={() => setLinkingActivityId(null)}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    bookings.length > 0 ? (
+                                        {bookings.length > 0 && (
                                         <button
                                             className="text-button"
                                             type="button"
@@ -811,9 +751,46 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                         >
                                             Link existing booking
                                         </button>
-                                    ) : <span>No bookings yet</span>
+                                        )}
+                                    </div>
+                                ) : <span>Creating a booking</span>}
+                                {bookingLinkError?.activityId === item.id && (
+                                    <InlineMessage variant="error">
+                                        {bookingLinkError.message}
+                                    </InlineMessage>
                                 )}
-                                {bookingLinkError && <InlineMessage variant="error">{bookingLinkError}</InlineMessage>}
+                                {creatingBookingForActivityId === item.id && (
+                                    <div className="itinerary-create-booking-form">
+                                        <Bookings
+                                            trip={trip}
+                                            embeddedDraft={{
+                                                activity: item,
+                                                onCancel: () => setCreatingBookingForActivityId(null),
+                                                onCreated: (booking, wasLinked) => {
+                                                    setBookings((current) => [...current, booking]);
+                                                    if (wasLinked) {
+                                                        setItems((current) => current.map((activity) => activity.id === item.id
+                                                            ? {
+                                                                ...activity,
+                                                                bookingRequired: true,
+                                                                bookingId: booking.id,
+                                                                bookingRole: "General",
+                                                                bookingName: booking.name,
+                                                                bookingStatus: booking.status,
+                                                            }
+                                                            : activity));
+                                                    } else {
+                                                        setBookingLinkError({
+                                                            activityId: item.id,
+                                                            message: `“${booking.name}” was created, but it could not be linked. You can link it here as an existing booking.`,
+                                                        });
+                                                    }
+                                                    setCreatingBookingForActivityId(null);
+                                                },
+                                            }}
+                                        />
+                                    </div>
+                                )}
                             </section>
                         )}
                         {item.note && (
@@ -900,23 +877,4 @@ function getBookingState(item: ItineraryItem) {
     }
 
     return item.bookingRequired ? "Booking required" : null;
-}
-
-function getAvailableBookingRoles(booking: Booking | undefined): BookingActivityRole[] {
-    if (!booking || (booking.category !== "Flight" && booking.category !== "RailBusFerry")) {
-        return ["General"];
-    }
-
-    const usedRoles = new Set(booking.activityLinks.map((link) => link.role));
-    return [
-        "General",
-        ...(!usedRoles.has("Outbound") ? ["Outbound" as const] : []),
-        ...(booking.returnStartDate && !usedRoles.has("Return") ? ["Return" as const] : []),
-    ];
-}
-
-function formatBookingRole(role: BookingActivityRole) {
-    if (role === "Outbound") return "Outbound journey";
-    if (role === "Return") return "Return journey";
-    return "General activity";
 }

@@ -105,6 +105,97 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.True(expense.HasPendingDeletedBookingNotice);
     }
 
+    [Fact]
+    public async Task LinkedRecordReviewSurvivesReloadUntilDismissed()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(client);
+        var activityId = await CreateActivityAsync(client, tripLocation);
+        var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
+
+        await client.PostAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}/activities/{activityId}",
+            new LinkBookingActivityRequest(BookingActivityRole.General));
+
+        var nameOnlyUpdate = await client.PutAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}",
+            CreateBookingRequest(name: "Renamed hotel", totalCost: 200));
+        Assert.Equal(HttpStatusCode.OK, nameOnlyUpdate.StatusCode);
+
+        var bookingsBeforeRelevantChange = await client.GetFromJsonAsync<JsonElement>($"{tripLocation}/bookings");
+        var activityBeforeRelevantChange = bookingsBeforeRelevantChange[0].GetProperty("activityLinks")[0];
+        Assert.False(activityBeforeRelevantChange.GetProperty("hasPendingActivityUpdateReview").GetBoolean());
+
+        var update = await client.PutAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}",
+            CreateBookingRequest(
+                name: "Renamed hotel",
+                startDate: new DateOnly(2027, 4, 3),
+                totalCost: 200));
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        var bookings = await client.GetFromJsonAsync<JsonElement>($"{tripLocation}/bookings");
+        var linkedActivity = bookings[0].GetProperty("activityLinks")[0];
+        Assert.True(linkedActivity.GetProperty("hasPendingActivityUpdateReview").GetBoolean());
+
+        var dismiss = await client.PostAsync(
+            $"{tripLocation}/bookings/{bookingId}/activities/{activityId}/dismiss-activity-update-review",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, dismiss.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        var activity = await database.ItineraryItems.SingleAsync(item => item.Id == activityId);
+        Assert.False(activity.HasPendingActivityUpdateReview);
+    }
+
+    [Fact]
+    public async Task JourneyLinksAllowMultipleActivitiesAndOnlyFlagTheChangedLeg()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(client);
+        var firstOutboundId = await CreateActivityAsync(client, tripLocation);
+        var secondOutboundId = await CreateActivityAsync(client, tripLocation);
+        var returnId = await CreateActivityAsync(client, tripLocation);
+
+        var bookingResponse = await client.PostAsJsonAsync(
+            $"{tripLocation}/bookings",
+            CreateBookingRequest(returnStartDate: new DateOnly(2027, 4, 4)));
+        Assert.Equal(HttpStatusCode.Created, bookingResponse.StatusCode);
+        using var bookingBody = JsonDocument.Parse(await bookingResponse.Content.ReadAsStringAsync());
+        var bookingId = bookingBody.RootElement.GetProperty("id").GetGuid();
+
+        foreach (var activityId in new[] { firstOutboundId, secondOutboundId })
+        {
+            var linkResponse = await client.PostAsJsonAsync(
+                $"{tripLocation}/bookings/{bookingId}/activities/{activityId}",
+                new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+            Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
+        }
+
+        var returnLinkResponse = await client.PostAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}/activities/{returnId}",
+            new LinkBookingActivityRequest(BookingActivityRole.Return));
+        Assert.Equal(HttpStatusCode.OK, returnLinkResponse.StatusCode);
+
+        var updateResponse = await client.PutAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}",
+            CreateBookingRequest(returnStartDate: new DateOnly(2027, 4, 5)));
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+        var bookings = await client.GetFromJsonAsync<JsonElement>($"{tripLocation}/bookings");
+        var links = bookings[0].GetProperty("activityLinks").EnumerateArray().ToArray();
+        var outboundLinks = links.Where(link => link.GetProperty("role").GetString() == "Outbound");
+        var returnLink = links.Single(link => link.GetProperty("role").GetString() == "Return");
+
+        Assert.All(outboundLinks, link =>
+            Assert.False(link.GetProperty("hasPendingActivityUpdateReview").GetBoolean()));
+        Assert.True(returnLink.GetProperty("hasPendingActivityUpdateReview").GetBoolean());
+        Assert.Equal("schedule", returnLink.GetProperty("pendingActivityChangeFields").GetString());
+    }
+
     private async Task<Uri> CreateTripAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/trips", new CreateTripRequest(

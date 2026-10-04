@@ -74,3 +74,14 @@ export async function deleteItineraryItem(
     if (!response.ok) 
         throw new Error("Could not delete this itinerary item.");
 }
+
+export async function dismissActivityDeletedBookingNotice(
+    tripId: string,
+    itemId: string,
+): Promise<void> {
+    const response = await apiFetch(
+        `${itineraryUrl(tripId)}/${itemId}/dismiss-deleted-booking-notice`,
+        { method: "POST" },
+    );
+    await throwIfApiError(response, "Could not dismiss this message.");
+}

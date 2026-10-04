@@ -7,6 +7,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Itinerary } from "../../../src/components/itinerary/Itinerary";
@@ -55,6 +56,12 @@ const museum = {
     createdAtUtc: "2026-01-01T00:00:00Z",
 };
 
+const renderItinerary = () => render(
+    <MemoryRouter>
+        <Itinerary trip={trip} setHasUnsavedForm={vi.fn()} />
+    </MemoryRouter>,
+);
+
 describe("Itinerary", () => {
     afterEach(cleanup);
 
@@ -72,7 +79,7 @@ describe("Itinerary", () => {
             startTime: "10:00:00",
             durationMinutes: 90,
         });
-        render(<Itinerary trip={trip} setHasUnsavedForm={vi.fn()} />);
+        renderItinerary();
         await screen.findByText("Add item");
         await user.click(screen.getByRole("button", { name: "Add item" }));
         await user.type(screen.getByLabelText("Name"), "Colosseum");
@@ -102,7 +109,7 @@ describe("Itinerary", () => {
 
     it("shows client-side validation errors without calling the API", async () => {
         const user = userEvent.setup();
-        render(<Itinerary trip={trip} setHasUnsavedForm={vi.fn()} />);
+        renderItinerary();
         await user.click(
             await screen.findByRole("button", { name: "Add item" }),
         );
@@ -115,7 +122,7 @@ describe("Itinerary", () => {
 
     it("displays an opening-hours conflict warning", async () => {
         api.getItineraryItems.mockResolvedValue([museum]);
-        render(<Itinerary trip={trip} setHasUnsavedForm={vi.fn()} />);
+        renderItinerary();
         expect(
             await screen.findByText(
                 "This activity ends after the entered closing time.",
@@ -126,7 +133,7 @@ describe("Itinerary", () => {
     it("restores a deleted activity when Undo is selected", async () => {
         const user = userEvent.setup();
         api.getItineraryItems.mockResolvedValue([museum]);
-        render(<Itinerary trip={trip} setHasUnsavedForm={vi.fn()} />);
+        renderItinerary();
         await screen.findByRole("button", { name: "Delete Museum" });
         await user.click(screen.getByRole("button", { name: "Delete Museum" }));
         expect(

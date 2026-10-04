@@ -97,6 +97,10 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             itineraryItem.Property(item => item.BookingRole).HasConversion<string>().HasMaxLength(20);
             itineraryItem.Property(item => item.BookingRequired).HasDefaultValue(false);
             itineraryItem.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
+            itineraryItem.Property(item => item.HasPendingBookingUpdateReview).HasDefaultValue(false);
+            itineraryItem.Property(item => item.HasPendingActivityUpdateReview).HasDefaultValue(false);
+            itineraryItem.Property(item => item.PendingBookingChangeFields).HasMaxLength(100);
+            itineraryItem.Property(item => item.PendingActivityChangeFields).HasMaxLength(100);
             itineraryItem.HasOne(item => item.Trip)
                 .WithMany(trip => trip.ItineraryItems)
                 .HasForeignKey(item => item.TripId)

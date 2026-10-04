@@ -13,6 +13,37 @@
     font-weight: 400;
 }
 
+.inline-message {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.inline-message-dismiss {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.linked-review-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.linked-review-actions .text-button {
+    padding: 0;
+}
+
 .inline-message-error,
 .form-error,
 .form-field-error {

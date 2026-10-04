@@ -19,6 +19,10 @@ export type ItineraryItem = {
     bookingName: string | null;
     bookingStatus: "Requested" | "Confirmed" | "Cancelled" | null;
     hasPendingDeletedBookingNotice: boolean;
+    hasPendingBookingUpdateReview: boolean;
+    hasPendingActivityUpdateReview: boolean;
+    pendingBookingChangeFields: string | null;
+    pendingActivityChangeFields: string | null;
     createdAtUtc: string;
 };
 

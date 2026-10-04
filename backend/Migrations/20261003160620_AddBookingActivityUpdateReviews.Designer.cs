@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TravelAssistant.Data;
@@ -11,9 +12,11 @@ using TravelAssistant.Data;
 namespace TravelAssistant.Migrations
 {
     [DbContext(typeof(TravelAssistantDbContext))]
-    partial class TravelAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003160620_AddBookingActivityUpdateReviews")]
+    partial class AddBookingActivityUpdateReviews
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -344,14 +347,6 @@ namespace TravelAssistant.Migrations
 
                     b.Property<TimeOnly?>("OpeningTime")
                         .HasColumnType("time without time zone");
-
-                    b.Property<string>("PendingActivityChangeFields")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("PendingBookingChangeFields")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Priority")
                         .IsRequired()

@@ -21,6 +21,14 @@ public class ItineraryItem
 
     public bool HasPendingDeletedBookingNotice { get; set; }
 
+    public bool HasPendingBookingUpdateReview { get; set; }
+
+    public bool HasPendingActivityUpdateReview { get; set; }
+
+    public string? PendingBookingChangeFields { get; set; }
+
+    public string? PendingActivityChangeFields { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     public DateOnly? Date { get; set; }

@@ -17,3 +17,30 @@
     color: var(--color-gray-500);
     font-size: 0.85rem;
 }
+
+.internal-record-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 4px 10px;
+    border: 1px solid var(--color-gray-700);
+    border-radius: 8px;
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+    line-height: 1.25;
+    text-decoration: none;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+a.internal-record-link {
+    color: var(--color-gray-700);
+}
+
+a.internal-record-link:hover,
+a.internal-record-link:focus-visible {
+    border-color: var(--color-ink);
+    background: var(--color-gray-200);
+    color: var(--color-gray-700);
+}

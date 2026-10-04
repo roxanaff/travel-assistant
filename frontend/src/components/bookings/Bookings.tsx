@@ -1,25 +1,65 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { useSearchParams } from "react-router-dom";
-import { createBooking, deleteBooking, getBookings, updateBooking } from "../../api/bookingsApi";
+import { Link } from "react-router-dom";
+import {
+    createBooking,
+    deleteBooking,
+    dismissBookingActivityUpdateReview,
+    dismissBookingDeletedLinkNotices,
+    getBookings,
+    linkBookingActivity,
+    unlinkBookingActivity,
+    updateBooking,
+    type BookingActivityRole,
+} from "../../api/bookingsApi";
+import {
+    createItineraryItem,
+    getItineraryItems,
+} from "../../api/itineraryApi";
 import type { Booking, BookingCategory, BookingForm } from "../../types/booking";
 import { createEmptyBookingForm } from "../../types/booking";
+import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
 import type { Trip } from "../../types/trip";
 import { formatDate, formatMoney } from "../../utils/format";
 import { normalizeMoneyInput } from "../../utils/numberInput";
+import { formatLinkChangeFields } from "../../utils/linkChangeNotice";
+import {
+    bookingToForm,
+    createBookingFormFromActivity,
+    formatBookingRole,
+    getAvailableBookingRoles,
+} from "../../utils/bookingActivityLinks";
+import {
+    createActivityFormFromBooking,
+    getItineraryResponseFormErrors,
+    itineraryFormToRequest,
+    validateItineraryForm,
+    type ItineraryFormErrors,
+} from "../../utils/itineraryForm";
 import { useExpandableCards } from "../../utils/useExpandableCards";
+import {
+    createCardFocusState,
+    useNavigationCardFocus,
+} from "../../utils/useNavigationCardFocus";
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
 import { FieldLabel, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDetailsToggle } from "../shared/FormDetailsToggle";
 import { ExpandableCardActions } from "../shared/ExpandableCardActions";
 import { InlineMessage } from "../shared/InlineMessage";
+import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
 import { StatusPill } from "../shared/StatusPill";
+import { ActivityForm } from "../itinerary/ActivityForm";
 import "./Bookings.css";
 
 type Props = {
     trip: Trip;
     setHasUnsavedForm?: Dispatch<SetStateAction<boolean>>;
+    embeddedDraft?: {
+        activity: ItineraryItem;
+        onCancel: () => void;
+        onCreated: (booking: Booking, wasLinked: boolean) => void;
+    };
 };
 
 type FormErrors = Partial<Record<keyof BookingForm, string>>;
@@ -59,7 +99,7 @@ const financialLabels: Record<string, string> = {
     FullyRefunded: "Fully refunded",
 };
 
-const isJourney = (category: BookingForm["category"]) =>
+const isJourney = (category: BookingForm["category"] | null) =>
     category === "Flight" || category === "RailBusFerry";
 const showsLocations = (category: BookingForm["category"]) =>
     category === "Flight" || category === "RailBusFerry" || category === "CarHire";
@@ -78,6 +118,28 @@ const labelsFor = (category: BookingForm["category"]) => {
         return { start: "Pick-up", end: "Drop-off", startLocation: "Pick-up location", endLocation: "Drop-off location" };
     }
     return { start: "Start", end: "End", startLocation: "Location", endLocation: "Location" };
+};
+
+const describeActivityDetails = (activity: ItineraryItem, currency: string) => {
+    const duration = activity.durationMinutes
+        ? `${Math.floor(activity.durationMinutes / 60)}h${activity.durationMinutes % 60
+            ? ` ${activity.durationMinutes % 60}min`
+            : ""}`
+        : null;
+    const details = [
+        activity.date
+            ? `${formatDate(activity.date)}${activity.startTime ? ` at ${activity.startTime.slice(0, 5)}` : ""}`
+            : null,
+        duration,
+        activity.location,
+        activity.cost !== null
+            ? activity.cost === 0
+                ? "Free"
+                : formatMoney(activity.cost, currency)
+            : null,
+    ];
+
+    return details.filter(Boolean).join(" · ");
 };
 
 const getImmediateErrors = (values: BookingForm): FormErrors => {
@@ -139,62 +201,66 @@ const getImmediateErrors = (values: BookingForm): FormErrors => {
     return errors;
 };
 
-const toForm = (booking: Booking): BookingForm => ({
-    name: booking.name,
-    category: booking.category ?? "",
-    status: booking.status ?? "",
-    provider: booking.provider ?? "",
-    confirmationNumber: booking.confirmationNumber ?? "",
-    startDate: booking.startDate,
-    startTime: booking.startTime?.slice(0, 5) ?? "",
-    endDate: booking.endDate ?? "",
-    endTime: booking.endTime?.slice(0, 5) ?? "",
-    location: booking.location ?? "",
-    startLocation: booking.startLocation ?? "",
-    endLocation: booking.endLocation ?? "",
-    hasReturnJourney: booking.returnStartDate !== null,
-    returnStartDate: booking.returnStartDate ?? "",
-    returnStartTime: booking.returnStartTime?.slice(0, 5) ?? "",
-    returnStartLocation: booking.returnStartLocation ?? "",
-    returnEndDate: booking.returnEndDate ?? "",
-    returnEndTime: booking.returnEndTime?.slice(0, 5) ?? "",
-    returnEndLocation: booking.returnEndLocation ?? "",
-    externalLink: booking.externalLink ?? "",
-    note: booking.note ?? "",
-    costState: booking.totalCost === 0 ? "Free" : booking.totalCost === null ? "NotEntered" : "HasCost",
-    totalCost: booking.totalCost && booking.totalCost > 0 ? booking.totalCost.toString() : "",
-    amountPaid: booking.amountPaid ? booking.amountPaid.toString() : "",
-    isRefunded: booking.amountRefunded !== null && booking.amountRefunded > 0,
-    amountRefunded: booking.amountRefunded?.toString() ?? "",
-});
-
 /** Renders the trip's reservation register and its create/edit workflow. */
-export function Bookings({ trip, setHasUnsavedForm }: Props) {
-    const [searchParams] = useSearchParams();
+export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
+    const initialBookingDraft = embeddedDraft
+        ? {
+            activityId: embeddedDraft.activity.id,
+            form: createBookingFormFromActivity(embeddedDraft.activity),
+        }
+        : null;
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [activities, setActivities] = useState<ItineraryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
+    const [isAdding, setIsAdding] = useState(initialBookingDraft !== null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [form, setForm] = useState<BookingForm>(createEmptyBookingForm());
+    const [form, setForm] = useState<BookingForm>(
+        initialBookingDraft?.form ?? createEmptyBookingForm(),
+    );
     const [formErrors, setFormErrors] = useState<FormErrors>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
     const [costInfo, setCostInfo] = useState<string | null>(null);
-    const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(null);
+    const [relationshipError, setRelationshipError] = useState<{ bookingId: string; message: string } | null>(null);
+    const [unlinkingActivityId, setUnlinkingActivityId] = useState<string | null>(null);
+    const [linkingBookingId, setLinkingBookingId] = useState<string | null>(null);
+    const [selectedActivityId, setSelectedActivityId] = useState("");
+    const [selectedActivityRole, setSelectedActivityRole] = useState<BookingActivityRole>("General");
+    const [isLinkingActivity, setIsLinkingActivity] = useState(false);
+    const [creatingActivityForBookingId, setCreatingActivityForBookingId] = useState<string | null>(null);
+    const [newActivity, setNewActivity] = useState<ItineraryItemForm | null>(null);
+    const [newActivityRole, setNewActivityRole] = useState<BookingActivityRole>("General");
+    const [newActivityErrors, setNewActivityErrors] = useState<ItineraryFormErrors>({});
+    const [newActivityError, setNewActivityError] = useState<string | null>(null);
+    const [isSavingActivity, setIsSavingActivity] = useState(false);
+    const [isActivityMoreDetailsOpen, setIsActivityMoreDetailsOpen] = useState(false);
+    const [dismissingDeletedNoticeId, setDismissingDeletedNoticeId] = useState<string | null>(null);
+    const [dismissingActivityChangeId, setDismissingActivityChangeId] = useState<string | null>(null);
+    const [sourceActivityId, setSourceActivityId] = useState<string | null>(
+        initialBookingDraft?.activityId ?? null,
+    );
     const formRef = useRef<HTMLFormElement>(null);
-    const handledFocusIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        setHasUnsavedForm?.(isAdding || editingId !== null);
+        setHasUnsavedForm?.(
+            isAdding
+            || editingId !== null
+            || creatingActivityForBookingId !== null,
+        );
         return () => setHasUnsavedForm?.(false);
-    }, [editingId, isAdding, setHasUnsavedForm]);
+    }, [creatingActivityForBookingId, editingId, isAdding, setHasUnsavedForm]);
 
     useEffect(() => {
         void (async () => {
             try {
                 setBookings(await getBookings(trip.id));
+                try {
+                    setActivities(await getItineraryItems(trip.id));
+                } catch {
+                    setActivities([]);
+                }
             } catch (exception) {
                 setError(exception instanceof Error ? exception.message : "Could not load bookings.");
             } finally {
@@ -212,7 +278,7 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
         [bookings],
     );
     const expandableBookingIds = useMemo(
-        () => bookings.filter(hasAdditionalBookingDetails).map((booking) => booking.id),
+        () => bookings.map((booking) => booking.id),
         [bookings],
     );
     const {
@@ -223,27 +289,11 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
         toggleExpanded,
     } = useExpandableCards(expandableBookingIds);
 
-    useEffect(() => {
-        const focusId = searchParams.get("focus");
-        if (!focusId || handledFocusIdRef.current === focusId) return;
-        if (!bookings.some((booking) => booking.id === focusId)) return;
-
-        handledFocusIdRef.current = focusId;
-        let timer: number | undefined;
-        const frame = window.requestAnimationFrame(() => {
-            expand(focusId);
-            setHighlightedBookingId(focusId);
-            document.getElementById(`booking-${focusId}`)?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-            });
-            timer = window.setTimeout(() => setHighlightedBookingId(null), 2200);
-        });
-        return () => {
-            window.cancelAnimationFrame(frame);
-            if (timer !== undefined) window.clearTimeout(timer);
-        };
-    }, [bookings, expand, searchParams]);
+    const highlightedBookingId = useNavigationCardFocus({
+        availableIds: bookings.map((booking) => booking.id),
+        elementIdPrefix: "booking",
+        expand,
+    });
 
     const updateField = (field: keyof BookingForm, value: string | boolean) => {
         if ((field === "totalCost" || field === "amountPaid" || field === "amountRefunded") && typeof value === "string") {
@@ -339,12 +389,59 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
             const saved = editingId
                 ? await updateBooking(trip.id, editingId, form)
                 : await createBooking(trip.id, form);
+            let savedWithLinks = saved;
+            let sourceActivityWasLinked = false;
+            if (!editingId && sourceActivityId) {
+                const sourceActivity = activities.find(
+                    (activity) => activity.id === sourceActivityId,
+                );
+                try {
+                    await linkBookingActivity(
+                        trip.id,
+                        saved.id,
+                        sourceActivityId,
+                        "General",
+                    );
+                    savedWithLinks = {
+                        ...saved,
+                        activityLinks: [
+                            ...saved.activityLinks,
+                            {
+                                id: sourceActivityId,
+                                name: sourceActivity?.name ?? form.name.trim(),
+                                date: (sourceActivity?.date ?? form.startDate) || null,
+                                startTime: (sourceActivity?.startTime ?? form.startTime) || null,
+                                role: "General",
+                                hasPendingBookingUpdateReview: false,
+                                hasPendingActivityUpdateReview: false,
+                                pendingBookingChangeFields: null,
+                                pendingActivityChangeFields: null,
+                            },
+                        ],
+                    };
+                    sourceActivityWasLinked = true;
+                    setActivities((current) => current.map((activity) => activity.id === sourceActivityId
+                        ? {
+                            ...activity,
+                            bookingRequired: true,
+                            bookingId: saved.id,
+                            bookingRole: "General",
+                            bookingName: saved.name,
+                            bookingStatus: saved.status,
+                        }
+                        : activity));
+                } catch {
+                    // The booking remains valid. The parent keeps the activity unlinked and
+                    // presents a recovery message beside the activity after this form closes.
+                }
+            }
             setBookings((current) => {
                 const next = editingId
-                    ? current.map((booking) => (booking.id === saved.id ? saved : booking))
-                    : [...current, saved];
+                    ? current.map((booking) => (booking.id === saved.id ? savedWithLinks : booking))
+                    : [...current, savedWithLinks];
                 return next.sort(compareBookings);
             });
+            embeddedDraft?.onCreated(savedWithLinks, sourceActivityWasLinked);
             expand(saved.id);
             closeForm();
         } catch (exception) {
@@ -361,13 +458,15 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
         setFormError(null);
         setIsMoreDetailsOpen(false);
         setCostInfo(null);
+        setSourceActivityId(null);
+        embeddedDraft?.onCancel();
         setIsAdding(true);
     };
 
     const startEditing = (booking: Booking) => {
         setIsAdding(false);
         setEditingId(booking.id);
-        setForm(toForm(booking));
+        setForm(bookingToForm(booking));
         setFormErrors({});
         setFormError(null);
         setIsMoreDetailsOpen(false);
@@ -383,6 +482,7 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
         setFormError(null);
         setIsMoreDetailsOpen(false);
         setCostInfo(null);
+        setSourceActivityId(null);
     };
 
     const remove = async (booking: Booking) => {
@@ -397,6 +497,285 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
             setBookings((current) => current.filter((item) => item.id !== booking.id));
         } catch (exception) {
             setError(exception instanceof Error ? exception.message : "Could not delete this booking.");
+        }
+    };
+
+    const dismissDeletedLinkNotices = async (bookingId: string) => {
+        setDismissingDeletedNoticeId(bookingId);
+        try {
+            await dismissBookingDeletedLinkNotices(trip.id, bookingId);
+            setBookings((current) => current.map((booking) => booking.id === bookingId
+                ? {
+                    ...booking,
+                    hasPendingDeletedActivityNotice: false,
+                    hasPendingDeletedPlannedCostNotice: false,
+                    hasPendingDeletedExpenseNotice: false,
+                }
+                : booking));
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not dismiss this message.");
+        } finally {
+            setDismissingDeletedNoticeId(null);
+        }
+    };
+
+    const dismissActivityChangeNotice = async (
+        bookingId: string,
+        activityId: string,
+    ) => {
+        setDismissingActivityChangeId(activityId);
+        try {
+            await dismissBookingActivityUpdateReview(
+                trip.id,
+                bookingId,
+                activityId,
+                "booking",
+            );
+            setBookings((current) => current.map((booking) => booking.id === bookingId
+                ? {
+                    ...booking,
+                    activityLinks: booking.activityLinks.map((activity) => activity.id === activityId
+                        ? {
+                            ...activity,
+                            hasPendingBookingUpdateReview: false,
+                            pendingBookingChangeFields: null,
+                        }
+                        : activity),
+                }
+                : booking));
+            setActivities((current) => current.map((activity) => activity.id === activityId
+                ? {
+                    ...activity,
+                    hasPendingBookingUpdateReview: false,
+                    pendingBookingChangeFields: null,
+                }
+                : activity));
+        } catch (exception) {
+            setRelationshipError({
+                bookingId,
+                message: exception instanceof Error ? exception.message : "Could not dismiss this review.",
+            });
+        } finally {
+            setDismissingActivityChangeId(null);
+        }
+    };
+
+    const unlinkActivity = async (bookingId: string, activityId: string) => {
+        setUnlinkingActivityId(activityId);
+        setRelationshipError(null);
+        try {
+            await unlinkBookingActivity(trip.id, bookingId, activityId);
+            setBookings((current) => current.map((booking) => booking.id === bookingId
+                ? {
+                    ...booking,
+                    activityLinks: booking.activityLinks.filter((activity) => activity.id !== activityId),
+                }
+                : booking));
+            setActivities((current) => current.map((activity) => activity.id === activityId
+                ? {
+                    ...activity,
+                    bookingId: null,
+                    bookingRole: null,
+                    bookingName: null,
+                    bookingStatus: null,
+                }
+                : activity));
+        } catch (exception) {
+            setRelationshipError({
+                bookingId,
+                message: exception instanceof Error ? exception.message : "Could not unlink this activity.",
+            });
+        } finally {
+            setUnlinkingActivityId(null);
+        }
+    };
+
+    const startLinkingActivity = (bookingId: string) => {
+        setLinkingBookingId(bookingId);
+        setSelectedActivityId("");
+        setSelectedActivityRole("General");
+        setRelationshipError(null);
+    };
+
+    const linkSelectedActivity = async (booking: Booking) => {
+        const activity = activities.find((candidate) => candidate.id === selectedActivityId);
+        if (!activity) return;
+
+        setIsLinkingActivity(true);
+        setRelationshipError(null);
+        try {
+            await linkBookingActivity(
+                trip.id,
+                booking.id,
+                activity.id,
+                selectedActivityRole,
+            );
+            setBookings((current) => current.map((candidate) => candidate.id === booking.id
+                ? {
+                    ...candidate,
+                    activityLinks: [
+                        ...candidate.activityLinks.filter((link) => link.id !== activity.id),
+                        {
+                            id: activity.id,
+                            name: activity.name,
+                            date: activity.date,
+                            startTime: activity.startTime,
+                            role: selectedActivityRole,
+                            hasPendingBookingUpdateReview: false,
+                            hasPendingActivityUpdateReview: false,
+                            pendingBookingChangeFields: null,
+                            pendingActivityChangeFields: null,
+                        },
+                    ],
+                }
+                : candidate));
+            setActivities((current) => current.map((candidate) => candidate.id === activity.id
+                ? {
+                    ...candidate,
+                    bookingRequired: true,
+                    bookingId: booking.id,
+                    bookingRole: selectedActivityRole,
+                    bookingName: booking.name,
+                    bookingStatus: booking.status,
+                }
+                : candidate));
+            setLinkingBookingId(null);
+            setSelectedActivityId("");
+        } catch (exception) {
+            setRelationshipError({
+                bookingId: booking.id,
+                message: exception instanceof Error ? exception.message : "Could not link this activity.",
+            });
+        } finally {
+            setIsLinkingActivity(false);
+        }
+    };
+
+    const startCreatingActivity = (booking: Booking) => {
+        const role = getAvailableBookingRoles(booking)[0] ?? "General";
+        setCreatingActivityForBookingId(booking.id);
+        setNewActivityRole(role);
+        setNewActivity(createActivityFormFromBooking(booking, role, trip));
+        setNewActivityErrors({});
+        setNewActivityError(null);
+        setIsActivityMoreDetailsOpen(false);
+        setLinkingBookingId(null);
+    };
+
+    const cancelCreatingActivity = () => {
+        setCreatingActivityForBookingId(null);
+        setNewActivity(null);
+        setNewActivityErrors({});
+        setNewActivityError(null);
+        setIsActivityMoreDetailsOpen(false);
+    };
+
+    const changeNewActivityRole = (booking: Booking, role: BookingActivityRole) => {
+        setNewActivityRole(role);
+        setNewActivity(createActivityFormFromBooking(booking, role, trip));
+        setNewActivityErrors({});
+        setNewActivityError(null);
+    };
+
+    const updateNewActivity = (field: keyof ItineraryItemForm, value: string | boolean) => {
+        if (field === "cost" && typeof value === "string") {
+            const normalized = normalizeMoneyInput(value);
+            if (normalized === null) return;
+            value = normalized;
+        }
+
+        setNewActivity((current) => current ? { ...current, [field]: value } : current);
+        setNewActivityErrors((current) => ({ ...current, [field]: undefined }));
+    };
+
+    const saveActivityFromBooking = async (
+        event: React.FormEvent<HTMLFormElement>,
+        booking: Booking,
+    ) => {
+        event.preventDefault();
+        if (!newActivity) return;
+
+        const validationErrors = validateItineraryForm(newActivity, trip);
+        if (Object.keys(validationErrors).length > 0) {
+            setNewActivityErrors(validationErrors);
+            return;
+        }
+
+        setIsSavingActivity(true);
+        setNewActivityErrors({});
+        setNewActivityError(null);
+        let created: ItineraryItem | null = null;
+        try {
+            created = await createItineraryItem(
+                trip.id,
+                itineraryFormToRequest(
+                    {
+                        ...newActivity,
+                        bookingRequired: true,
+                    },
+                    trip,
+                ),
+            );
+            await linkBookingActivity(
+                trip.id,
+                booking.id,
+                created.id,
+                newActivityRole,
+            );
+            const linkedCreated = created;
+
+            const linkedActivity: ItineraryItem = {
+                ...linkedCreated,
+                bookingRequired: true,
+                bookingId: booking.id,
+                bookingRole: newActivityRole,
+                bookingName: booking.name,
+                bookingStatus: booking.status,
+            };
+            setActivities((current) => [...current, linkedActivity]);
+            setBookings((current) => current.map((candidate) => candidate.id === booking.id
+                ? {
+                    ...candidate,
+                    activityLinks: [
+                        ...candidate.activityLinks,
+                        {
+                            id: linkedCreated.id,
+                            name: linkedCreated.name,
+                            date: linkedCreated.date,
+                            startTime: linkedCreated.startTime,
+                            role: newActivityRole,
+                            hasPendingBookingUpdateReview: false,
+                            hasPendingActivityUpdateReview: false,
+                            pendingBookingChangeFields: null,
+                            pendingActivityChangeFields: null,
+                        },
+                    ],
+                }
+                : candidate));
+            cancelCreatingActivity();
+        } catch (exception) {
+            const message = exception instanceof Error
+                ? exception.message
+                : "Could not create this activity.";
+            if (created) {
+                setActivities((current) => [...current, created as ItineraryItem]);
+                setRelationshipError({
+                    bookingId: booking.id,
+                    message: "The activity was created, but it could not be linked. You can link it from this booking.",
+                });
+                setCreatingActivityForBookingId(null);
+                setNewActivity(null);
+                return;
+            }
+
+            const responseErrors = getItineraryResponseFormErrors(message);
+            if (Object.keys(responseErrors).length > 0) {
+                setNewActivityErrors(responseErrors);
+            } else {
+                setNewActivityError(message);
+            }
+        } finally {
+            setIsSavingActivity(false);
         }
     };
 
@@ -799,7 +1178,17 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
             return <li key={booking.id}>{renderForm()}</li>;
         }
 
-        const hasAdditionalDetails = hasAdditionalBookingDetails(booking);
+        const linkableActivities = activities.filter((activity) => activity.bookingId === null);
+        const hasAdditionalDetails = true;
+        const newActivitySourceDate = newActivityRole === "Return"
+            ? booking.returnStartDate
+            : booking.startDate;
+        const newActivityDateIsOutsideTrip = Boolean(
+            newActivitySourceDate
+            && trip.startDate
+            && trip.endDate
+            && (newActivitySourceDate < trip.startDate || newActivitySourceDate > trip.endDate),
+        );
         const expanded = isExpanded(booking.id);
         const outbound = formatBookingPeriod(
             booking.startDate,
@@ -823,6 +1212,65 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
             booking.returnStartLocation,
             booking.returnEndLocation,
         );
+        const activityGroups = isJourney(booking.category)
+            ? [
+                {
+                    label: "Outbound activities",
+                    links: booking.activityLinks.filter((activity) => activity.role === "Outbound"),
+                },
+                {
+                    label: "Return activities",
+                    links: booking.activityLinks.filter((activity) => activity.role === "Return"),
+                },
+                {
+                    label: "Other activities",
+                    links: booking.activityLinks.filter((activity) => (
+                        activity.role === "General" || activity.role === null
+                    )),
+                },
+            ].filter((group) => group.links.length > 0)
+            : [{ label: "Activities", links: booking.activityLinks }];
+
+        const renderRelatedActivity = (activity: Booking["activityLinks"][number]) => {
+            const currentActivity = activities.find((candidate) => candidate.id === activity.id);
+            return (
+                <div className="booking-related-activity-entry" key={activity.id}>
+                    <div className="booking-related-activity">
+                        <Link
+                            className="internal-record-link"
+                            to={`/trips/${trip.id}/itinerary`}
+                            state={createCardFocusState(activity.id)}
+                        >
+                            {activity.name}
+                        </Link>
+                        <button
+                            className="text-button"
+                            type="button"
+                            disabled={unlinkingActivityId === activity.id}
+                            onClick={() => void unlinkActivity(booking.id, activity.id)}
+                        >
+                            Unlink
+                        </button>
+                    </div>
+                    {activity.hasPendingBookingUpdateReview && (
+                        <InlineMessage
+                            variant="warning"
+                            dismissLabel="Dismiss activity change notice"
+                            isDismissDisabled={dismissingActivityChangeId === activity.id}
+                            onDismiss={() => void dismissActivityChangeNotice(
+                                booking.id,
+                                activity.id,
+                            )}
+                        >
+                            {currentActivity
+                                ? `This activity’s ${formatLinkChangeFields(activity.pendingBookingChangeFields)} changed. Current details: ${describeActivityDetails(currentActivity, trip.currency) || "No schedule, location, or cost information."}`
+                                : "This activity changed. The booking was not changed."}
+                        </InlineMessage>
+                    )}
+                </div>
+            );
+        };
+
         return (
             <li
                 id={`booking-${booking.id}`}
@@ -883,6 +1331,19 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
                         onDelete={() => void remove(booking)}
                     />
                 </div>
+                {(booking.hasPendingDeletedActivityNotice
+                    || booking.hasPendingDeletedPlannedCostNotice
+                    || booking.hasPendingDeletedExpenseNotice) && (
+                    <InlineMessage
+                        className="booking-deleted-link-notice"
+                        variant="warning"
+                        dismissLabel="Dismiss deleted linked record message"
+                        isDismissDisabled={dismissingDeletedNoticeId === booking.id}
+                        onDismiss={() => void dismissDeletedLinkNotices(booking.id)}
+                    >
+                        {getDeletedLinkNotice(booking)}
+                    </InlineMessage>
+                )}
                 {hasAdditionalDetails && expanded && (
                     <ExpandedCardDetails className="booking-expanded-details">
                         <div className="booking-detail-grid">
@@ -892,13 +1353,130 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
                             {booking.totalCost !== null && booking.totalCost > 0 && <p><strong>Amount paid:</strong> {formatMoney(booking.amountPaid, trip.currency)}</p>}
                             {booking.amountRefunded !== null && <p><strong>Amount refunded:</strong> {formatMoney(booking.amountRefunded, trip.currency)}{booking.netCost > 0 ? ` · Net cost ${formatMoney(booking.netCost, trip.currency)}` : ""}</p>}
                         </div>
-                        {booking.externalLink && <p><strong>Link:</strong> <a href={booking.externalLink} target="_blank" rel="noreferrer">Open booking</a></p>}
+                        {booking.externalLink && (
+                            <p>
+                                <strong>Link:</strong>{" "}
+                                <a href={booking.externalLink} target="_blank" rel="noreferrer">
+                                    {booking.externalLink}
+                                </a>
+                            </p>
+                        )}
+                        <section className="booking-related-activities">
+                            <div className="booking-related-activity-list">
+                                {booking.activityLinks.length > 0 && (
+                                    <div className="booking-related-activity-links">
+                                        {activityGroups.map((group) => (
+                                            <section className="booking-activity-group" key={group.label ?? "activities"}>
+                                                <strong>{group.label}</strong>
+                                                <div className="booking-activity-group-items">
+                                                    {group.links.map(renderRelatedActivity)}
+                                                </div>
+                                            </section>
+                                        ))}
+                                    </div>
+                                )}
+                                {linkingBookingId === booking.id ? (
+                                    <ExistingRecordLinkForm
+                                        ariaLabel="Activity"
+                                        value={selectedActivityId}
+                                        options={linkableActivities.map((activity) => ({
+                                            value: activity.id,
+                                            label: activity.name,
+                                        }))}
+                                        onChange={setSelectedActivityId}
+                                        placeholder="Select an activity"
+                                        actionLabel="Link activity"
+                                        pendingActionLabel="Linking…"
+                                        isPending={isLinkingActivity}
+                                        onSubmit={() => void linkSelectedActivity(booking)}
+                                        onCancel={() => setLinkingBookingId(null)}
+                                        secondarySelect={getAvailableBookingRoles(booking).length > 1 ? {
+                                            ariaLabel: "Journey part",
+                                            value: selectedActivityRole,
+                                            options: getAvailableBookingRoles(booking).map((role) => ({
+                                                value: role,
+                                                label: formatBookingRole(role),
+                                            })),
+                                            onChange: (value) => setSelectedActivityRole(
+                                                value as BookingActivityRole,
+                                            ),
+                                        } : undefined}
+                                    />
+                                ) : creatingActivityForBookingId !== booking.id && (
+                                    <div className="booking-activity-actions">
+                                        <button
+                                            className="text-button booking-link-activity-button"
+                                            type="button"
+                                            onClick={() => startCreatingActivity(booking)}
+                                        >
+                                            Add activity
+                                        </button>
+                                        {linkableActivities.length > 0 && (
+                                        <button
+                                            className="text-button booking-link-activity-button"
+                                            type="button"
+                                            onClick={() => startLinkingActivity(booking.id)}
+                                        >
+                                            Link existing activity
+                                        </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            {relationshipError?.bookingId === booking.id && (
+                                <InlineMessage variant="error">{relationshipError.message}</InlineMessage>
+                            )}
+                        </section>
+                        {creatingActivityForBookingId === booking.id && newActivity && (
+                            <div className="booking-create-activity">
+                                {getAvailableBookingRoles(booking).length > 1 && (
+                                    <label className="booking-create-activity-role">
+                                        <span className="field-label">Journey part</span>
+                                        <select
+                                            value={newActivityRole}
+                                            onChange={(event) => changeNewActivityRole(
+                                                booking,
+                                                event.target.value as BookingActivityRole,
+                                            )}
+                                        >
+                                            {getAvailableBookingRoles(booking).map((role) => (
+                                                <option key={role} value={role}>
+                                                    {formatBookingRole(role)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                )}
+                                {newActivityDateIsOutsideTrip && (
+                                    <InlineMessage variant="warning">
+                                        The booking date is outside this trip, so the activity will start unscheduled.
+                                    </InlineMessage>
+                                )}
+                                <ActivityForm
+                                    trip={trip}
+                                    value={newActivity}
+                                    errors={newActivityErrors}
+                                    generalError={newActivityError}
+                                    isSaving={isSavingActivity}
+                                    isBookingRequiredLocked
+                                    isMoreDetailsOpen={isActivityMoreDetailsOpen}
+                                    onChange={updateNewActivity}
+                                    onToggleMoreDetails={() => setIsActivityMoreDetailsOpen((current) => !current)}
+                                    onCancel={cancelCreatingActivity}
+                                    onSubmit={(event) => void saveActivityFromBooking(event, booking)}
+                                />
+                                </div>
+                        )}
                         {booking.note && <p><strong>Notes:</strong> {booking.note}</p>}
                     </ExpandedCardDetails>
                 )}
             </li>
         );
     };
+
+    if (embeddedDraft) {
+        return isAdding ? renderForm() : null;
+    }
 
     return (
         <SectionCard className="bookings-section">
@@ -913,17 +1491,23 @@ export function Bookings({ trip, setHasUnsavedForm }: Props) {
     );
 }
 
-function hasAdditionalBookingDetails(booking: Booking) {
-    return Boolean(
-        booking.provider
-        || booking.confirmationNumber
-        || booking.category
-        || booking.amountPaid > 0
-        || booking.amountRefunded !== null
-        || booking.activityLinks.length > 0
-        || booking.externalLink
-        || booking.note,
-    );
+function getDeletedLinkNotice(booking: Booking) {
+    const deletedRecordCount = [
+        booking.hasPendingDeletedActivityNotice,
+        booking.hasPendingDeletedPlannedCostNotice,
+        booking.hasPendingDeletedExpenseNotice,
+    ].filter(Boolean).length;
+
+    if (deletedRecordCount > 1) {
+        return "Some linked records were deleted. This booking was kept.";
+    }
+    if (booking.hasPendingDeletedActivityNotice) {
+        return "A linked activity was deleted. This booking was kept.";
+    }
+    if (booking.hasPendingDeletedPlannedCostNotice) {
+        return "The linked planned cost was deleted. This booking was kept.";
+    }
+    return "The linked expense was deleted. This booking was kept.";
 }
 
 function formatBookingPeriod(

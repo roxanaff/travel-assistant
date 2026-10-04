@@ -82,6 +82,17 @@ export async function deleteBooking(tripId: string, bookingId: string): Promise<
     await throwIfApiError(response, "Could not delete this booking.");
 }
 
+export async function dismissBookingDeletedLinkNotices(
+    tripId: string,
+    bookingId: string,
+): Promise<void> {
+    const response = await apiFetch(
+        `${bookingsUrl(tripId)}/${bookingId}/dismiss-deleted-link-notices`,
+        { method: "POST" },
+    );
+    await throwIfApiError(response, "Could not dismiss this message.");
+}
+
 export async function linkBookingActivity(
     tripId: string,
     bookingId: string,
@@ -105,5 +116,18 @@ export async function unlinkBookingActivity(
         method: "DELETE",
     });
     await throwIfApiError(response, "Could not unlink this booking.");
+}
+
+export async function dismissBookingActivityUpdateReview(
+    tripId: string,
+    bookingId: string,
+    activityId: string,
+    target: "booking" | "activity",
+): Promise<void> {
+    const response = await apiFetch(
+        `${bookingsUrl(tripId)}/${bookingId}/activities/${activityId}/dismiss-${target}-update-review`,
+        { method: "POST" },
+    );
+    await throwIfApiError(response, "Could not dismiss this review.");
 }
 

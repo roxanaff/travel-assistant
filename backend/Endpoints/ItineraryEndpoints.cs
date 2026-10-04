@@ -95,6 +95,18 @@ public static class ItineraryEndpoints
                 return Results.NotFound();
             }
 
+            if (itineraryItem.BookingId is not null)
+            {
+                var changedFields = GetChangedFields(itineraryItem, request);
+                if (changedFields.Count > 0)
+                {
+                    itineraryItem.HasPendingBookingUpdateReview = true;
+                    itineraryItem.PendingBookingChangeFields = MergeChangeFields(
+                        itineraryItem.PendingBookingChangeFields,
+                        changedFields);
+                }
+            }
+
             itineraryItem.Name = request.Name.Trim();
             itineraryItem.Date = request.Date;
             itineraryItem.StartTime = request.StartTime;
@@ -159,6 +171,29 @@ public static class ItineraryEndpoints
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static List<string> GetChangedFields(
+        ItineraryItem item,
+        CreateItineraryItemRequest request)
+    {
+        var fields = new List<string>();
+        if (item.Date != request.Date
+            || item.StartTime != request.StartTime
+            || item.DurationMinutes != request.DurationMinutes)
+        {
+            fields.Add("schedule");
+        }
+        if (item.Location != NormalizeOptionalText(request.Location)) fields.Add("location");
+        if (item.Cost != request.Cost) fields.Add("cost");
+        return fields;
+    }
+
+    private static string MergeChangeFields(string? existing, IEnumerable<string> changedFields) =>
+        string.Join(",", (existing ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Concat(changedFields)
+            .Distinct(StringComparer.Ordinal)
+            .Order());
+
     /// <summary>Chooses the stable API shape returned to the React frontend.</summary>
     private static object ToResponse(ItineraryItem item) => new
     {
@@ -182,6 +217,10 @@ public static class ItineraryEndpoints
         BookingName = item.Booking?.Name,
         BookingStatus = item.Booking?.Status,
         item.HasPendingDeletedBookingNotice,
+        item.HasPendingBookingUpdateReview,
+        item.HasPendingActivityUpdateReview,
+        item.PendingBookingChangeFields,
+        item.PendingActivityChangeFields,
         item.CreatedAtUtc
     };
 }
