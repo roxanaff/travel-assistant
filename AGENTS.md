@@ -1,7 +1,7 @@
 # Travel Assistant working agreements
 
-This file contains the complete feature development workflow. No separate feature
-skill is required.
+This file contains the rules that apply throughout feature work. The optional
+`.agents/skills/` procedures describe planning, implementation, and review.
 
 ## Git workflow
 
@@ -54,20 +54,27 @@ skill is required.
 
 - Follow `documentation/development-guide.md` for architecture and verification commands.
   Reuse established frontend and backend patterns.
+- Before adding UI controls, CSS, forms, hooks, API helpers, or backend logic, inspect
+  nearby features for an existing implementation with the same purpose. Reuse it when
+  its behavior fits. When a new implementation is needed, keep its appearance and
+  interaction consistent with equivalent parts of the app.
 - After authorization, carry each commit-sized chunk through implementation, tests,
-  review, fixes, and relevant documentation updates without separate prompts for each
-  stage. Stop at the commit checkpoints described above.
+  independent review, fixes, and relevant documentation updates without separate
+  prompts for each stage. Stop at the commit checkpoints described above.
 - Add a small number of high-value tests alongside feature implementation, focused on
   main functionality and important edge cases or regressions. Do not aim for full
   coverage or add tests for every variation, trivial detail, or implementation detail.
   Prefer existing coverage where it already verifies the behavior.
-- Run checks appropriate to the affected areas. Review the resulting diff against
-  the requirements, considering ownership
-  checks, validation, persistence, and UI states where relevant.
-- Fix actionable review findings and rerun affected checks. Once checks pass, repeat
-  or broaden them only when new changes or evidence justify it.
-- Describe self-review accurately; do not call it independent review. Report blocked
-  checks and remaining findings rather than claiming unverified completion.
+- Run checks appropriate to the affected areas. Before handing a chunk to the user,
+  give a separate reviewer subagent the agreed requirements, complete chunk diff, and
+  relevant existing code. Ask it to report concrete findings without editing files.
+  Its review must cover behavior, reuse and UI consistency, correctness, validation,
+  ownership, important tests, and maintainability where relevant.
+- Assess the reviewer's findings, fix valid issues, and rerun affected checks. Return
+  the revised diff to the reviewer. Continue until there are no actionable findings;
+  if review cannot converge, report remaining issues and why. If a separate reviewer
+  is unavailable, disclose that and do not present self-review as independent review.
+- Once checks pass, repeat or broaden them only when new changes or evidence justify it.
 - Record unrelated improvements in `documentation/maintenance-backlog.md` rather than
   expanding the feature. Update relevant documentation when behavior changes.
 - Use readable multi-line code, consistent indentation, and sensible line breaks.
