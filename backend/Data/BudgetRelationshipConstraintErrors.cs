@@ -1,3 +1,5 @@
+// Recognizes database errors caused by trying to create budget links that
+// must be one-to-one, so endpoints can return a useful response.
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;

@@ -1,3 +1,5 @@
+// Database model for one trip activity. It may be an unscheduled idea or
+// have a date and time, and it can link to a separate booking.
 namespace TravelAssistant.Models;
 
 /// <summary>

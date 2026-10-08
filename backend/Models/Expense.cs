@@ -1,3 +1,5 @@
+// Database model for money actually spent on a trip. It may point to a
+// planned cost, but the expense remains its own record.
 namespace TravelAssistant.Models;
 
 /// <summary>

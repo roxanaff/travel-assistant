@@ -1,3 +1,5 @@
+// Starts and configures the API. This is where the database, sign-in cookies,
+// request-handling steps, and feature routes are connected.
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -192,6 +194,8 @@ app.MapAuthEndpoints();
 
 app.Run();
 
+// Accept either a normal PostgreSQL connection string or a postgres:// URL
+// from a hosting provider, then give EF Core the format it needs.
 static string NormalizeConnectionString(string connectionString)
 {
     if (!Uri.TryCreate(connectionString, UriKind.Absolute, out var uri)

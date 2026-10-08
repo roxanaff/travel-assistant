@@ -1,3 +1,5 @@
+// Checks actual-expense details, including amount limits, before saving.
+// The endpoint separately checks any link to a planned cost.
 using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;

@@ -1,3 +1,5 @@
+// Checks expected-cost details, such as a positive amount, before saving.
+// The endpoint still handles ownership and links to other records.
 using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;

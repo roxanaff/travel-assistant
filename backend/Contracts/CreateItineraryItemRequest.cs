@@ -1,3 +1,5 @@
+// The activity details sent to the API when an itinerary item is saved.
+// Validation checks them before the stored ItineraryItem is changed.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

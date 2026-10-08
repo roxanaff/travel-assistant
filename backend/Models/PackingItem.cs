@@ -1,3 +1,5 @@
+// Database model for one packing-list item belonging to a trip. It keeps
+// quantity, packed state, category, and display order.
 namespace TravelAssistant.Models;
 
 /// <summary>

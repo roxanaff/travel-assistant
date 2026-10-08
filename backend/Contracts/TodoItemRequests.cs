@@ -1,3 +1,5 @@
+// Shapes of to-do task changes accepted by the API. These describe incoming
+// requests; Models/TodoItem.cs describes what is stored in the database.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

@@ -1,3 +1,5 @@
+// Database model for a reservation. It stores booking and payment details;
+// related activities and a planned cost remain separate records.
 namespace TravelAssistant.Models;
 
 /// <summary>Represents one reservation recorded for a trip.</summary>

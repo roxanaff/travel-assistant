@@ -1,3 +1,5 @@
+// Handles requests for a trip's activities. It checks input and trip access
+// before saving scheduled or unscheduled itinerary items.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

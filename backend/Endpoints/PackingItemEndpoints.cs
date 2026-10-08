@@ -1,3 +1,5 @@
+// Handles packing-list requests for a trip, including starting a list,
+// changing items, marking them packed, and saving their order.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

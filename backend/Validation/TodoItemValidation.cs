@@ -1,3 +1,5 @@
+// Checks a to-do task's name before it is saved. The endpoint uses the
+// returned message to explain bad input to the browser.
 namespace TravelAssistant.Validation;
 
 /// <summary>Validates to-do task input before an endpoint changes the database.</summary>

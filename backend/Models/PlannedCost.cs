@@ -1,3 +1,5 @@
+// Database model for an expected trip cost. It can be related to a booking
+// and to the separate expense that records what was actually spent.
 namespace TravelAssistant.Models;
 
 /// <summary>

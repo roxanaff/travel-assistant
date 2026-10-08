@@ -1,3 +1,5 @@
+// Names the trip statuses shown to users. A trip's current status is worked
+// out from its details rather than saved as a separate database value.
 namespace TravelAssistant.Models;
 
 /// <summary>

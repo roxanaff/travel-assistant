@@ -1,3 +1,5 @@
+// Checks the editable trip details before an endpoint saves them. It returns
+// a readable problem message, or null when these checks pass.
 using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;

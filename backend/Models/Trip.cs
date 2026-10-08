@@ -1,3 +1,5 @@
+// Database model for one trip, owned by an account. Its related collections
+// connect it to activities, bookings, costs, expenses, and checklists.
 namespace TravelAssistant.Models;
 
 /// <summary>

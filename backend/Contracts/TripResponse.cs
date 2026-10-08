@@ -1,3 +1,5 @@
+// Shape of a trip sent back to the frontend. It includes calculated display
+// information as well as fields stored in the Trip database model.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

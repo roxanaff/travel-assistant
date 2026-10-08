@@ -1,3 +1,5 @@
+// The backend's main connection to stored data. EF Core uses the model classes
+// and the relationship rules here to read and write database records.
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +24,8 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
+    // Sets up field limits, links, and database rules that protect stored data
+    // even when a request does not come from the normal browser form.
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

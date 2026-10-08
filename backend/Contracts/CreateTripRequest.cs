@@ -1,3 +1,5 @@
+// The editable trip details a browser sends when creating or updating a trip.
+// This request is checked before the Trip database model is changed.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

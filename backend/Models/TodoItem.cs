@@ -1,3 +1,5 @@
+// Database model for one task on a trip's to-do list. It belongs to a trip
+// and keeps its completion state, optional deadline, and display order.
 namespace TravelAssistant.Models;
 
 /// <summary>

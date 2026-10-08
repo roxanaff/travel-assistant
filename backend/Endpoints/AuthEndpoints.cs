@@ -1,3 +1,5 @@
+// Handles account requests: registration, login, logout, password changes,
+// and account deletion. Identity manages password and sign-in security.
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using TravelAssistant.Contracts;

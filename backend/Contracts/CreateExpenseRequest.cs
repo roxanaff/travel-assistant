@@ -1,3 +1,5 @@
+// The actual-spending details sent to the API from the budget page. This is
+// an incoming request; Models/Expense.cs describes the stored record.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

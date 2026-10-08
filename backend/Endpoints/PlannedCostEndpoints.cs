@@ -1,3 +1,5 @@
+// Handles requests for expected trip costs. It checks ownership and any
+// relationship to bookings or expenses before changing stored records.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

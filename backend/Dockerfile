@@ -1,3 +1,5 @@
+# Builds the .NET API, then puts only the published app in a smaller runtime
+# image. Render runs that image, where the API listens on port 8080.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 

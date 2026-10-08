@@ -1,3 +1,5 @@
+// Shapes of packing-list changes accepted by the API. The stored item is
+// defined separately in Models/PackingItem.cs.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

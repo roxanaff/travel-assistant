@@ -1,3 +1,5 @@
+// Handles reservation requests and their links to activities and the budget.
+// BookingValidation checks input; this file coordinates database changes.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;
@@ -9,6 +11,7 @@ namespace TravelAssistant.Endpoints;
 /// <summary>Defines the API workflow for trip bookings and their first-version relationships.</summary>
 public static class BookingEndpoints
 {
+    /// <summary>Connects booking URLs to their request handlers and the owned-trip check.</summary>
     public static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder app)
     {
         var routes = app.MapOwnedTripGroup();
@@ -496,6 +499,7 @@ public static class BookingEndpoints
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    // A booking must have a usable cost before it can create or link budget records.
     private static IResult? ValidateBudgetEligibility(Booking booking)
     {
         if (booking.TotalCost is null || booking.TotalCost <= 0)
@@ -546,6 +550,8 @@ public static class BookingEndpoints
         expense.CreatedAtUtc
     };
 
+    // Track which booking details changed so linked activities can show a
+    // review notice instead of silently copying the new values.
     private static List<string> GetChangedFields(
         Booking booking,
         SaveBookingRequest request,
@@ -589,6 +595,7 @@ public static class BookingEndpoints
             .Distinct(StringComparer.Ordinal)
             .Order());
 
+    // Shape the stored booking and its related records for the frontend.
     private static object ToResponse(Booking booking) => new
     {
         booking.Id,

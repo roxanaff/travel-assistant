@@ -1,3 +1,5 @@
+// Database model for one account. Identity provides the sign-in fields;
+// this app adds a display name and a link to the account's trips.
 using Microsoft.AspNetCore.Identity;
 
 namespace TravelAssistant.Models;

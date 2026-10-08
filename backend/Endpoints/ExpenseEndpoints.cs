@@ -1,3 +1,5 @@
+// Handles requests for money actually spent. It checks that an optional
+// planned-cost link is valid before saving an expense.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

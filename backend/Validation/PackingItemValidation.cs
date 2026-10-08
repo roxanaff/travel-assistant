@@ -1,3 +1,5 @@
+// Checks packing-list input, including name and quantity, before saving.
+// Database constraints provide another guard for stored values.
 using TravelAssistant.Contracts;
 
 namespace TravelAssistant.Validation;

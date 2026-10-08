@@ -1,3 +1,5 @@
+// Shared gate for requests inside a trip. It checks the signed-in user owns
+// that trip before feature routes are allowed to handle the request.
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Data;

@@ -1,3 +1,5 @@
+// Handles the to-do checklist requests for a trip, including starting a list,
+// changing tasks, marking them done, and saving their order.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

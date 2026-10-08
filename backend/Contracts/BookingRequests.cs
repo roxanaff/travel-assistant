@@ -1,3 +1,5 @@
+// Booking details and activity-link choices received from the frontend.
+// Endpoints check these requests before changing stored bookings or links.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

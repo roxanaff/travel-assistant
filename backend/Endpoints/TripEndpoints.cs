@@ -1,3 +1,5 @@
+// Handles browser requests for trips: list, open, create, change, and delete.
+// It uses the database model and returns a frontend-friendly TripResponse.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;

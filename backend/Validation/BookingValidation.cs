@@ -1,3 +1,5 @@
+// Checks booking details such as dates, text lengths, and payment amounts
+// before the endpoint saves a reservation.
 using TravelAssistant.Contracts;
 using TravelAssistant.Models;
 
@@ -5,6 +7,7 @@ namespace TravelAssistant.Validation;
 
 public static class BookingValidation
 {
+    /// <summary>Returns the first booking input problem, or null when these checks pass.</summary>
     public static string? Validate(SaveBookingRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))

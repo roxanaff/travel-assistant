@@ -1,3 +1,5 @@
+// Account requests received by the API, plus the safe user details returned
+// to the browser. Passwords are never part of CurrentUserResponse.
 namespace TravelAssistant.Contracts;
 
 /// <summary>Information supplied when a new account is created.</summary>

@@ -1,3 +1,5 @@
+// Details for recording spending from a booking. The request can include a
+// new planned cost so the expense has a place in the trip budget.
 using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;

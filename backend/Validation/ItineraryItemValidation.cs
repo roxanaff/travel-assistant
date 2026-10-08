@@ -1,3 +1,5 @@
+// Checks activity details before saving, including whether a chosen date
+// fits within the trip. It reports a readable message when something is wrong.
 using TravelAssistant.Contracts;
 using TravelAssistant.Models;
 
