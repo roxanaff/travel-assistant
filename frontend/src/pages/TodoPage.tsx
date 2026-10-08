@@ -1,3 +1,5 @@
+// Connects the to-do URL to its checklist component and the current trip.
+// The actual checklist behavior lives in components/todo/TodoChecklist.tsx.
 import { useOutletContext } from "react-router-dom";
 
 import { TodoChecklist } from "../components/todo/TodoChecklist";

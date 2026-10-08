@@ -1,3 +1,5 @@
+// Top bar shown on protected pages. It links back to the dashboard and holds
+// the account menu for sign-out, password changes, and account deletion.
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";

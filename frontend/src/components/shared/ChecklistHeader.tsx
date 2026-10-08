@@ -1,3 +1,5 @@
+// Common title and progress area for packing and to-do checklists.
+// Each checklist supplies its counts, buttons, and other controls.
 import type { ReactNode } from "react";
 
 import "./ChecklistLayout.css";

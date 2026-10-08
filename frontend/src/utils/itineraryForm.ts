@@ -1,3 +1,5 @@
+// Form helpers for activities: convert editable values into API requests,
+// check basic input mistakes, and prefill an activity from a booking.
 import type { ItineraryItemRequest } from "../api/itineraryApi";
 import type { Booking } from "../types/booking";
 import type { ItineraryItemForm } from "../types/itineraryItem";
@@ -13,6 +15,7 @@ export function getDurationInMinutes(item: ItineraryItemForm) {
     return hours === 0 && minutes === 0 ? null : hours * 60 + minutes;
 }
 
+/** Converts activity form values into the request sent to the backend. */
 export function itineraryFormToRequest(
     item: ItineraryItemForm,
     trip: Trip,
@@ -34,6 +37,7 @@ export function itineraryFormToRequest(
     };
 }
 
+/** Catches common input mistakes immediately; the backend still checks saved data. */
 export function validateItineraryForm(
     item: ItineraryItemForm,
     trip: Trip,
@@ -100,6 +104,7 @@ const durationBetween = (
         .padStart(2, "0")}`;
 };
 
+/** Prefills an activity from a booking without creating or linking it yet. */
 export function createActivityFormFromBooking(
     booking: Booking,
     role: BookingActivityRole,

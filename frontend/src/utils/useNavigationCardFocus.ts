@@ -1,3 +1,5 @@
+// Lets a link to another page open and briefly highlight a particular card
+// there, so the user can see which record the link was about.
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 

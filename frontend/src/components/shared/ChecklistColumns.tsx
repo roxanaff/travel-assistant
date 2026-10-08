@@ -1,3 +1,5 @@
+// Places two checklist states side by side, such as packed versus unpacked.
+// The checklist supplies the headings and items for each side.
 import type { ReactNode } from "react";
 
 import "./ChecklistLayout.css";

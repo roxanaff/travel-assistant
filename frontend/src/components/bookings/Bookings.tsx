@@ -1,3 +1,5 @@
+// Booking feature for one trip: list and edit reservations, and show links
+// to itinerary activities. API files send changes to the backend for saving.
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -142,6 +144,7 @@ const describeActivityDetails = (activity: ItineraryItem, currency: string) => {
     return details.filter(Boolean).join(" · ");
 };
 
+// Give quick feedback in the form; the backend checks these rules again on save.
 const getImmediateErrors = (values: BookingForm): FormErrors => {
     const errors: FormErrors = {};
     const total = values.totalCost === "" ? null : Number(values.totalCost);

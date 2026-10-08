@@ -1,3 +1,5 @@
+// Small reusable building blocks for forms: the form container, field rows,
+// labels, and action area. Each feature supplies its own fields and behavior.
 import type { FormEventHandler, KeyboardEventHandler, ReactNode, Ref } from "react";
 
 type FormSurfaceProps = {

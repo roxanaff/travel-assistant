@@ -1,3 +1,5 @@
+// Frontend shapes for actual spending. Expense is received from the API;
+// NewExpenseForm keeps text input values until they are saved.
 export type Expense = {
     id: string;
     tripId: string;

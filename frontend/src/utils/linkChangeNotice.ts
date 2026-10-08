@@ -1,3 +1,5 @@
+// Turns saved change codes such as "schedule" and "location" into a short
+// message explaining what changed between a booking and a linked activity.
 const labels: Record<string, string> = {
     schedule: "schedule",
     location: "location",

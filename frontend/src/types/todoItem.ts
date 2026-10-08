@@ -1,3 +1,5 @@
+// Frontend shapes for one preparation task. TodoItem matches API data, while
+// TodoItemForm holds the editable values shown in the checklist form.
 export type TodoCategory =
     | "TravelAndTransport"
     | "Accommodation"

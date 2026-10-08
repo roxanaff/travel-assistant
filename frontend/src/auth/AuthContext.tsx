@@ -1,3 +1,5 @@
+// Keeps the current user available to all pages. It checks the existing session
+// when the app starts and updates that user after sign-in or account changes.
 import { useEffect, useMemo, useState } from "react";
 import * as authApi from "../api/authApi";
 import type { CurrentUser } from "../api/authApi";

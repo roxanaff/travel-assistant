@@ -1,3 +1,5 @@
+// Reusable error, warning, or information message. Feature code supplies the
+// message and can optionally allow the user to dismiss it.
 import type { ReactNode } from "react";
 
 type Props = {

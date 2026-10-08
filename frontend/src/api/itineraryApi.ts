@@ -1,3 +1,5 @@
+// Handles browser requests for a trip's activities. It sends and receives
+// activity data; the backend saves it and checks the rules.
 import type { ItineraryItem } from "../types/itineraryItem";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 

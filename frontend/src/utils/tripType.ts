@@ -1,3 +1,5 @@
+// Trip-type choices and labels used by trip forms and summary cards.
+// These are display choices in the frontend, not a database model.
 export const tripTypeOptions = [
     { value: "CityBreak", label: "City break" },
     { value: "Beach", label: "Beach holiday" },

@@ -1,3 +1,5 @@
+// Sends expense requests for amounts actually spent on a trip. An expense can
+// optionally point to a planned cost, but the two remain separate records.
 import type { Expense } from "../types/expense";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 

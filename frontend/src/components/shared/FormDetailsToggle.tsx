@@ -1,3 +1,5 @@
+// Reusable button for showing or hiding optional fields in a form.
+// The parent owns the open/closed state and the extra fields.
 type Props = {
     isExpanded: boolean;
     onToggle: () => void;

@@ -1,3 +1,5 @@
+// Shared open/closed state for lists of cards, including an expand-all action.
+// Feature components supply the IDs; this hook does not load card data.
 import { useCallback, useState } from "react";
 
 /** Coordinates individual and expand-all state for lists of expandable cards. */

@@ -1,3 +1,5 @@
+// Expense half of the budget page: manages amounts already spent, including
+// optional links back to planned costs. Expenses are separate from those plans.
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 

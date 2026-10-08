@@ -1,3 +1,5 @@
+// Small Add button placed next to a group heading. Its parent supplies
+// both the label and what happens when it is clicked.
 import { Plus } from "lucide-react";
 
 type Props = {

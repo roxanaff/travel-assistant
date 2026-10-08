@@ -1,3 +1,5 @@
+// Reusable form for creating or editing a trip. It keeps input values locally
+// and gives a TripRequest to the parent when the user saves.
 import { useState } from "react";
 import { initialTripFormValues, type TripFormValues, type TripRequest } from "../../types/trip";
 import { normalizeMoneyInput } from "../../utils/numberInput";

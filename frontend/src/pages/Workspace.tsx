@@ -1,3 +1,5 @@
+// Shared frame for everything inside one trip: it loads that trip, shows the
+// tabs, and passes trip data to the page selected by the URL.
 import { Link, NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
 import { getTrip } from "../api/tripsApi";

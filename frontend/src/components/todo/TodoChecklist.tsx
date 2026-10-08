@@ -1,3 +1,5 @@
+// To-do feature for one trip: load tasks, show progress, and handle adding,
+// editing, completing, deleting, and rearranging them through the API.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 

@@ -1,3 +1,5 @@
+// Shows the selected trip's details and its edit/delete controls. It updates
+// the shared trip in Workspace after a successful edit.
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";

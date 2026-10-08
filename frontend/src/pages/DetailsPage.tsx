@@ -1,3 +1,5 @@
+// Connects the trip's default URL to its details screen. Editing and deleting
+// the trip happen in components/details/TripDetails.tsx.
 import { useOutletContext } from "react-router-dom";
 
 import { TripDetails } from "../components/details/TripDetails";

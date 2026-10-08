@@ -1,3 +1,5 @@
+// Gives a component access to the shared sign-in state and account actions.
+// It must be called from inside AuthProvider, which App places around the routes.
 import { useContext } from "react";
 import { AuthContext } from "./authContextValue";
 

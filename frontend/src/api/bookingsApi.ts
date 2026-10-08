@@ -1,3 +1,5 @@
+// Handles booking requests and turns editable form values into API data.
+// The backend remains responsible for saving bookings and checking their rules.
 import type { Booking, BookingForm } from "../types/booking";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
@@ -8,6 +10,7 @@ const bookingsUrl = (tripId: string) =>
 
 const optional = (value: string) => value.trim() || null;
 
+/** Converts form text into the values the API expects, including empty values and payment amounts. */
 export const toBookingRequest = (form: BookingForm) => ({
     name: form.name.trim(),
     category: form.category || null,

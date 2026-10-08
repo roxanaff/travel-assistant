@@ -1,3 +1,5 @@
+// Shared selector for switching how a feature groups its items.
+// The feature owns the selected value and does the actual grouping.
 import type { ReactNode } from "react";
 
 import "./GroupingControl.css";

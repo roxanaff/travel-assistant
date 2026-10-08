@@ -1,3 +1,5 @@
+// Shows the login and registration forms, plus the loading screen used while
+// the app checks whether the browser already has a valid session.
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";

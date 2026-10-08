@@ -1,3 +1,5 @@
+// Shared keyboard behavior for forms: move focus into a newly opened form
+// and handle Escape without silently losing changed values.
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 const firstFormControl = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';

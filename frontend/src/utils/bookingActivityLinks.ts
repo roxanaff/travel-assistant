@@ -1,3 +1,5 @@
+// Helps the booking and itinerary screens show and manage linked records.
+// It chooses roles and form defaults; API calls and saving happen elsewhere.
 import type { Booking, BookingCategory, BookingForm } from "../types/booking";
 import { createEmptyBookingForm } from "../types/booking";
 import type { ItineraryItem } from "../types/itineraryItem";
@@ -50,6 +52,7 @@ const getActivityEnd = (activity: ItineraryItem) => {
     return { endDate, endTime };
 };
 
+/** Prefills a new booking from an activity without saving or linking either record yet. */
 export function createBookingFormFromActivity(activity: ItineraryItem): BookingForm {
     const { endDate, endTime } = getActivityEnd(activity);
     const costState = activity.cost === null
@@ -76,6 +79,7 @@ export function createBookingFormFromActivity(activity: ItineraryItem): BookingF
     };
 }
 
+/** Turns an API booking into the text and choices shown when editing its form. */
 export const bookingToForm = (booking: Booking): BookingForm => ({
     name: booking.name,
     category: booking.category ?? "",

@@ -1,3 +1,5 @@
+// Puts planned costs and actual expenses on the same trip page. It also tells
+// Workspace when either section has an open form, so tab changes can be checked.
 import { useEffect, useState } from "react";
 
 import { ExpenseTracking } from "./ExpenseTracking";

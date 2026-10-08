@@ -1,3 +1,5 @@
+// Remembers whether a checklist is shown as one list or grouped by category.
+// This preference stays in browser storage; the checklist items stay in the API.
 import { useCallback, useState } from "react";
 
 export type ChecklistView = "list" | "category";

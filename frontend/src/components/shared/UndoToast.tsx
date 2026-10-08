@@ -1,3 +1,5 @@
+// Small Undo button shown after a reversible delete. The feature using it
+// decides what to restore; this component only displays the action.
 type Props = {
     message: string;
     onUndo: () => void;

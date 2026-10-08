@@ -1,3 +1,5 @@
+// Frontend shapes for the packing checklist. PackingItem represents API data;
+// PackingItemForm represents what is being edited before it is saved.
 export type PackingCategory =
     | "DocumentsAndMoney"
     | "Toiletries"

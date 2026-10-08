@@ -1,3 +1,5 @@
+// Closes a popup when the user clicks outside it or presses Escape.
+// The header uses this for its account menu.
 import { useEffect, type RefObject } from "react";
 
 /** Closes an open popup menu when its user clicks elsewhere or presses Escape. */

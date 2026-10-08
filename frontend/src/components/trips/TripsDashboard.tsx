@@ -1,3 +1,5 @@
+// Main dashboard behavior: load the user's trips, order them, and coordinate
+// the create, edit, and delete forms. TripCard renders each individual trip.
 import { useEffect, useMemo, useState } from "react";
 import { TripCard } from "./TripCard";
 import { TripForm } from "./TripForm";

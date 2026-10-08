@@ -1,3 +1,5 @@
+// Itinerary feature for one trip: show dated and unscheduled activities,
+// handle their forms, and manage visible links to bookings.
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router-dom";
 

@@ -1,3 +1,5 @@
+// Sends trip-list and trip-detail requests to the backend for the dashboard
+// and workspace. The Trip types describe the data exchanged with that API.
 import type { Trip, TripRequest } from "../types/trip";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 

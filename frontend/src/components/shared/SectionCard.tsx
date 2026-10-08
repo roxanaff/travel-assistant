@@ -1,3 +1,5 @@
+// Reusable section container used around content on trip pages.
+// It does not load data or decide what appears inside.
 import type { ReactNode } from "react";
 
 type Props = {

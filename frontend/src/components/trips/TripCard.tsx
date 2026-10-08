@@ -1,3 +1,5 @@
+// One trip preview on the dashboard. Opening the card goes to the trip;
+// edit and delete actions are passed back to TripsDashboard.
 import { Link } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { formatDateRange, formatMoney } from "../../utils/format";

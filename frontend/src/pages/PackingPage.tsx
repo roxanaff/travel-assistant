@@ -1,3 +1,5 @@
+// Connects the packing URL to its checklist component and the current trip.
+// The actual checklist behavior lives in components/packing/PackingChecklist.tsx.
 import { useOutletContext } from "react-router-dom";
 
 import { PackingChecklist } from "../components/packing/PackingChecklist";

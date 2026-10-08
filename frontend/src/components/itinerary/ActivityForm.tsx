@@ -1,3 +1,5 @@
+// Editable fields for one activity. The parent Itinerary component owns the
+// values and save action; this file mainly renders the form controls.
 import type {
     FormEventHandler,
     KeyboardEventHandler,

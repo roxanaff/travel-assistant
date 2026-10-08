@@ -1,3 +1,5 @@
+// Describes the account information and actions shared across the frontend.
+// This defines a React context, not a database model; AuthProvider supplies its values.
 import { createContext } from "react";
 import type { CurrentUser } from "../api/authApi";
 

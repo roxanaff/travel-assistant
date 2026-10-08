@@ -1,3 +1,5 @@
+// Shared display formatting for dates, money, and other values shown in the UI.
+// These helpers change presentation, not the values stored by the backend.
 /** Formats an ISO date for display without shifting it across time zones. */
 export const formatDate = (date: string | null | undefined) => {
     if (!date) return "Date not set";

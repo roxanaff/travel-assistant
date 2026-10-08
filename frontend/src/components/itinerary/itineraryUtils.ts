@@ -1,3 +1,5 @@
+// Display and sorting helpers for the itinerary, including a warning when
+// an activity's entered time may conflict with its opening hours.
 import type { ItineraryItem } from "../../types/itineraryItem";
 import type { Trip } from "../../types/trip";
 

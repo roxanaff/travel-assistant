@@ -1,3 +1,5 @@
+// Frontend shapes and category choices for expected trip costs. PlannedCost
+// comes from the API; form values are prepared here before sending a request.
 export type PlannedCost = {
     id: string;
     tripId: string;

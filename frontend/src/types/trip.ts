@@ -1,3 +1,6 @@
+// Frontend shapes for a trip: Trip is received from the API, TripFormValues
+// fits editable inputs, and TripRequest is sent back to the API. None of these
+// TypeScript types creates a database table; the backend defines storage.
 export type TripStatus = "Draft" | "Upcoming" | "Ongoing" | "Past";
 
 export type Trip = {

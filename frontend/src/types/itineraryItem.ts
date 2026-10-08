@@ -1,3 +1,5 @@
+// Frontend shapes for trip activities. ItineraryItem is received from the
+// API; form values are converted into an API request in utils/itineraryForm.ts.
 export type ItineraryItem = {
     id: string;
     tripId: string;

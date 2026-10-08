@@ -1,3 +1,5 @@
+// Reusable confirmation window for actions that should not happen by accident.
+// The feature supplies the wording and the confirm/cancel behavior.
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
 import "./ConfirmDialog.css";

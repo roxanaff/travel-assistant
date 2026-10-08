@@ -1,3 +1,5 @@
+// Shared expand, edit, and delete buttons for cards such as activities and
+// bookings. The feature using the card supplies the actual actions.
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 
 type Props = {

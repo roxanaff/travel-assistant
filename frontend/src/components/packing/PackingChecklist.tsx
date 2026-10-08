@@ -1,3 +1,5 @@
+// Packing feature for one trip: load items, show progress, and handle adding,
+// editing, packing, deleting, and rearranging them through the API.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 

@@ -1,3 +1,5 @@
+// Standard prompt shown before throwing away changes in an open form.
+// The parent decides when it appears and what happens after confirmation.
 import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {

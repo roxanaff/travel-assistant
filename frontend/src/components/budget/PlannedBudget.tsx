@@ -1,3 +1,5 @@
+// Planned-cost half of the budget page: manages expected amounts and can
+// create a related expense when the traveler records actual spending.
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 

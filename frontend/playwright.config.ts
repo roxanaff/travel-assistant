@@ -1,3 +1,5 @@
+// Browser-test setup. Playwright starts a test API and local frontend, then
+// runs the end-to-end tests in Chromium without using real trip data.
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({

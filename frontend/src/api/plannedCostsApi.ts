@@ -1,3 +1,5 @@
+// Sends planned-cost requests for the budget screen. A planned cost is an
+// expected amount; actual spending is handled separately in expensesApi.
 import type { PlannedCost, PlannedCostCategory } from "../types/plannedCost";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 

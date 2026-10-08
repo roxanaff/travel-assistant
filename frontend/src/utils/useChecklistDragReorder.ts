@@ -1,3 +1,5 @@
+// Shared drag-and-drop behavior for rearranging packing or to-do items.
+// It works out the new order; the checklist then asks the API to save it.
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 
 type ReorderableItem = {

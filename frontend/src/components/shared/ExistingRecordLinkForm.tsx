@@ -1,3 +1,5 @@
+// Shared controls for choosing an existing record to link, with an optional
+// second choice such as a role. The parent performs the API request.
 import "./ExistingRecordLinkForm.css";
 
 export interface ExistingRecordLinkOption {

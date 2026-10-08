@@ -1,3 +1,6 @@
+// Frontend shapes for bookings and their links to activities. Booking is the
+// API response; BookingForm holds editable input values before saving.
+// The backend model, not this TypeScript file, controls database storage.
 export type BookingCategory =
     | "Accommodation"
     | "Flight"

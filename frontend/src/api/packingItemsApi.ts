@@ -1,3 +1,5 @@
+// Connects the packing screen to the backend: load, start, and edit the trip's
+// checklist items. This file does not store them in the browser permanently.
 import type { PackingItem, PackingItemForm } from "../types/packingItem";
 
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";

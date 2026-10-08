@@ -1,3 +1,5 @@
+// Reusable heading row for a section, with space for supporting text and
+// buttons supplied by the feature that uses it.
 import type { ReactNode } from "react";
 
 import "./SectionHeader.css";

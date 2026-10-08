@@ -1,3 +1,5 @@
+// Connects the to-do screen to the backend: load, start, and edit preparation
+// tasks for one trip. The backend stores the items and checks requests.
 import type { TodoItem, TodoItemForm } from "../types/todoItem";
 
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";

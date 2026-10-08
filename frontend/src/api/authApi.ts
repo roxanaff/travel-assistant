@@ -1,3 +1,5 @@
+// Calls the backend's account endpoints and describes the user returned to the
+// browser. Passwords are sent in requests, not stored in the frontend user type.
 import { apiBaseUrl, apiFetch } from "./travelAssistantApi";
 
 export type CurrentUser = {

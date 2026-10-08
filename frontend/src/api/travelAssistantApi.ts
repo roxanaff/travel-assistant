@@ -1,3 +1,5 @@
+// Shared setup for browser requests to the backend API. Feature API files use
+// this base URL, the cookie-aware fetch helper, and the common error handler.
 // Local development calls the .NET server directly.
 // Production calls the same-origin Pages proxy at /api, so browser authentication cookies stay first-party.
 const configuredApiBaseUrl = import.meta.env.DEV

@@ -1,3 +1,5 @@
+// Checks and normalizes money typed into forms before it becomes a number
+// in an API request; this does not replace backend validation.
 export const maximumMoneyAmount = 999_999_999.99;
 
 /**

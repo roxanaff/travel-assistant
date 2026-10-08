@@ -1,3 +1,5 @@
+// The app's page map. Public sign-in pages sit alongside a protected trip area;
+// the page and feature files below handle the work inside each route.
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/useAuth";

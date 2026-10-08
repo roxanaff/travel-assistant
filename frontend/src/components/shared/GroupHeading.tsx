@@ -1,3 +1,5 @@
+// Heading for one group of items, such as a date or category. The feature
+// supplies the group's title, optional summary, and actions.
 import type { ReactNode } from "react";
 
 import "./GroupHeading.css";

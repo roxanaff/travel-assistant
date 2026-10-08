@@ -1,3 +1,5 @@
+// Code-quality rules for frontend TypeScript and React files.
+// ESLint checks source code; this file does not affect app behavior at runtime.
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
