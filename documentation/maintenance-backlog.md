@@ -24,6 +24,12 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   Expenses currently resets Group by to Category when the page is remounted. Extend the established checklist
   preference pattern as appropriate. Include grouping, collapsed groups, and custom category order in the design;
   decide preference scope and persistence before implementation.
+- [P2] Planned budget — Add **Ungrouped** viewing alongside categories, and remember the selected grouping. Documentation
+  only for now; implement after the booking work.
+- [P2] Expenses — Add an inline disclosure for related records, showing the linked planned cost and/or booking with
+  navigation controls. A shared expense can have both relationships. Proposed treatment is two clearly labelled rows
+  within one disclosure, rather than choosing a single source. Final disclosure layout is still to be decided;
+  documentation only until the booking work is complete.
 - [P2] Shared grouped lists — Allow category and date groups to expand/collapse wherever they appear in workspace
   tabs, including expense categories. Keep headings and any totals visible when collapsed. Allow manual category
   ordering, such as Accommodation above Travel to/from. Date groups retain their chronological ordering unless a

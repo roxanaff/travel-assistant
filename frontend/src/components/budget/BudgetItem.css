@@ -33,15 +33,13 @@
     min-width: 0;
 }
 .budget-section .list-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    align-items: center;
     gap: 28px;
+    border-radius: 12px;
 }
-.budget-item-primary {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-}
-.budget-item-primary > strong:first-child {
+.budget-item-description > strong {
     min-width: 0;
     overflow-wrap: anywhere;
 }

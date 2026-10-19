@@ -223,7 +223,8 @@
 
 .booking-summary-details {
     display: grid;
-    gap: 6px;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    gap: 6px 18px;
     padding: 0;
     color: inherit;
     text-align: left;
@@ -231,12 +232,21 @@
     font-size: 0.87rem;
 }
 
+.booking-summary-round-trip {
+    grid-template-columns: max-content minmax(0, max-content) minmax(0, 1fr);
+}
+
 .booking-journey-summary {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: baseline;
-    justify-content: start;
-    gap: 6px 18px;
+    min-width: 0;
+}
+
+.booking-journey-summary > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .booking-journey-summary > strong {
@@ -275,15 +285,11 @@
     }
 }
 
-.booking-expanded-details {
-    gap: 9px;
-    padding-top: 12px;
-}
-
 .booking-related-activities {
     display: grid;
+    grid-template-columns: subgrid;
     align-items: start;
-    gap: 8px;
+    gap: 8px 12px;
 }
 
 .booking-related-activities > .inline-message {
@@ -292,8 +298,10 @@
 
 .booking-related-activity-list {
     display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     width: 100%;
-    gap: 7px;
+    gap: 7px 12px;
 }
 
 .booking-related-activity-links,
@@ -301,6 +309,12 @@
     display: grid;
     justify-items: start;
     gap: 7px;
+}
+
+.booking-related-activity-links {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    column-gap: 12px;
 }
 
 .booking-activity-group,
@@ -312,9 +326,15 @@
 }
 
 .booking-activity-group {
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: start;
     gap: 8px 12px;
+}
+
+.booking-activity-group-items {
+    grid-column: 2;
+    min-width: 0;
 }
 
 .booking-activity-group + .booking-activity-group {
@@ -322,6 +342,9 @@
 }
 
 .booking-activity-group > strong {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
     font-size: 0.9rem;
 }
 
@@ -333,8 +356,14 @@
 
 .booking-activity-actions {
     display: flex;
+    grid-column: 2;
     flex-wrap: wrap;
     gap: 8px 14px;
+}
+
+.booking-related-activity-list > .existing-record-link-form {
+    grid-column: 2;
+    min-width: 0;
 }
 
 .booking-related-activity {
@@ -361,20 +390,29 @@
 
 .booking-related-budget {
     display: grid;
-    justify-items: start;
-    gap: 8px;
+    grid-template-columns: subgrid;
+    align-items: start;
+    gap: 8px 12px;
     margin-top: 10px;
 }
 
 .booking-related-budget > strong {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
     font-size: 0.9rem;
+}
+
+.booking-related-budget > :not(strong) {
+    grid-column: 2;
+    min-width: 0;
 }
 
 .booking-budget-record,
 .booking-budget-actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     gap: 8px 12px;
 }
 
@@ -409,8 +447,8 @@
 
 .booking-detail-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px 20px;
+    grid-template-columns: subgrid;
+    gap: 7px 12px;
 }
 
 .cancelled-bookings {
@@ -453,6 +491,23 @@
 }
 
 @media (max-width: 620px) {
+    .booking-summary-details,
+    .booking-summary-round-trip {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .booking-activity-group-items,
+    .booking-activity-actions,
+    .booking-related-activity-list > .existing-record-link-form,
+    .booking-related-budget > :not(strong) {
+        grid-column: 1;
+    }
+
+    .booking-activity-group > strong,
+    .booking-related-budget > strong {
+        min-height: 0;
+    }
+
     .booking-form-grid,
     .booking-detail-grid {
         grid-template-columns: 1fr;

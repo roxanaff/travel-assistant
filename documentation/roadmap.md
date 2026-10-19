@@ -273,7 +273,8 @@ Add:
   the initial default checklist.
 - Refunds / negative expenses - refund as a category that makes negative expenses allowed
 - Planned-cost expected dates
-- Planned-cost grouping and sorting alternatives
+- Planned-cost grouping and sorting alternatives, including **Ungrouped** alongside category grouping. Record this
+  now and implement after the booking work; remember the traveller's selected grouping.
 - Collapsible budget groups
 - Receipt uploads, before OCR
 - Multiple currencies - should be carefully scoped.

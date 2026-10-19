@@ -410,12 +410,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                             key={cost.id}
                                         >
                                             <div className="budget-item-description">
-                                                <div className="budget-item-primary">
-                                                    <strong>{cost.name}</strong>
-                                                    <strong className="budget-item-amount">
-                                                        {formatMoney(cost.amount, trip.currency)}
-                                                    </strong>
-                                                </div>
+                                                <strong>{cost.name}</strong>
                                                 {cost.category !== "EmergencyBuffer" &&
                                                     (cost.expenseAdded ? (
                                                         <span className="planned-cost-expense-added">
@@ -440,6 +435,9 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                                         </button>
                                                     ))}
                                             </div>
+                                            <strong className="budget-item-amount">
+                                                {formatMoney(cost.amount, trip.currency)}
+                                            </strong>
                                             <div className="item-actions">
                                                 <button
                                                     className="icon-button"

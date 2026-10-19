@@ -26,10 +26,14 @@ revision from historical chunks that implemented the previous design.
 - Vertically align related-record navigation controls and adjacent actions with their row labels. Reduce excess
   padding and row height consistently across the app while retaining usable interaction targets and keyboard focus.
 - Saved booking cards use a single left-aligned column for secondary details. The create/edit form layout stays as is.
+- Keep the label **Confirmation number**. Remove trailing colons from booking and itinerary field labels consistently,
+  including saved summary/detail labels; do not alter punctuation within user-entered text or warning sentences.
 - Within that detail column, labels and values have consistent alignment: values and related-record controls begin at
   the same horizontal position regardless of label length. Wrapped values continue under the value, including long
   notes and links. Apply the same treatment to expanded activity details; support narrow-screen wrapping without
   horizontal overflow.
+- Expanded itinerary activity details use the same compact, content-sized label/value grid as saved booking details,
+  including related booking controls and wrapping notes. Values align independently of label length.
 - Relevant related-record change notices work in both directions, including expense changes prompting a notice on the
   linked booking. Show a dismissible notice for each affected relationship, with **Keep as is** and an update action
   that states the proposed change. Applying the update takes effect immediately, without a separate preview or
@@ -38,12 +42,32 @@ revision from historical chunks that implemented the previous design.
   summary, visible when collapsed as well as expanded. Identify the related record in the notice and allow the update
   directly there without switching workspace tabs. Render each notice once, rather than duplicating it in expanded
   relationship details; a separate collapsed **Update available** indicator is unnecessary.
+- The warning revision includes existing booking/activity relationship notices as well as new financial notices.
+  A collapsed activity must show its applicable relationship warnings below its summary, just as a collapsed booking
+  does; expanding the card must not be necessary to discover a warning or act on it.
 - Change notices identify only the exact fields that changed and their previous/current values, such as
   **Departure date: 3 Oct -> 4 Oct**. Do not append unchanged cost, location, or other unrelated details. Applying an
   update changes only the indicated fields; before/after values must be retained for this behavior.
 - Expense and planned-cost change notices span the width of the affected item, with update/keep actions available
   there without changing tabs. Keep the existing planned-cost and expense item layouts; the proposed packing/to-do-style
   item layout change is dropped.
+- One expense covers the entire booking, including both legs of a round trip. Outbound/Return grouping applies to
+  activities, not separate expenses. Independently reserved journeys with separate confirmations can be separate
+  bookings, each with its own expense; multiple payment transactions remain deferred.
+- Remember individual card and Expand all/Collapse all choices for Bookings and Itinerary when switching workspace
+  tabs. Store these browser view choices separately for each trip and page; do not reset them while records load.
+- Keep the **Expense** label and its linked name/amount/Unlink controls on the same row on wider screens, matching
+  activity relationship rows. Use rounded corners for destination expense highlighting and compact, aligned link
+  controls. Allow relationship rows to stack and long names to wrap on narrow screens.
+- Before an expense is linked, show only **Add to expenses** and **Link existing expense**, without an **Expense**
+  label. Align these actions and the activity add/link actions with the corresponding linked-record value column.
+- All saved booking details stack on the left in a shared label/value grid, including reservation details, related
+  records, and notes. Size the label column from the longest visible label with a compact gap rather than a fixed
+  wide label area. Wrapped text continues beneath its value. Create/edit forms keep their existing layout.
+- Outbound and Return summaries share label, date/time, and location columns so both journey rows align even when
+  their text lengths differ. On narrow screens, stack summary/detail columns without horizontal overflow.
+- In planned-cost and expense lists, centre item amounts vertically with their edit/delete controls independently of
+  the number of description or metadata lines. Preserve existing information and action behavior.
 
 ### Approved financial rules
 
@@ -51,6 +75,10 @@ revision from historical chunks that implemented the previous design.
   expense amount with Amount paid minus Amount refunded; the user may review and change it before saving.
 - A booking has at most one expense and an expense has at most one booking. An expense may also belong to a planned
   cost independently. Offer **Link existing expense** from the booking to avoid duplicating spending.
+- Beside a linked expense's **Unlink** action on a booking, offer **Delete**. Use the app's confirmation dialog to name
+  the expense and explain that deletion removes it from spending while keeping and unlinking its booking and any
+  related planned cost. Cancel changes nothing. Unlink only removes the association and keeps the expense; do not
+  show an additional "Expense kept in Expenses" message. Once unlinked, existing create/link actions remain available.
 - A later expense-amount change can offer to update the booking's Amount paid to Expense amount plus Amount refunded.
   Refunds are stored as positive amounts, so this reconstructs the original payment rather than adding spending.
   Keep Total cost unchanged. If the proposed Amount paid exceeds Total cost, explain the conflict and require editing
@@ -65,16 +93,25 @@ revision from historical chunks that implemented the previous design.
 - **Mark as paid** belongs beside Amount paid on active, positive-cost bookings that are not fully paid. It sets Amount
   paid to Total cost and offers an immediate Undo. Cancelled bookings use their editable payment/refund fields instead.
 
-### Reported regression to verify and fix when implementation resumes
+### Linked-activity deletion
 
-- A deleted linked activity can remain visible as a stale navigation link in Bookings. Code inspection identifies a
-  likely race: itinerary deletion waits five seconds for Undo while Bookings loads relationships only on entering the
-  page. Entering Bookings before deletion commits can retain the old link until the page is loaded again. The observed
-  sequence has not yet been reproduced in a browser. Ensure committed deletions remove stale relationships and show
-  the persistent deleted-link notice without requiring another navigation; preserve Undo behavior.
+- Confirm deletion of a booking-linked activity using the app's dialog, explaining that the booking survives. Commit
+  linked deletion immediately, then remove the activity; use five-second Undo only for unlinked activities. If deletion
+  finishes after navigation to Bookings, refresh its relationships and deleted-link notice without another tab switch.
+  This removes the old delayed-deletion window in which Bookings could retain a stale activity link.
 
-Implementation is authorized in commit-sized chunks. Shared group controls and remembered view settings are separate
-backlog work; the Budget/Expenses tab split and progress indicators remain future roadmap work.
+### Deferred budget/expense follow-up
+
+- Finish the booking work before the broader budget/expense changes. Keep planned-cost **Ungrouped** viewing,
+  expense-side related-record disclosures, and budget/expense layout/group controls in documentation for now.
+- Linking expenses with different amounts is allowed because a difference may be intentional. The later financial
+  review flow should also flag a mismatch at link time, comparing expense amount with net paid rather than Total cost,
+  with an explicit update or **Keep as is**. Do not silently change either amount or treat a linked expense as another
+  payment added to the booking.
+
+Implementation is authorized in commit-sized chunks. Remembered booking/activity card expansion is in the current
+feedback work; shared group controls and other view settings remain separate backlog work. The Budget/Expenses tab
+split and progress indicators remain future roadmap work.
 
 ## Workspace
 
@@ -526,9 +563,38 @@ Completed in the direct-expense chunk:
   expense-creation/navigation test pass. Independent review has no remaining actionable findings. The full frontend
   suite still has the pre-existing missing TripSetup import; a live PostgreSQL migration has not been exercised.
 
-Remaining: Mark as paid, exact bidirectional change notices and immediate updates, saved-card date warnings and aligned
-details, the planned-cost-to-expense navigation control, the reported stale deleted-activity link, and browser/user
-acceptance checks. Shared group/view improvements and the tab split remain separate work.
+Completed in the booking feedback chunk:
+
+- Booking and activity card expansion choices persist per trip and page across tab navigation.
+- Linked-activity deletion confirms and commits immediately, with a completion refresh removing stale activity links
+  and showing the deleted-link notice even after navigation. A refresh cannot overwrite newer local booking changes.
+- Expense relationship controls share their label's row, link controls are compact and vertically aligned, and budget
+  destination highlighting has rounded corners.
+- Focused tests cover persistence, immediate deletion, cross-navigation refresh, and stale-refresh-vs-unlink behavior.
+  Broader budget/expense changes requested during feedback remain documented for later work.
+
+Completed in the saved-card alignment follow-up:
+
+- Saved booking details stack left in compact shared label/value columns, including activity and expense links/actions.
+  The Expense label appears only once an expense is linked; create/edit forms are unchanged.
+- Outbound/Return dates and locations share aligned columns. Long details wrap and narrow screens stack without overflow.
+- Planned-cost and expense amounts align vertically with edit/delete controls regardless of their metadata lines.
+- Seventeen focused frontend tests, two Chromium tests with desktop/mobile layout checks, production build, and lint pass.
+  Independent review has no remaining actionable findings; user acceptance is pending.
+
+Completed in the itinerary detail consistency chunk:
+
+- Booking and itinerary saved field labels have no trailing colons; Confirmation number retains its full wording.
+  User-entered punctuation is preserved.
+- Expanded activity fields and related booking controls use the shared booking label/value grid. Desktop values align,
+  long notes wrap beneath their value, and narrow layouts stack without horizontal overflow. Forms remain unchanged.
+- Twenty-three booking/itinerary tests, two Chromium tests with activity/booking desktop/mobile checks, production
+  build, and lint pass. Independent review has no actionable findings; user acceptance is pending.
+
+Remaining: Mark as paid, exact bidirectional change notices and immediate updates (including collapsed activity
+warnings), saved-card date warnings, confirmed expense deletion from bookings, the planned-cost-to-expense navigation
+control, and further user acceptance checks. Shared group/view
+improvements and the tab split remain separate work.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their
 booking/planned-cost-chain behavior.

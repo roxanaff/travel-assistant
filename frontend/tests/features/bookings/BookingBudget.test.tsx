@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import { Bookings } from "../../../src/components/bookings/Bookings";
 import type { Booking } from "../../../src/types/booking";
 import type { Expense } from "../../../src/types/expense";
 import { localToday } from "../../../src/utils/localToday";
+import { notifyActivityDeleted } from "../../../src/utils/activityDeletionEvents";
 import type { Trip } from "../../../src/types/trip";
 import { suggestedBudgetCategory } from "../../../src/utils/bookingBudget";
 
@@ -124,6 +125,7 @@ describe("booking expense actions", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        window.localStorage.clear();
         bookingsApi.getBookings.mockResolvedValue([hotel]);
         itineraryApi.getItineraryItems.mockResolvedValue([]);
         expensesApi.getExpenses.mockResolvedValue([]);
@@ -149,6 +151,7 @@ describe("booking expense actions", () => {
 
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        expect(screen.getByRole("region", { name: "Expenses for Hotel Rome" }).querySelector("strong")).toBeNull();
         await user.click(screen.getByRole("button", { name: "Add to expenses" }));
         const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
@@ -173,6 +176,7 @@ describe("booking expense actions", () => {
             },
         ));
         expect(await within(budget).findByRole("link", { name: hotel.name })).toBeTruthy();
+        expect(within(budget).getByText("Expense", { exact: true })).toBeTruthy();
         expect(within(budget).queryByRole("button", { name: "Add to expenses" })).toBeNull();
     });
 
@@ -209,6 +213,34 @@ describe("booking expense actions", () => {
         expect(suggestedBudgetCategory("Restaurant")).toBe("Food");
     });
 
+    it("removes a stale activity link when deletion completes after entering Bookings", async () => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValueOnce([{
+            ...hotel,
+            activityLinks: [{
+                id: "activity-1",
+                name: "Deleted check-in",
+                role: "General",
+            }],
+        }]);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        expect(screen.getByRole("link", { name: "Deleted check-in" })).toBeTruthy();
+
+        bookingsApi.getBookings.mockResolvedValueOnce([{
+            ...hotel,
+            activityLinks: [],
+            hasPendingDeletedActivityNotice: true,
+        }]);
+        act(() => notifyActivityDeleted("different-trip"));
+        expect(bookingsApi.getBookings).toHaveBeenCalledTimes(1);
+        act(() => notifyActivityDeleted(trip.id));
+
+        expect(await screen.findByText("A linked activity was deleted. This booking was kept.")).toBeTruthy();
+        expect(screen.queryByRole("link", { name: "Deleted check-in" })).toBeNull();
+        expect(screen.getByRole("button", { name: "Collapse Hotel Rome details" })).toBeTruthy();
+    });
+
     it("makes a deleted booking's surviving expense immediately available to another booking", async () => {
         const user = userEvent.setup();
         vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -230,6 +262,34 @@ describe("booking expense actions", () => {
 
         await user.click(await screen.findByRole("button", { name: "Link existing expense" }));
         expect(screen.getByRole("option", { name: /Hotel deposit/ })).toBeTruthy();
+    });
+
+    it("does not restore an expense link from a refresh that predates a successful unlink", async () => {
+        const user = userEvent.setup();
+        const linkedBooking = { ...hotel, expenseId: existingExpense.id };
+        bookingsApi.getBookings.mockResolvedValueOnce([linkedBooking]);
+        expensesApi.getExpenses.mockResolvedValue([{ ...existingExpense, bookingId: hotel.id }]);
+        bookingsApi.unlinkBookingExpense.mockResolvedValue(undefined);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await screen.findByRole("link", { name: existingExpense.name });
+
+        let finishRefresh!: (bookings: Booking[]) => void;
+        bookingsApi.getBookings.mockImplementationOnce(() => new Promise<Booking[]>((resolve) => {
+            finishRefresh = resolve;
+        }));
+        bookingsApi.getBookings.mockResolvedValueOnce([{
+            ...hotel,
+            hasPendingDeletedActivityNotice: true,
+        }]);
+        act(() => notifyActivityDeleted(trip.id));
+        await user.click(screen.getByRole("button", { name: "Unlink", exact: true }));
+        await screen.findByRole("button", { name: "Add to expenses" });
+        await act(async () => finishRefresh([linkedBooking]));
+
+        await screen.findByText("A linked activity was deleted. This booking was kept.");
+        expect(screen.queryByRole("link", { name: existingExpense.name })).toBeNull();
+        expect(bookingsApi.getBookings).toHaveBeenCalledTimes(3);
     });
 
     it("does not offer budget actions when cost is unknown or free", async () => {

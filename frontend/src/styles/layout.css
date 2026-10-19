@@ -72,6 +72,41 @@
     overflow-wrap: anywhere;
 }
 
+/* Saved booking and activity details share content-sized label/value columns. */
+.expanded-card-details.aligned-card-details {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 9px 12px;
+    padding-top: 12px;
+}
+
+.aligned-card-details > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.aligned-detail-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.aligned-detail-row > :not(strong) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+    .expanded-card-details.aligned-card-details {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aligned-detail-row {
+        row-gap: 2px;
+    }
+}
+
 .list-row {
     display: flex;
     align-items: center;

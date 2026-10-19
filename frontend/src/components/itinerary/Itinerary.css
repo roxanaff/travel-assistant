@@ -216,9 +216,9 @@
 
 .itinerary-booking-section {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: subgrid;
     align-items: center;
-    gap: 8px;
+    gap: 8px 12px;
     padding-top: 4px;
 }
 
@@ -259,13 +259,6 @@
 .itinerary-expanded-details .itinerary-inline-link:hover,
 .itinerary-expanded-details .itinerary-inline-link:focus-visible {
     color: var(--color-blue-700);
-}
-
-.itinerary-detail-row {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    align-items: start;
-    gap: 8px;
 }
 
 @media (max-width: 600px) {

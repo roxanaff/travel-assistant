@@ -67,6 +67,7 @@ describe("Itinerary", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        window.localStorage.clear();
         api.getItineraryItems.mockResolvedValue([]);
     });
 
@@ -128,6 +129,22 @@ describe("Itinerary", () => {
                 "This activity ends after the entered closing time.",
             ),
         ).toBeTruthy();
+    });
+
+    it("confirms and immediately deletes a linked activity without an Undo delay", async () => {
+        const user = userEvent.setup();
+        api.getItineraryItems.mockResolvedValue([{ ...museum, bookingId: "booking-1" }]);
+        api.deleteItineraryItem.mockResolvedValue(undefined);
+        renderItinerary();
+
+        await user.click(await screen.findByRole("button", { name: "Delete Museum" }));
+        expect(screen.getByRole("alertdialog").textContent).toContain("booking will be kept and unlinked");
+        expect(api.deleteItineraryItem).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Delete activity", exact: true }));
+
+        await waitFor(() => expect(api.deleteItineraryItem).toHaveBeenCalledWith(trip.id, museum.id));
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Delete Museum" })).toBeNull());
+        expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull();
     });
 
     it("restores a deleted activity when Undo is selected", async () => {

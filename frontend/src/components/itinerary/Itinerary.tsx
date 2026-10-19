@@ -24,6 +24,7 @@ import { GroupAddButton } from "../shared/GroupAddButton";
 import { ExpandableCardActions } from "../shared/ExpandableCardActions";
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { InlineMessage } from "../shared/InlineMessage";
 import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { StatusPill } from "../shared/StatusPill";
@@ -37,6 +38,7 @@ import {
 } from "../../utils/bookingActivityLinks";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import { useExpandableCards } from "../../utils/useExpandableCards";
+import { notifyActivityDeleted } from "../../utils/activityDeletionEvents";
 import {
     getItineraryResponseFormErrors,
     itineraryFormToRequest,
@@ -115,6 +117,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [formError, setFormError] = useState<string | null>(null);
     const [formErrors, setFormErrors] = useState<ItineraryFormErrors>({});
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const [linkedItemToDelete, setLinkedItemToDelete] = useState<ItineraryItem | null>(null);
+    const [deletingLinkedItemId, setDeletingLinkedItemId] = useState<string | null>(null);
     const deleteTimerRef = useRef<number | null>(null);
     const [newItem, setNewItem] = useState<ItineraryItemForm>(createEmptyItineraryItemForm());
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -149,7 +153,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         isExpanded,
         toggleAll: toggleAllDetails,
         toggleExpanded: toggleDetails,
-    } = useExpandableCards(expandableItemIds);
+    } = useExpandableCards(expandableItemIds, `trip:${trip.id}:itinerary:expanded`);
 
     const highlightedActivityId = useNavigationCardFocus({
         availableIds: items.map((item) => item.id),
@@ -208,6 +212,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const commitDelete = async (item: ItineraryItem) => {
         try {
             await deleteItineraryItem(trip.id, item.id);
+            notifyActivityDeleted(trip.id);
         } catch {
             restoreItem(item);
             setError("Could not delete this itinerary item. It was restored.");
@@ -285,6 +290,11 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
 
     /** Optimistically removes an activity while preserving it locally for five seconds of Undo. */
     const deleteItem = async (item: ItineraryItem) => {
+        if (item.bookingId) {
+            if (!deletingLinkedItemId) setLinkedItemToDelete(item);
+            return;
+        }
+
         if (pendingDeletion) {
             if (deleteTimerRef.current !== null) {
                 window.clearTimeout(deleteTimerRef.current);
@@ -302,6 +312,28 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             void commitDelete(item);
             deleteTimerRef.current = null;
         }, 5000);
+    };
+
+    const deleteLinkedItem = async () => {
+        if (!linkedItemToDelete || deletingLinkedItemId) return;
+
+        const item = linkedItemToDelete;
+        setLinkedItemToDelete(null);
+        setDeletingLinkedItemId(item.id);
+        try {
+            await deleteItineraryItem(trip.id, item.id);
+            setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+            setBookings((current) => current.map((booking) => ({
+                ...booking,
+                activityLinks: booking.activityLinks.filter((activity) => activity.id !== item.id),
+            })));
+            collapse(item.id);
+            notifyActivityDeleted(trip.id);
+        } catch {
+            setError("Could not delete this activity. It was kept.");
+        } finally {
+            setDeletingLinkedItemId(null);
+        }
     };
 
     const undoDelete = () => {
@@ -585,7 +617,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                 {summaryDetails.map((detail) =>
                                     detail ? (
                                         <span key={detail.label}>
-                                            <strong>{detail.label}:</strong> {detail.value}
+                                            <strong>{detail.label}</strong> {detail.value}
                                         </span>
                                     ) : null,
                                 )}
@@ -629,20 +661,22 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     </InlineMessage>
                 )}
                 {itemIsExpanded && (
-                    <ExpandedCardDetails className="itinerary-expanded-details" id={detailsId}>
+                    <ExpandedCardDetails className="itinerary-expanded-details aligned-card-details" id={detailsId}>
                         {openingHours && (
-                            <p>
-                                <strong>Opening hours:</strong> {openingHours}
+                            <p className="aligned-detail-row">
+                                <strong>Opening hours</strong>
+                                <span>{openingHours}</span>
                             </p>
                         )}
                         {item.location && (
-                            <p>
-                                <strong>Location:</strong> {item.location}
+                            <p className="aligned-detail-row">
+                                <strong>Location</strong>
+                                <span>{item.location}</span>
                             </p>
                         )}
                         {item.externalLink && (
-                            <p>
-                                <strong>Link:</strong>{" "}
+                            <p className="aligned-detail-row">
+                                <strong>Link</strong>
                                 <a
                                     className="itinerary-inline-link"
                                     href={item.externalLink}
@@ -655,7 +689,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         )}
                         {(item.bookingRequired || item.bookingId) && (
                             <section className="itinerary-booking-section">
-                                <strong>Booking:</strong>
+                                <strong>Booking</strong>
                                 {item.bookingId ? (
                                     <>
                                         <div className="itinerary-linked-booking">
@@ -796,8 +830,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                             </section>
                         )}
                         {item.note && (
-                            <p className="itinerary-detail-row itinerary-notes-detail">
-                                <strong>Notes:</strong>
+                            <p className="aligned-detail-row">
+                                <strong>Notes</strong>
                                 <span>{item.note}</span>
                             </p>
                         )}
@@ -861,6 +895,17 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     )}
                 </div>
             )}
+            <ConfirmDialog
+                isOpen={linkedItemToDelete !== null}
+                title="Delete linked activity?"
+                confirmLabel="Delete activity"
+                onCancel={() => setLinkedItemToDelete(null)}
+                onConfirm={() => void deleteLinkedItem()}
+            >
+                <p>
+                    Delete {linkedItemToDelete?.name}? Its linked booking will be kept and unlinked.
+                </p>
+            </ConfirmDialog>
             <FormDiscardDialog
                 isOpen={isConfirmingDiscard}
                 onCancel={cancelDiscardConfirmation}

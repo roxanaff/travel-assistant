@@ -1,6 +1,6 @@
 // Booking feature for one trip: list and edit reservations, and show links
 // to itinerary activities. API files send changes to the backend for saving.
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     createBooking,
@@ -26,6 +26,7 @@ import { createEmptyBookingForm } from "../../types/booking";
 import type { Expense, NewExpenseForm } from "../../types/expense";
 import { ExpenseFormFields } from "../budget/ExpenseFormFields";
 import { localToday } from "../../utils/localToday";
+import { subscribeToActivityDeletions } from "../../utils/activityDeletionEvents";
 import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
 import type { Trip } from "../../types/trip";
 import { formatDate, formatMoney } from "../../utils/format";
@@ -222,7 +223,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             form: createBookingFormFromActivity(embeddedDraft.activity),
         }
         : null;
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [bookings, setLoadedBookings] = useState<Booking[]>([]);
+    const bookingsMutationVersion = useRef(0);
+    const setBookings = useCallback((update: SetStateAction<Booking[]>) => {
+        bookingsMutationVersion.current += 1;
+        setLoadedBookings(update);
+    }, []);
     const [activities, setActivities] = useState<ItineraryItem[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loadedBudgetTripId, setLoadedBudgetTripId] = useState<string | null>(null);
@@ -295,20 +301,47 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     }, [budgetAction, creatingActivityForBookingId, editingId, isAdding, setHasUnsavedForm]);
 
     useEffect(() => {
-        void (async () => {
+        let isCurrent = true;
+        let requestVersion = 0;
+        const load = async (): Promise<void> => {
+            const version = ++requestVersion;
+            const mutationVersion = bookingsMutationVersion.current;
+            const canApply = () => isCurrent
+                && version === requestVersion
+                && mutationVersion === bookingsMutationVersion.current;
             try {
-                setBookings(await getBookings(trip.id));
+                const loadedBookings = await getBookings(trip.id);
+                if (!canApply()) return;
+                setLoadedBookings(loadedBookings);
+                setError(null);
                 try {
-                    setActivities(await getItineraryItems(trip.id));
+                    const loadedActivities = await getItineraryItems(trip.id);
+                    if (canApply()) setActivities(loadedActivities);
                 } catch {
-                    setActivities([]);
+                    if (canApply()) setActivities([]);
                 }
             } catch (exception) {
-                setError(exception instanceof Error ? exception.message : "Could not load bookings.");
+                if (canApply()) {
+                    setError(exception instanceof Error ? exception.message : "Could not load bookings.");
+                }
             } finally {
-                setIsLoading(false);
+                if (isCurrent && version === requestVersion) {
+                    if (mutationVersion !== bookingsMutationVersion.current) {
+                        // A local save finished while this snapshot was loading; fetch its latest state.
+                        void load();
+                    } else {
+                        setIsLoading(false);
+                    }
+                }
             }
-        })();
+        };
+
+        void load();
+        const unsubscribe = subscribeToActivityDeletions(trip.id, () => void load());
+        return () => {
+            isCurrent = false;
+            unsubscribe();
+        };
     }, [trip.id]);
 
     useEffect(() => {
@@ -365,7 +398,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         isExpanded,
         toggleAll,
         toggleExpanded,
-    } = useExpandableCards(expandableBookingIds);
+    } = useExpandableCards(expandableBookingIds, `trip:${trip.id}:bookings:expanded`);
 
     const highlightedBookingId = useNavigationCardFocus({
         availableIds: bookings.map((booking) => booking.id),
@@ -1593,7 +1626,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                         } : undefined}
                     >
                         <strong className="booking-card-name">{booking.name}</strong>
-                        <div className="booking-summary-details">
+                        <div className={`booking-summary-details${returnJourney ? " booking-summary-round-trip" : ""}`}>
                             <div className="booking-journey-summary">
                                 {returnJourney && <strong>Outbound</strong>}
                                 <span>{outbound}</span>
@@ -1645,17 +1678,45 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     </InlineMessage>
                 )}
                 {hasAdditionalDetails && expanded && (
-                    <ExpandedCardDetails className="booking-expanded-details">
+                    <ExpandedCardDetails className="booking-expanded-details aligned-card-details">
                         <div className="booking-detail-grid">
-                            {booking.provider && <p><strong>Provider:</strong> {booking.provider}</p>}
-                            {booking.confirmationNumber && <p><strong>Confirmation number:</strong> {booking.confirmationNumber}</p>}
-                            {booking.category && <p><strong>Category:</strong> {categoryLabels[booking.category]}</p>}
-                            {booking.totalCost !== null && booking.totalCost > 0 && <p><strong>Amount paid:</strong> {formatMoney(booking.amountPaid, trip.currency)}</p>}
-                            {booking.amountRefunded !== null && <p><strong>Amount refunded:</strong> {formatMoney(booking.amountRefunded, trip.currency)}{booking.netCost > 0 ? ` · Net cost ${formatMoney(booking.netCost, trip.currency)}` : ""}</p>}
+                            {booking.provider && (
+                                <p className="aligned-detail-row">
+                                    <strong>Provider</strong>
+                                    <span>{booking.provider}</span>
+                                </p>
+                            )}
+                            {booking.confirmationNumber && (
+                                <p className="aligned-detail-row">
+                                    <strong>Confirmation number</strong>
+                                    <span>{booking.confirmationNumber}</span>
+                                </p>
+                            )}
+                            {booking.category && (
+                                <p className="aligned-detail-row">
+                                    <strong>Category</strong>
+                                    <span>{categoryLabels[booking.category]}</span>
+                                </p>
+                            )}
+                            {booking.totalCost !== null && booking.totalCost > 0 && (
+                                <p className="aligned-detail-row">
+                                    <strong>Amount paid</strong>
+                                    <span>{formatMoney(booking.amountPaid, trip.currency)}</span>
+                                </p>
+                            )}
+                            {booking.amountRefunded !== null && (
+                                <p className="aligned-detail-row">
+                                    <strong>Amount refunded</strong>
+                                    <span>
+                                        {formatMoney(booking.amountRefunded, trip.currency)}
+                                        {booking.netCost > 0 ? ` · Net cost ${formatMoney(booking.netCost, trip.currency)}` : ""}
+                                    </span>
+                                </p>
+                            )}
                         </div>
                         {booking.externalLink && (
-                            <p>
-                                <strong>Link:</strong>{" "}
+                            <p className="aligned-detail-row">
+                                <strong>Link</strong>
                                 <a href={booking.externalLink} target="_blank" rel="noreferrer">
                                     {booking.externalLink}
                                 </a>
@@ -1778,7 +1839,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     }
                                 }}
                             >
-                                <strong>Expense</strong>
+                                {booking.expenseId && <strong>Expense</strong>}
                                 {isBudgetLoading && (
                                     <p className="detail-message">Loading expenses…</p>
                                 )}
@@ -1890,7 +1951,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                 )}
                             </section>
                         )}
-                        {booking.note && <p><strong>Notes:</strong> {booking.note}</p>}
+                        {booking.note && (
+                            <p className="aligned-detail-row">
+                                <strong>Notes</strong>
+                                <span>{booking.note}</span>
+                            </p>
+                        )}
                     </ExpandedCardDetails>
                 )}
             </li>

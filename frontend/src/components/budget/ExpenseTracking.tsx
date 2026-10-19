@@ -448,12 +448,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                             key={expense.id}
                                         >
                                             <div className="budget-item-description">
-                                                <div className="budget-item-primary">
-                                                    <strong>{expense.name}</strong>
-                                                    <strong className="budget-item-amount">
-                                                        {formatMoney(expense.amount, trip.currency)}
-                                                    </strong>
-                                                </div>
+                                                <strong>{expense.name}</strong>
                                                 {grouping === "category" && expense.expenseDate && (
                                                     <span>{formatDate(expense.expenseDate)}</span>
                                                 )}
@@ -475,6 +470,9 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                     </span>
                                                 )}
                                             </div>
+                                            <strong className="budget-item-amount">
+                                                {formatMoney(expense.amount, trip.currency)}
+                                            </strong>
                                             <div className="item-actions">
                                                 <button
                                                     className="icon-button"
