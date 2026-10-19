@@ -6,29 +6,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Bookings } from "../../../src/components/bookings/Bookings";
 import type { Booking } from "../../../src/types/booking";
-import type { PlannedCost } from "../../../src/types/plannedCost";
+import type { Expense } from "../../../src/types/expense";
+import { localToday } from "../../../src/utils/localToday";
 import type { Trip } from "../../../src/types/trip";
 import { suggestedBudgetCategory } from "../../../src/utils/bookingBudget";
 
 const bookingsApi = vi.hoisted(() => ({
     createBooking: vi.fn(),
-    createBookingPlannedCost: vi.fn(),
+    createBookingExpense: vi.fn(),
     deleteBooking: vi.fn(),
     dismissBookingActivityUpdateReview: vi.fn(),
     dismissBookingDeletedLinkNotices: vi.fn(),
     getBookings: vi.fn(),
     linkBookingActivity: vi.fn(),
-    linkBookingPlannedCost: vi.fn(),
+    linkBookingExpense: vi.fn(),
     unlinkBookingActivity: vi.fn(),
-    unlinkBookingPlannedCost: vi.fn(),
+    unlinkBookingExpense: vi.fn(),
     updateBooking: vi.fn(),
 }));
 const itineraryApi = vi.hoisted(() => ({
     createItineraryItem: vi.fn(),
     getItineraryItems: vi.fn(),
-}));
-const plannedCostsApi = vi.hoisted(() => ({
-    getPlannedCosts: vi.fn(),
 }));
 const expensesApi = vi.hoisted(() => ({
     getExpenses: vi.fn(),
@@ -36,7 +34,6 @@ const expensesApi = vi.hoisted(() => ({
 
 vi.mock("../../../src/api/bookingsApi", () => bookingsApi);
 vi.mock("../../../src/api/itineraryApi", () => itineraryApi);
-vi.mock("../../../src/api/plannedCostsApi", () => plannedCostsApi);
 vi.mock("../../../src/api/expensesApi", () => expensesApi);
 
 const trip: Trip = {
@@ -82,29 +79,27 @@ const hotel: Booking = {
     externalLink: null,
     note: null,
     totalCost: 200,
-    amountPaid: 0,
+    amountPaid: 150,
     amountRefunded: null,
-    financialStatus: "Unpaid",
-    netCost: 0,
+    financialStatus: "PartiallyPaid",
+    netCost: 150,
     activityLinks: [],
-    plannedCostId: null,
     expenseId: null,
     hasPendingDeletedActivityNotice: false,
-    hasPendingDeletedPlannedCostNotice: false,
     hasPendingDeletedExpenseNotice: false,
     createdAtUtc: "2026-01-01T00:00:00Z",
 };
 
-const existingPlan: PlannedCost = {
-    id: "plan-1",
+const existingExpense: Expense = {
+    id: "expense-1",
     tripId: trip.id,
     bookingId: null,
-    name: "Rome hotel plan",
+    plannedCostId: "plan-1",
+    name: "Hotel deposit",
     category: "Accommodation",
-    amount: 220,
+    amount: 100,
+    expenseDate: "2027-03-01",
     createdAtUtc: "2026-01-01T00:00:00Z",
-    expenseAdded: true,
-    expenseId: "expense-1",
 };
 
 function renderBookings() {
@@ -121,96 +116,89 @@ function LocationProbe() {
     return <output data-testid="location">{location.pathname}</output>;
 }
 
-describe("booking planned-cost actions", () => {
-    afterEach(cleanup);
+describe("booking expense actions", () => {
+    afterEach(() => {
+        cleanup();
+        vi.restoreAllMocks();
+    });
 
     beforeEach(() => {
         vi.clearAllMocks();
         bookingsApi.getBookings.mockResolvedValue([hotel]);
         itineraryApi.getItineraryItems.mockResolvedValue([]);
-        plannedCostsApi.getPlannedCosts.mockResolvedValue([]);
         expensesApi.getExpenses.mockResolvedValue([]);
     });
 
-    it("prefills and creates a linked planned cost from the booking", async () => {
+    it("prefills an expense with the net paid amount without creating a planned cost", async () => {
         const user = userEvent.setup();
-        bookingsApi.createBookingPlannedCost.mockResolvedValue({
-            ...existingPlan,
-            name: "Hotel Rome",
-            amount: 210,
+        bookingsApi.getBookings.mockResolvedValue([{
+            ...hotel,
+            status: "Cancelled",
+            amountPaid: 150,
+            amountRefunded: 30,
+            netCost: 120,
+            financialStatus: "PartiallyRefunded",
+        }]);
+        bookingsApi.createBookingExpense.mockResolvedValue({
+            ...existingExpense,
+            name: hotel.name,
+            amount: 125,
             bookingId: hotel.id,
-            expenseAdded: false,
-            expenseId: null,
+            plannedCostId: null,
         });
 
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to planned costs" }));
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
-        const budget = screen.getByRole("region", { name: "Budget for Hotel Rome" });
-        expect(within(budget).getByLabelText("Name")).toHaveProperty("value", "Hotel Rome");
-        expect(within(budget).getByLabelText("Amount (EUR)"))
-            .toHaveProperty("value", "200");
-        expect(within(budget).getByLabelText("Category"))
-            .toHaveProperty("value", "Accommodation");
+        expect(within(budget).getByLabelText("What did you pay for?")).toHaveProperty("value", hotel.name);
+        expect(within(budget).getByLabelText("Amount (EUR)")).toHaveProperty("value", "120");
+        expect(within(budget).getByLabelText("Category")).toHaveProperty("value", "Accommodation");
+        expect(within(budget).getByLabelText("Date")).toHaveProperty("value", localToday());
+        expect(screen.queryByRole("button", { name: "Add to planned costs" })).toBeNull();
 
         await user.clear(within(budget).getByLabelText("Amount (EUR)"));
-        await user.type(within(budget).getByLabelText("Amount (EUR)"), "210");
-        await user.click(within(budget).getByRole("button", { name: "Add planned cost" }));
+        await user.type(within(budget).getByLabelText("Amount (EUR)"), "125");
+        await user.click(within(budget).getByRole("button", { name: "Add expense" }));
 
-        await waitFor(() => expect(bookingsApi.createBookingPlannedCost).toHaveBeenCalledWith(
+        await waitFor(() => expect(bookingsApi.createBookingExpense).toHaveBeenCalledWith(
             trip.id,
             hotel.id,
             {
-                name: "Hotel Rome",
+                name: hotel.name,
                 category: "Accommodation",
-                amount: 210,
+                amount: 125,
+                expenseDate: localToday(),
             },
         ));
-        expect(await within(budget).findByRole("link", { name: "Hotel Rome" })).toBeTruthy();
-        expect(within(budget).queryByRole("button", { name: "Add to planned costs" })).toBeNull();
+        expect(await within(budget).findByRole("link", { name: hotel.name })).toBeTruthy();
+        expect(within(budget).queryByRole("button", { name: "Add to expenses" })).toBeNull();
     });
 
-    it("links an existing planned cost, shows its expense, and unlinks without deleting either", async () => {
+    it("links an existing expense with a planned cost and can unlink it without deleting either", async () => {
         const user = userEvent.setup();
-        plannedCostsApi.getPlannedCosts.mockResolvedValue([existingPlan]);
-        expensesApi.getExpenses.mockResolvedValue([{
-            id: "expense-1",
-            tripId: trip.id,
-            plannedCostId: existingPlan.id,
-            name: "Hotel deposit",
-            category: "Accommodation",
-            amount: 100,
-            expenseDate: "2027-03-01",
-            createdAtUtc: "2026-01-01T00:00:00Z",
-        }]);
-        bookingsApi.linkBookingPlannedCost.mockResolvedValue(undefined);
-        bookingsApi.unlinkBookingPlannedCost.mockResolvedValue(undefined);
+        expensesApi.getExpenses.mockResolvedValue([existingExpense]);
+        bookingsApi.linkBookingExpense.mockResolvedValue(undefined);
+        bookingsApi.unlinkBookingExpense.mockResolvedValue(undefined);
 
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(await screen.findByRole("button", { name: "Link existing planned cost" }));
+        await user.click(await screen.findByRole("button", { name: "Link existing expense" }));
+        const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
-        const budget = screen.getByRole("region", { name: "Budget for Hotel Rome" });
-        await user.selectOptions(within(budget).getByLabelText("Planned cost"), existingPlan.id);
-        await user.click(within(budget).getByRole("button", { name: "Link planned cost" }));
-
-        await waitFor(() => expect(bookingsApi.linkBookingPlannedCost).toHaveBeenCalledWith(
-            trip.id,
-            hotel.id,
-            existingPlan.id,
+        await user.selectOptions(within(budget).getByLabelText("Expense"), existingExpense.id);
+        await user.click(within(budget).getByRole("button", { name: "Link expense" }));
+        await waitFor(() => expect(bookingsApi.linkBookingExpense).toHaveBeenCalledWith(
+            trip.id, hotel.id, existingExpense.id,
         ));
-        expect(await within(budget).findByRole("link", { name: "Rome hotel plan" })).toBeTruthy();
-        expect(within(budget).getByRole("link", { name: "Hotel deposit" })).toBeTruthy();
+        expect(await within(budget).findByRole("link", { name: existingExpense.name })).toBeTruthy();
 
         await user.click(within(budget).getByRole("button", { name: "Unlink" }));
-        await waitFor(() => expect(bookingsApi.unlinkBookingPlannedCost).toHaveBeenCalledWith(
-            trip.id,
-            hotel.id,
-            existingPlan.id,
+        await waitFor(() => expect(bookingsApi.unlinkBookingExpense).toHaveBeenCalledWith(
+            trip.id, hotel.id, existingExpense.id,
         ));
-        expect(await within(budget).findByRole("button", { name: "Link existing planned cost" }))
-            .toBeTruthy();
+        expect(await within(budget).findByRole("button", { name: "Link existing expense" })).toBeTruthy();
     });
 
     it("suggests the agreed financial categories", () => {
@@ -221,15 +209,40 @@ describe("booking planned-cost actions", () => {
         expect(suggestedBudgetCategory("Restaurant")).toBe("Food");
     });
 
+    it("makes a deleted booking's surviving expense immediately available to another booking", async () => {
+        const user = userEvent.setup();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
+        bookingsApi.deleteBooking.mockResolvedValue(undefined);
+        bookingsApi.getBookings.mockResolvedValue([
+            { ...hotel, expenseId: existingExpense.id },
+            { ...hotel, id: "booking-2", name: "Second hotel" },
+        ]);
+        expensesApi.getExpenses.mockResolvedValue([{
+            ...existingExpense,
+            bookingId: hotel.id,
+        }]);
+        renderBookings();
+
+        await user.click(await screen.findByRole("button", { name: "Expand Second hotel details" }));
+        expect(screen.queryByRole("button", { name: "Link existing expense" })).toBeNull();
+        await user.click(screen.getByRole("button", { name: "Delete Hotel Rome" }));
+        await waitFor(() => expect(bookingsApi.deleteBooking).toHaveBeenCalledWith(trip.id, hotel.id));
+
+        await user.click(await screen.findByRole("button", { name: "Link existing expense" }));
+        expect(screen.getByRole("option", { name: /Hotel deposit/ })).toBeTruthy();
+    });
+
     it("does not offer budget actions when cost is unknown or free", async () => {
         const user = userEvent.setup();
         bookingsApi.getBookings.mockResolvedValue([
-            { ...hotel, totalCost: null, financialStatus: null },
+            { ...hotel, totalCost: null, amountPaid: 0, netCost: 0, financialStatus: null },
             {
                 ...hotel,
                 id: "booking-2",
                 name: "Free museum",
                 totalCost: 0,
+                amountPaid: 0,
+                netCost: 0,
                 financialStatus: "Free",
             },
         ]);
@@ -238,43 +251,43 @@ describe("booking planned-cost actions", () => {
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         await user.click(screen.getByRole("button", { name: "Expand Free museum details" }));
 
-        expect(screen.queryByRole("button", { name: "Add to planned costs" })).toBeNull();
-        expect(screen.queryByRole("button", { name: "Link existing planned cost" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Add to expenses" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Link existing expense" })).toBeNull();
     });
 
-    it("confirms before switching away from a changed planned-cost form", async () => {
+    it("confirms before switching away from a changed expense form", async () => {
         const user = userEvent.setup();
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to planned costs" }));
-        const budget = screen.getByRole("region", { name: "Budget for Hotel Rome" });
-        await user.clear(within(budget).getByLabelText("Name"));
-        await user.type(within(budget).getByLabelText("Name"), "Different plan");
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
+        await user.clear(within(budget).getByLabelText("What did you pay for?"));
+        await user.type(within(budget).getByLabelText("What did you pay for?"), "Different plan");
         await user.click(screen.getByRole("button", { name: "Add booking" }));
 
         expect(screen.getByText("Your changes will be lost.")).toBeTruthy();
         await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
-        expect(within(budget).getByLabelText("Name")).toHaveProperty("value", "Different plan");
+        expect(within(budget).getByLabelText("What did you pay for?")).toHaveProperty("value", "Different plan");
         expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     });
 
-    it("rejects an invalid decimal before calling the planned-cost API", async () => {
+    it("rejects an invalid decimal before calling the expense API", async () => {
         const user = userEvent.setup();
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to planned costs" }));
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
         const amount = screen.getByLabelText("Amount (EUR)");
         await user.clear(amount);
         await user.type(amount, ".");
-        await user.click(screen.getByRole("button", { name: "Add planned cost" }));
+        await user.click(screen.getByRole("button", { name: "Add expense" }));
 
         expect(screen.getByText("Enter an amount greater than zero.")).toBeTruthy();
-        expect(bookingsApi.createBookingPlannedCost).not.toHaveBeenCalled();
+        expect(bookingsApi.createBookingExpense).not.toHaveBeenCalled();
     });
 
-    it("confirms before leaving a changed plan draft through another booking's budget link", async () => {
+    it("confirms before leaving a changed expense draft through another booking's budget link", async () => {
         const user = userEvent.setup();
         bookingsApi.getBookings.mockResolvedValue([
             hotel,
@@ -282,35 +295,35 @@ describe("booking planned-cost actions", () => {
                 ...hotel,
                 id: "booking-2",
                 name: "Second hotel",
-                plannedCostId: existingPlan.id,
+                expenseId: existingExpense.id,
             },
         ]);
-        plannedCostsApi.getPlannedCosts.mockResolvedValue([{
-            ...existingPlan,
+        expensesApi.getExpenses.mockResolvedValue([{
+            ...existingExpense,
             bookingId: "booking-2",
         }]);
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         await user.click(screen.getByRole("button", { name: "Expand Second hotel details" }));
-        await user.click(screen.getByRole("button", { name: "Add to planned costs" }));
-        await user.clear(screen.getByLabelText("Name"));
-        await user.type(screen.getByLabelText("Name"), "Changed plan");
-        await user.click(screen.getByRole("link", { name: "Rome hotel plan" }));
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.clear(screen.getByLabelText("What did you pay for?"));
+        await user.type(screen.getByLabelText("What did you pay for?"), "Changed plan");
+        await user.click(screen.getByRole("link", { name: "Hotel deposit" }));
 
         expect(screen.getByTestId("location")).toHaveProperty("value", "/");
         const dialog = screen.getByRole("alertdialog");
         await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-        expect(screen.getByLabelText("Name")).toHaveProperty("value", "Changed plan");
+        expect(screen.getByLabelText("What did you pay for?")).toHaveProperty("value", "Changed plan");
 
-        await user.click(screen.getByRole("link", { name: "Rome hotel plan" }));
+        await user.click(screen.getByRole("link", { name: "Hotel deposit" }));
         await user.click(within(screen.getByRole("alertdialog")).getByRole("button", {
             name: "Discard changes",
         }));
         expect(screen.getByTestId("location")).toHaveProperty("value", "/trips/trip-1/budget");
     });
 
-    it("confirms before leaving a changed plan draft through a linked activity", async () => {
+    it("confirms before leaving a changed expense draft through a linked activity", async () => {
         const user = userEvent.setup();
         bookingsApi.getBookings.mockResolvedValue([{
             ...hotel,
@@ -329,9 +342,9 @@ describe("booking planned-cost actions", () => {
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to planned costs" }));
-        await user.clear(screen.getByLabelText("Name"));
-        await user.type(screen.getByLabelText("Name"), "Changed plan");
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.clear(screen.getByLabelText("What did you pay for?"));
+        await user.type(screen.getByLabelText("What did you pay for?"), "Changed plan");
         await user.click(screen.getByRole("link", { name: "Hotel check-in" }));
 
         expect(screen.getByTestId("location")).toHaveProperty("value", "/");

@@ -2,13 +2,18 @@
 // runs the end-to-end tests in Chromium without using real trip data.
 import { defineConfig, devices } from "@playwright/test";
 
+const apiPort = process.env.PLAYWRIGHT_API_PORT ?? "5263";
+const frontendPort = process.env.PLAYWRIGHT_FRONTEND_PORT ?? "5173";
+const apiOrigin = `http://127.0.0.1:${apiPort}`;
+const frontendOrigin = `http://127.0.0.1:${frontendPort}`;
+
 export default defineConfig({
     testDir: "./tests/e2e",
     fullyParallel: false,
     forbidOnly: Boolean(process.env.CI),
     retries: process.env.CI ? 2 : 0,
     use: {
-        baseURL: "http://127.0.0.1:5173",
+        baseURL: frontendOrigin,
         trace: "on-first-retry",
     },
     projects: [
@@ -20,24 +25,24 @@ export default defineConfig({
     webServer: [
         {
             command:
-                "dotnet run --project ../backend --no-restore --no-launch-profile --urls http://127.0.0.1:5263",
-            url: "http://127.0.0.1:5263/health",
+                `dotnet run --project ../backend --no-restore --no-launch-profile --urls ${apiOrigin}`,
+            url: `${apiOrigin}/health`,
             reuseExistingServer: false,
             timeout: 120_000,
             env: {
                 ASPNETCORE_ENVIRONMENT: "Testing",
-                Cors__AllowedOrigins__0: "http://127.0.0.1:5173",
+                Cors__AllowedOrigins__0: frontendOrigin,
                 Testing__UseInMemoryDatabase: "true",
                 Testing__ResetDatabase: "true",
             },
         },
         {
-            command: "npm run dev -- --host 127.0.0.1 --port 5173",
-            url: "http://127.0.0.1:5173",
+            command: `npm run dev -- --host 127.0.0.1 --port ${frontendPort} --strictPort`,
+            url: frontendOrigin,
             reuseExistingServer: false,
             timeout: 120_000,
             env: {
-                VITE_API_BASE_URL: "http://127.0.0.1:5263",
+                VITE_API_BASE_URL: apiOrigin,
             },
         },
     ],

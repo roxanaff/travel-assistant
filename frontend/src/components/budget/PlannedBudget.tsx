@@ -23,6 +23,7 @@ import { GroupAddButton } from "../shared/GroupAddButton";
 import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import { localToday } from "../../utils/localToday";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 
 import "./PlannedBudget.css";
@@ -36,16 +37,6 @@ type PlannedBudgetProps = {
 
 type PendingDeletion = {
     cost: PlannedCost;
-};
-
-/** Returns today's calendar date in the browser's local time for a newly recorded expense. */
-const localToday = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
 };
 
 /**

@@ -11,14 +11,14 @@ namespace TravelAssistant.Data;
 /// </summary>
 public static class BudgetRelationshipConstraintErrors
 {
-    private const string BookingPlannedCostIndex = "IX_PlannedCosts_BookingId";
+    private const string BookingExpenseIndex = "IX_Expenses_BookingId";
     private const string PlannedCostExpenseIndex = "IX_Expenses_PlannedCostId";
 
-    public static bool IsBookingPlannedCostViolation(DbUpdateException exception) =>
+    public static bool IsBookingExpenseViolation(Exception exception) =>
         IsUniqueViolation(
             exception,
-            BookingPlannedCostIndex,
-            "PlannedCosts.BookingId");
+            BookingExpenseIndex,
+            "Expenses.BookingId");
 
     public static bool IsPlannedCostExpenseViolation(DbUpdateException exception) =>
         IsUniqueViolation(
@@ -27,17 +27,18 @@ public static class BudgetRelationshipConstraintErrors
             "Expenses.PlannedCostId");
 
     private static bool IsUniqueViolation(
-        DbUpdateException exception,
+        Exception exception,
         string postgresConstraintName,
         string sqliteColumnName)
     {
-        if (exception.InnerException is PostgresException postgresException)
+        var databaseException = exception is DbUpdateException ? exception.InnerException : exception;
+        if (databaseException is PostgresException postgresException)
         {
             return postgresException.SqlState == PostgresErrorCodes.UniqueViolation
                 && postgresException.ConstraintName == postgresConstraintName;
         }
 
-        if (exception.InnerException is SqliteException sqliteException)
+        if (databaseException is SqliteException sqliteException)
         {
             const int sqliteUniqueConstraint = 2067;
             return sqliteException.SqliteExtendedErrorCode == sqliteUniqueConstraint

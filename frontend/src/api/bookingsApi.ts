@@ -1,8 +1,8 @@
 // Handles booking requests and turns editable form values into API data.
 // The backend remains responsible for saving bookings and checking their rules.
 import type { Booking, BookingForm } from "../types/booking";
-import type { PlannedCost } from "../types/plannedCost";
-import type { PlannedCostRequest } from "./plannedCostsApi";
+import type { Expense } from "../types/expense";
+import type { ExpenseRequest } from "./expensesApi";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type BookingActivityRole = "General" | "Outbound" | "Return";
@@ -136,41 +136,41 @@ export async function dismissBookingActivityUpdateReview(
     await throwIfApiError(response, "Could not dismiss this review.");
 }
 
-export async function createBookingPlannedCost(
+export async function createBookingExpense(
     tripId: string,
     bookingId: string,
-    request: PlannedCostRequest,
-): Promise<PlannedCost> {
-    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/planned-costs`, {
+    request: Omit<ExpenseRequest, "plannedCostId">,
+): Promise<Expense> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/expenses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
     });
-    await throwIfApiError(response, "Could not add this booking to planned costs.");
+    await throwIfApiError(response, "Could not add this booking to expenses.");
     return response.json();
 }
 
-export async function linkBookingPlannedCost(
+export async function linkBookingExpense(
     tripId: string,
     bookingId: string,
-    plannedCostId: string,
+    expenseId: string,
 ): Promise<void> {
     const response = await apiFetch(
-        `${bookingsUrl(tripId)}/${bookingId}/planned-costs/${plannedCostId}`,
+        `${bookingsUrl(tripId)}/${bookingId}/expenses/${expenseId}`,
         { method: "POST" },
     );
-    await throwIfApiError(response, "Could not link this planned cost.");
+    await throwIfApiError(response, "Could not link this expense.");
 }
 
-export async function unlinkBookingPlannedCost(
+export async function unlinkBookingExpense(
     tripId: string,
     bookingId: string,
-    plannedCostId: string,
+    expenseId: string,
 ): Promise<void> {
     const response = await apiFetch(
-        `${bookingsUrl(tripId)}/${bookingId}/planned-costs/${plannedCostId}`,
+        `${bookingsUrl(tripId)}/${bookingId}/expenses/${expenseId}`,
         { method: "DELETE" },
     );
-    await throwIfApiError(response, "Could not unlink this planned cost.");
+    await throwIfApiError(response, "Could not unlink this expense.");
 }
 

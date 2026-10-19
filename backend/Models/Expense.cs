@@ -1,5 +1,5 @@
 // Database model for money actually spent on a trip. It may point to a
-// planned cost, but the expense remains its own record.
+// planned cost and a booking independently, but remains its own record.
 namespace TravelAssistant.Models;
 
 /// <summary>
@@ -18,6 +18,10 @@ public class Expense
     public Guid? PlannedCostId { get; set; }
 
     public PlannedCost? PlannedCost { get; set; }
+
+    public Guid? BookingId { get; set; }
+
+    public Booking? Booking { get; set; }
 
     public bool HasPendingDeletedBookingNotice { get; set; }
 

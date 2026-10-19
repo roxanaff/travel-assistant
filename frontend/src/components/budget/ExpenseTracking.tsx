@@ -5,12 +5,15 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense } from "../../api/expensesApi";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
-import type { Expense, NewExpenseForm } from "../../types/expense";
+import { expenseCategories, type Expense, type NewExpenseForm } from "../../types/expense";
+import { localToday } from "../../utils/localToday";
+import { ExpenseFormFields } from "./ExpenseFormFields";
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
-import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
+import { FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { GroupHeading } from "../shared/GroupHeading";
 import { GroupAddButton } from "../shared/GroupAddButton";
 import { GroupingControl } from "../shared/GroupingControl";
@@ -21,18 +24,6 @@ import type { Trip } from "../../types/trip";
 
 import "./ExpenseTracking.css";
 import "./BudgetItem.css";
-
-// This component owns actual spending; planned-budget categories live in their own feature type file.
-const expenseCategories = [
-    { value: "TravelToFrom", label: "Travel to/from" },
-    { value: "Accommodation", label: "Accommodation" },
-    { value: "LocalTransport", label: "Local transport" },
-    { value: "Food", label: "Food" },
-    { value: "ActivitiesAndMuseums", label: "Activities & museums" },
-    { value: "BarsAndNightlife", label: "Bars & nightlife" },
-    { value: "Shopping", label: "Shopping" },
-    { value: "Other", label: "Other" },
-] as const;
 
 type ExpenseTrackingProps = {
     trip: Trip;
@@ -56,16 +47,6 @@ type ExpenseGroup = {
 type ExpenseAddTarget = {
     category: string | null;
     date: string | null;
-};
-
-/** Returns today's local calendar date for a newly entered expense. */
-const localToday = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
 };
 
 const createEmptyExpenseForm = (): NewExpenseForm => ({
@@ -109,6 +90,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const [linkedExpenseToDelete, setLinkedExpenseToDelete] = useState<Expense | null>(null);
     const [grouping, setGrouping] = useState<ExpenseGrouping>("category");
     const deleteTimerRef = useRef<number | null>(null);
 
@@ -275,6 +257,24 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         }, 5000);
     };
 
+    const requestDeleteExpense = (expense: Expense) => {
+        if (expense.bookingId || expense.plannedCostId) {
+            setLinkedExpenseToDelete(expense);
+            return;
+        }
+
+        deleteExpense(expense);
+    };
+
+    const confirmLinkedExpenseDeletion = () => {
+        if (!linkedExpenseToDelete) return;
+        const expense = linkedExpenseToDelete;
+        setLinkedExpenseToDelete(null);
+        setActionError(null);
+        setExpenses((current) => current.filter((item) => item.id !== expense.id));
+        void commitDelete(expense);
+    };
+
     const undoDelete = () => {
         if (!pendingDeletion) return;
         if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
@@ -290,48 +290,11 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         editing = false,
     ) => (
         <FormSurface formRef={formRef} className="budget-item-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
-            <label>
-                <FieldLabel>What did you pay for?</FieldLabel>
-                <input
-                    value={expense.name}
-                    onChange={(event) => updateForm("name", event.target.value, editing)}
-                    placeholder="e.g. Hotel"
-                />
-            </label>
-            <FieldRow>
-                <label>
-                    <FieldLabel>Category</FieldLabel>
-                    <select
-                        value={expense.category}
-                        onChange={(event) => updateForm("category", event.target.value, editing)}
-                    >
-                        <option value="">Not specified</option>
-                        {expenseCategories.map((category) => (
-                            <option key={category.value} value={category.value}>
-                                {category.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label>
-                    <FieldLabel required>Amount ({trip.currency})</FieldLabel>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        value={expense.amount}
-                        onChange={(event) => updateForm("amount", event.target.value, editing)}
-                        required
-                    />
-                </label>
-                <label>
-                    <FieldLabel>Date</FieldLabel>
-                    <input
-                        type="date"
-                        value={expense.expenseDate}
-                        onChange={(event) => updateForm("expenseDate", event.target.value, editing)}
-                    />
-                </label>
-            </FieldRow>
+            <ExpenseFormFields
+                value={expense}
+                currency={trip.currency}
+                onChange={(field, value) => updateForm(field, value, editing)}
+            />
             {formError && <p className="form-error">{formError}</p>}
             <FormActions>
                 <button className="text-button" type="button" onClick={cancelForm}>
@@ -524,7 +487,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                 <button
                                                     className="icon-button danger-button"
                                                     type="button"
-                                                    onClick={() => deleteExpense(expense)}
+                                                    onClick={() => requestDeleteExpense(expense)}
                                                     aria-label={`Delete ${expense.name}`}
                                                 >
                                                     <Trash2 size={17} />
@@ -537,6 +500,22 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                         </section>
                     );
                 })}
+            <ConfirmDialog
+                isOpen={linkedExpenseToDelete !== null}
+                title="Delete linked expense?"
+                confirmLabel="Delete expense"
+                onCancel={() => setLinkedExpenseToDelete(null)}
+                onConfirm={confirmLinkedExpenseDeletion}
+            >
+                <p>
+                    Delete {linkedExpenseToDelete?.name}? Its linked
+                    {linkedExpenseToDelete?.bookingId && linkedExpenseToDelete?.plannedCostId
+                        ? " booking and planned cost will be kept and unlinked."
+                        : linkedExpenseToDelete?.bookingId
+                            ? " booking will be kept and unlinked."
+                            : " planned cost will be kept and unlinked."}
+                </p>
+            </ConfirmDialog>
             <FormDiscardDialog
                 isOpen={isConfirmingDiscard}
                 onCancel={cancelDiscardConfirmation}

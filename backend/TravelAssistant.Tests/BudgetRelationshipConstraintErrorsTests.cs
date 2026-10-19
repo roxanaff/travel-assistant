@@ -8,11 +8,11 @@ namespace TravelAssistant.Tests;
 public class BudgetRelationshipConstraintErrorsTests
 {
     [Fact]
-    public void BookingPlannedCostMatcherAcceptsOnlyItsUniqueIndex()
+    public void BookingExpenseMatcherAcceptsOnlyItsUniqueIndex()
     {
         var matching = CreateSqliteException(
             2067,
-            "UNIQUE constraint failed: PlannedCosts.BookingId");
+            "UNIQUE constraint failed: Expenses.BookingId");
         var wrongColumn = CreateSqliteException(
             2067,
             "UNIQUE constraint failed: Expenses.PlannedCostId");
@@ -20,9 +20,9 @@ public class BudgetRelationshipConstraintErrorsTests
             787,
             "FOREIGN KEY constraint failed");
 
-        Assert.True(BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(matching));
-        Assert.False(BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(wrongColumn));
-        Assert.False(BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(foreignKey));
+        Assert.True(BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(matching));
+        Assert.False(BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(wrongColumn));
+        Assert.False(BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(foreignKey));
     }
 
     [Fact]

@@ -83,10 +83,14 @@ public sealed class BookingApiTests : IAsyncLifetime
             new CreatePlannedCostRequest("Hotel", PlannedCostCategory.Accommodation, 200));
         using var plannedCostBody = JsonDocument.Parse(await plannedCostResponse.Content.ReadAsStringAsync());
         var plannedCostId = plannedCostBody.RootElement.GetProperty("id").GetGuid();
-        await client.PostAsync($"{tripLocation}/bookings/{bookingId}/planned-costs/{plannedCostId}", null);
-        await client.PostAsJsonAsync(
+        var expenseResponse = await client.PostAsJsonAsync(
             $"{tripLocation}/expenses",
             new CreateExpenseRequest("Hotel", ExpenseCategory.Accommodation, 200, new DateOnly(2027, 3, 1), plannedCostId));
+        using var expenseBody = JsonDocument.Parse(await expenseResponse.Content.ReadAsStringAsync());
+        var expenseId = expenseBody.RootElement.GetProperty("id").GetGuid();
+        var linked = await client.PostAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}", null);
+        Assert.Equal(HttpStatusCode.NoContent, linked.StatusCode);
 
         var delete = await client.DeleteAsync($"{tripLocation}/bookings/{bookingId}");
 
@@ -100,8 +104,8 @@ public sealed class BookingApiTests : IAsyncLifetime
 
         Assert.Null(activity.BookingId);
         Assert.True(activity.HasPendingDeletedBookingNotice);
-        Assert.Null(plannedCost.BookingId);
-        Assert.True(plannedCost.HasPendingDeletedBookingNotice);
+        Assert.Equal(200, plannedCost.Amount);
+        Assert.Null(expense.BookingId);
         Assert.True(expense.HasPendingDeletedBookingNotice);
     }
 
@@ -197,210 +201,201 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BookingCanCreateLinkedPlannedCost()
+    public async Task BookingCreatesOneDirectExpenseWithoutCreatingAPlan()
     {
         using var client = CreateClient();
         await RegisterAsync(client, "Roxi", "roxi@example.com");
         var tripLocation = await CreateTripAsync(client);
-        var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
-
-        var response = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs",
-            new CreatePlannedCostRequest("  Hotel deposit  ", PlannedCostCategory.Accommodation, 175));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(bookingId, body.RootElement.GetProperty("bookingId").GetGuid());
-        Assert.False(body.RootElement.GetProperty("expenseAdded").GetBoolean());
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("expenseId").ValueKind);
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        var plannedCost = await database.PlannedCosts.SingleAsync();
-        Assert.Equal(bookingId, plannedCost.BookingId);
-        Assert.Equal("Hotel deposit", plannedCost.Name);
-        Assert.Equal(175, plannedCost.Amount);
-    }
-
-    [Fact]
-    public async Task AddingBookingExpenseCreatesConnectedBudgetChain()
-    {
-        using var client = CreateClient();
-        await RegisterAsync(client, "Roxi", "roxi@example.com");
-        var tripLocation = await CreateTripAsync(client);
-        var bookingId = await CreateBookingAsync(client, tripLocation, "Rome flights");
-
-        var response = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/expenses",
-            new CreateBookingExpenseRequest(
-                new CreatePlannedCostRequest("Flights", PlannedCostCategory.TravelToFrom, 200),
-                "Flight payment",
-                ExpenseCategory.TravelToFrom,
-                150,
-                new DateOnly(2027, 3, 1)));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var responseExpense = body.RootElement.GetProperty("expense");
-        var responsePlannedCost = body.RootElement.GetProperty("plannedCost");
-        Assert.Equal(responsePlannedCost.GetProperty("id").GetGuid(), responseExpense.GetProperty("plannedCostId").GetGuid());
-        Assert.Equal(bookingId, responsePlannedCost.GetProperty("bookingId").GetGuid());
-        Assert.True(responsePlannedCost.GetProperty("expenseAdded").GetBoolean());
-        Assert.Equal(responseExpense.GetProperty("id").GetGuid(), responsePlannedCost.GetProperty("expenseId").GetGuid());
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        var expense = await database.Expenses
-            .Include(item => item.PlannedCost)
-            .SingleAsync();
-        Assert.Equal(bookingId, expense.PlannedCost?.BookingId);
-        Assert.Equal("Flights", expense.PlannedCost?.Name);
-        Assert.Equal("Flight payment", expense.Name);
-        Assert.Equal(150, expense.Amount);
-    }
-
-    [Fact]
-    public async Task AddingBookingExpenseUsesExistingPlanAndRejectsDuplicateExpense()
-    {
-        using var client = CreateClient();
-        await RegisterAsync(client, "Roxi", "roxi@example.com");
-        var tripLocation = await CreateTripAsync(client);
-        var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
-
-        var plannedCostResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs",
-            new CreatePlannedCostRequest("Hotel", PlannedCostCategory.Accommodation, 200));
-        Assert.Equal(HttpStatusCode.Created, plannedCostResponse.StatusCode);
-
+        var bookingId = await CreateBookingAsync(client, tripLocation, "Flights");
         var request = new CreateBookingExpenseRequest(
-            null,
-            "Hotel payment",
-            ExpenseCategory.Accommodation,
-            200,
-            new DateOnly(2027, 3, 1));
-        var firstExpense = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/expenses",
-            request);
-        var duplicateExpense = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/expenses",
-            request);
+            "  Flight deposit  ", ExpenseCategory.TravelToFrom, 150, new DateOnly(2027, 3, 1));
 
-        Assert.Equal(HttpStatusCode.Created, firstExpense.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, duplicateExpense.StatusCode);
+        var created = await client.PostAsJsonAsync($"{tripLocation}/bookings/{bookingId}/expenses", request);
+        var duplicate = await client.PostAsJsonAsync($"{tripLocation}/bookings/{bookingId}/expenses", request);
 
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        using var body = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        Assert.Equal(bookingId, body.RootElement.GetProperty("bookingId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("plannedCostId").ValueKind);
+        Assert.Equal("Flight deposit", body.RootElement.GetProperty("name").GetString());
+        Assert.Equal(150, body.RootElement.GetProperty("amount").GetDecimal());
+
+        using var bookingBody = JsonDocument.Parse(await client.GetStringAsync(
+            $"{tripLocation}/bookings/{bookingId}"));
+        Assert.Equal(
+            body.RootElement.GetProperty("id").GetGuid(),
+            bookingBody.RootElement.GetProperty("expenseId").GetGuid());
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        Assert.Equal(1, await database.PlannedCosts.CountAsync());
-        Assert.Equal(1, await database.Expenses.CountAsync());
+        Assert.Empty(await database.PlannedCosts.ToListAsync());
+        Assert.Single(await database.Expenses.ToListAsync());
     }
 
     [Fact]
-    public async Task ExistingBudgetRoutesReturnConflictsForDuplicateBookingRelationships()
+    public async Task ExistingPlanExpenseCanLinkToOneBookingAndUnlinkWithoutChangingThePlan()
     {
         using var client = CreateClient();
         await RegisterAsync(client, "Roxi", "roxi@example.com");
         var tripLocation = await CreateTripAsync(client);
-        var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
-
-        var firstPlanResponse = await client.PostAsJsonAsync(
+        var firstBookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
+        var secondBookingId = await CreateBookingAsync(client, tripLocation, "Other hotel");
+        var planResponse = await client.PostAsJsonAsync(
             $"{tripLocation}/planned-costs",
             new CreatePlannedCostRequest("Hotel", PlannedCostCategory.Accommodation, 200));
-        var secondPlanResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/planned-costs",
-            new CreatePlannedCostRequest("Extra hotel plan", PlannedCostCategory.Accommodation, 200));
-        using var firstPlanBody = JsonDocument.Parse(await firstPlanResponse.Content.ReadAsStringAsync());
-        using var secondPlanBody = JsonDocument.Parse(await secondPlanResponse.Content.ReadAsStringAsync());
-        var firstPlanId = firstPlanBody.RootElement.GetProperty("id").GetGuid();
-        var secondPlanId = secondPlanBody.RootElement.GetProperty("id").GetGuid();
-
-        var firstLink = await client.PostAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs/{firstPlanId}",
-            null);
-        var duplicateLink = await client.PostAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs/{secondPlanId}",
-            null);
-
-        var expenseRequest = new CreateExpenseRequest(
-            "Hotel",
-            ExpenseCategory.Accommodation,
-            200,
-            new DateOnly(2027, 3, 1),
-            firstPlanId);
-        var firstExpense = await client.PostAsJsonAsync(
+        using var planBody = JsonDocument.Parse(await planResponse.Content.ReadAsStringAsync());
+        var planId = planBody.RootElement.GetProperty("id").GetGuid();
+        var expenseResponse = await client.PostAsJsonAsync(
             $"{tripLocation}/expenses",
-            expenseRequest);
-        var duplicateExpense = await client.PostAsJsonAsync(
+            new CreateExpenseRequest("Deposit", ExpenseCategory.Accommodation, 100, null, planId));
+        using var expenseBody = JsonDocument.Parse(await expenseResponse.Content.ReadAsStringAsync());
+        var expenseId = expenseBody.RootElement.GetProperty("id").GetGuid();
+
+        var linked = await client.PostAsync(
+            $"{tripLocation}/bookings/{firstBookingId}/expenses/{expenseId}", null);
+        var duplicate = await client.PostAsync(
+            $"{tripLocation}/bookings/{secondBookingId}/expenses/{expenseId}", null);
+        Assert.Equal(HttpStatusCode.NoContent, linked.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+
+        // A stale Add expense action on the plan must not create duplicate spending.
+        var duplicatePlanExpense = await client.PostAsJsonAsync(
             $"{tripLocation}/expenses",
-            expenseRequest);
+            new CreateExpenseRequest("Duplicate", null, 100, null, planId));
+        Assert.Equal(HttpStatusCode.Conflict, duplicatePlanExpense.StatusCode);
 
-        Assert.Equal(HttpStatusCode.OK, firstLink.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, duplicateLink.StatusCode);
-        Assert.Equal(HttpStatusCode.Created, firstExpense.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, duplicateExpense.StatusCode);
-    }
-
-    [Fact]
-    public async Task FreeBookingCannotCreateBudgetRecords()
-    {
-        using var client = CreateClient();
-        await RegisterAsync(client, "Roxi", "roxi@example.com");
-        var tripLocation = await CreateTripAsync(client);
-
-        var bookingResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings",
-            CreateBookingRequest(name: "Free museum", totalCost: 0));
-        Assert.Equal(HttpStatusCode.Created, bookingResponse.StatusCode);
-        using var bookingBody = JsonDocument.Parse(await bookingResponse.Content.ReadAsStringAsync());
-        var bookingId = bookingBody.RootElement.GetProperty("id").GetGuid();
-
-        var response = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs",
-            new CreatePlannedCostRequest("Museum", PlannedCostCategory.ActivitiesAndMuseums, 20));
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-
+        var unlinked = await client.DeleteAsync(
+            $"{tripLocation}/bookings/{firstBookingId}/expenses/{expenseId}");
+        Assert.Equal(HttpStatusCode.NoContent, unlinked.StatusCode);
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        Assert.Empty(await database.PlannedCosts.ToListAsync());
+        var expense = await database.Expenses.SingleAsync();
+        Assert.Null(expense.BookingId);
+        Assert.Equal(planId, expense.PlannedCostId);
+        Assert.Equal(100, expense.Amount);
+        Assert.Single(await database.PlannedCosts.ToListAsync());
     }
 
     [Fact]
-    public async Task BookingBudgetCreationRejectsOverlongEditableNames()
+    public async Task DeletingPlanKeepsDirectBookingExpenseLinkAndDeletingExpenseNotifiesBooking()
     {
         using var client = CreateClient();
         await RegisterAsync(client, "Roxi", "roxi@example.com");
         var tripLocation = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
-        var longName = new string('x', 151);
+        var plan = await client.PostAsJsonAsync(
+            $"{tripLocation}/planned-costs", new CreatePlannedCostRequest("Hotel", null, 200));
+        using var planBody = JsonDocument.Parse(await plan.Content.ReadAsStringAsync());
+        var planId = planBody.RootElement.GetProperty("id").GetGuid();
+        var created = await client.PostAsJsonAsync(
+            $"{tripLocation}/expenses", new CreateExpenseRequest("Hotel", null, 200, null, planId));
+        using var expenseBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var expenseId = expenseBody.RootElement.GetProperty("id").GetGuid();
+        await client.PostAsync($"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}", null);
 
-        var plannedCostResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/planned-costs",
-            new CreatePlannedCostRequest(longName, PlannedCostCategory.Accommodation, 200));
-        var expenseResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/expenses",
-            new CreateBookingExpenseRequest(
-                new CreatePlannedCostRequest("Hotel", PlannedCostCategory.Accommodation, 200),
-                longName,
-                ExpenseCategory.Accommodation,
-                200,
-                new DateOnly(2027, 3, 1)));
-        var nestedPlannedCostResponse = await client.PostAsJsonAsync(
-            $"{tripLocation}/bookings/{bookingId}/expenses",
-            new CreateBookingExpenseRequest(
-                new CreatePlannedCostRequest(longName, PlannedCostCategory.Accommodation, 200),
-                "Hotel",
-                ExpenseCategory.Accommodation,
-                200,
-                new DateOnly(2027, 3, 1)));
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await client.DeleteAsync($"{tripLocation}/planned-costs/{planId}")).StatusCode);
+        using var bookingBody = JsonDocument.Parse(await client.GetStringAsync(
+            $"{tripLocation}/bookings/{bookingId}"));
+        Assert.Equal(expenseId, bookingBody.RootElement.GetProperty("expenseId").GetGuid());
 
-        Assert.Equal(HttpStatusCode.BadRequest, plannedCostResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, expenseResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, nestedPlannedCostResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await client.DeleteAsync($"{tripLocation}/expenses/{expenseId}")).StatusCode);
+        using var refreshed = JsonDocument.Parse(await client.GetStringAsync(
+            $"{tripLocation}/bookings/{bookingId}"));
+        Assert.Equal(JsonValueKind.Null, refreshed.RootElement.GetProperty("expenseId").ValueKind);
+        Assert.True(refreshed.RootElement.GetProperty("hasPendingDeletedExpenseNotice").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(null, 0, null)]
+    [InlineData(0, 0, null)]
+    [InlineData(200, 0, null)]
+    [InlineData(200, 150, 150)]
+    public async Task BookingWithoutPositiveNetPaymentCannotCreateOrLinkExpense(
+        int? totalCost,
+        int amountPaid,
+        int? amountRefunded)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(client);
+        var request = CreateBookingRequest(totalCost: totalCost, amountPaid: amountPaid) with
+        {
+            Status = amountRefunded is null ? BookingStatus.Confirmed : BookingStatus.Cancelled,
+            AmountRefunded = amountRefunded
+        };
+        var booking = await client.PostAsJsonAsync($"{tripLocation}/bookings", request);
+        Assert.Equal(HttpStatusCode.Created, booking.StatusCode);
+        using var body = JsonDocument.Parse(await booking.Content.ReadAsStringAsync());
+        var bookingId = body.RootElement.GetProperty("id").GetGuid();
+        var expense = await client.PostAsJsonAsync(
+            $"{tripLocation}/expenses", new CreateExpenseRequest("Separate purchase", null, 50, null, null));
+        using var expenseBody = JsonDocument.Parse(await expense.Content.ReadAsStringAsync());
+        var expenseId = expenseBody.RootElement.GetProperty("id").GetGuid();
+
+        var created = await client.PostAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses",
+            new CreateBookingExpenseRequest("Payment", null, 50, null));
+        var linked = await client.PostAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, created.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, linked.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        Assert.Single(await database.Expenses.ToListAsync());
+        Assert.Empty(await database.PlannedCosts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task BookingExpenseRoutesRejectCrossTripLinksAndOtherAccounts()
+    {
+        using var owner = CreateClient();
+        await RegisterAsync(owner, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(owner);
+        var otherTrip = await CreateTripAsync(owner);
+        var bookingId = await CreateBookingAsync(owner, tripLocation, "Hotel");
+        var expense = await owner.PostAsJsonAsync(
+            $"{otherTrip}/expenses", new CreateExpenseRequest("Other trip", null, 100, null, null));
+        using var expenseBody = JsonDocument.Parse(await expense.Content.ReadAsStringAsync());
+        var expenseId = expenseBody.RootElement.GetProperty("id").GetGuid();
+
+        var crossTrip = await owner.PostAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}", null);
+        Assert.Equal(HttpStatusCode.NotFound, crossTrip.StatusCode);
+
+        using var otherUser = CreateClient();
+        await RegisterAsync(otherUser, "Other", "other@example.com");
+        var create = await otherUser.PostAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses",
+            new CreateBookingExpenseRequest("Hotel", null, 100, null));
+        var link = await otherUser.PostAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}", null);
+        var unlink = await otherUser.DeleteAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses/{expenseId}");
+        Assert.Equal(HttpStatusCode.NotFound, create.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, link.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unlink.StatusCode);
+    }
+
+    [Fact]
+    public async Task BookingExpenseCreationRejectsInvalidDetailsWithoutPersistingRecords()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(client);
+        var bookingId = await CreateBookingAsync(client, tripLocation, "Hotel");
+
+        var response = await client.PostAsJsonAsync(
+            $"{tripLocation}/bookings/{bookingId}/expenses",
+            new CreateBookingExpenseRequest(new string('x', 151), ExpenseCategory.Accommodation, 100, null));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        Assert.Empty(await database.PlannedCosts.ToListAsync());
         Assert.Empty(await database.Expenses.ToListAsync());
+        Assert.Empty(await database.PlannedCosts.ToListAsync());
     }
 
     private async Task<Uri> CreateTripAsync(HttpClient client)
@@ -445,7 +440,7 @@ public sealed class BookingApiTests : IAsyncLifetime
 
     private static async Task<Guid> CreateBookingAsync(HttpClient client, Uri tripLocation, string name)
     {
-        var response = await client.PostAsJsonAsync($"{tripLocation}/bookings", CreateBookingRequest(name: name, totalCost: 200));
+        var response = await client.PostAsJsonAsync($"{tripLocation}/bookings", CreateBookingRequest(name: name, totalCost: 200, amountPaid: 150));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return body.RootElement.GetProperty("id").GetGuid();

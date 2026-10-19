@@ -156,11 +156,6 @@ namespace TravelAssistant.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<bool>("HasPendingDeletedPlannedCostNotice")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
                     b.Property<string>("Location")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -236,6 +231,9 @@ namespace TravelAssistant.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
+                    b.Property<Guid?>("BookingId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Category")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
@@ -263,6 +261,9 @@ namespace TravelAssistant.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
 
                     b.HasIndex("PlannedCostId")
                         .IsUnique();
@@ -429,20 +430,12 @@ namespace TravelAssistant.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
-                    b.Property<Guid?>("BookingId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Category")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("HasPendingDeletedBookingNotice")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -453,9 +446,6 @@ namespace TravelAssistant.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BookingId")
-                        .IsUnique();
 
                     b.HasIndex("TripId");
 
@@ -685,6 +675,11 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.Expense", b =>
                 {
+                    b.HasOne("TravelAssistant.Models.Booking", "Booking")
+                        .WithOne("Expense")
+                        .HasForeignKey("TravelAssistant.Models.Expense", "BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TravelAssistant.Models.PlannedCost", "PlannedCost")
                         .WithOne("Expense")
                         .HasForeignKey("TravelAssistant.Models.Expense", "PlannedCostId")
@@ -695,6 +690,8 @@ namespace TravelAssistant.Migrations
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Booking");
 
                     b.Navigation("PlannedCost");
 
@@ -732,18 +729,11 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.PlannedCost", b =>
                 {
-                    b.HasOne("TravelAssistant.Models.Booking", "Booking")
-                        .WithOne("PlannedCost")
-                        .HasForeignKey("TravelAssistant.Models.PlannedCost", "BookingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("TravelAssistant.Models.Trip", "Trip")
                         .WithMany("PlannedCosts")
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Booking");
 
                     b.Navigation("Trip");
                 });
@@ -774,7 +764,7 @@ namespace TravelAssistant.Migrations
                 {
                     b.Navigation("Activities");
 
-                    b.Navigation("PlannedCost");
+                    b.Navigation("Expense");
                 });
 
             modelBuilder.Entity("TravelAssistant.Models.PlannedCost", b =>

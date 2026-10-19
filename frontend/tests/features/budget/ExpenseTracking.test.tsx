@@ -109,4 +109,23 @@ describe("ExpenseTracking", () => {
         expect(await screen.findByText("Hotel")).toBeTruthy();
         expect(api.deleteExpense).not.toHaveBeenCalled();
     });
+
+    it("confirms deleting a booking-linked expense before calling the API", async () => {
+        const user = userEvent.setup();
+        api.getExpenses.mockResolvedValue([{ ...hotel, bookingId: "booking-1" }]);
+        api.deleteExpense.mockResolvedValue(true);
+        render(
+            <MemoryRouter>
+                <ExpenseTracking trip={trip} refreshKey={0} onFormOpenChange={vi.fn()} />
+            </MemoryRouter>,
+        );
+
+        await screen.findByText("Hotel");
+        await user.click(screen.getByRole("button", { name: "Delete Hotel" }));
+        expect(screen.getByRole("alertdialog").textContent).toContain("booking will be kept and unlinked");
+        expect(api.deleteExpense).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Delete expense" }));
+        expect(api.deleteExpense).toHaveBeenCalledWith(trip.id, hotel.id);
+        expect(screen.queryByText("Hotel")).toBeNull();
+    });
 });

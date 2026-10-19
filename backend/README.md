@@ -22,3 +22,7 @@ through the **Data** context, then returns a response.
 `Trip` is the parent record. Deleting it cascades to its planned costs, actual expenses, activities, and packing
 items. A `PlannedCost` can have at most one linked `Expense` (an actual expense); removing the plan keeps that recorded
 expense, but removes its link.
+
+A `Booking` can link directly to one `Expense`, independently of planned costs. An expense may link to one booking and
+one planned cost at the same time. Removing a booking keeps its expense and planned-cost link; removing a planned cost
+keeps the expense and booking link. Creating spending from a booking never creates a planned cost automatically.

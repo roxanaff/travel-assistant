@@ -1,5 +1,5 @@
 // Database model for a reservation. It stores booking and payment details;
-// related activities and a planned cost remain separate records.
+// related activities and an expense remain separate records.
 namespace TravelAssistant.Models;
 
 /// <summary>Represents one reservation recorded for a trip.</summary>
@@ -60,15 +60,13 @@ public class Booking
 
     public bool HasPendingDeletedActivityNotice { get; set; }
 
-    public bool HasPendingDeletedPlannedCostNotice { get; set; }
-
     public bool HasPendingDeletedExpenseNotice { get; set; }
 
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public List<ItineraryItem> Activities { get; set; } = [];
 
-    public PlannedCost? PlannedCost { get; set; }
+    public Expense? Expense { get; set; }
 }
 
 public enum BookingCategory

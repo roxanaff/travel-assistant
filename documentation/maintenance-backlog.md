@@ -20,6 +20,22 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 
 ## Usability and interaction improvements
 
+- [P1] Workspace view state — Remember view choices when moving between workspace tabs instead of resetting them.
+  Expenses currently resets Group by to Category when the page is remounted. Extend the established checklist
+  preference pattern as appropriate. Include grouping, collapsed groups, and custom category order in the design;
+  decide preference scope and persistence before implementation.
+- [P2] Shared grouped lists — Allow category and date groups to expand/collapse wherever they appear in workspace
+  tabs, including expense categories. Keep headings and any totals visible when collapsed. Allow manual category
+  ordering, such as Accommodation above Travel to/from. Date groups retain their chronological ordering unless a
+  different behavior is explicitly agreed. Budget and Expenses start with the same default category order, but each
+  saves its own custom order independently; reordering one does not reorder the other, including after the tab split.
+- [P2] Saved detail alignment — In expanded activity and booking cards, align values and related-record controls to a
+  shared starting position after the labels, regardless of label length. Long notes and other wrapped values continue
+  beneath the value column rather than beneath the label. Align relationship controls vertically with their label;
+  allow a stacked layout on narrow screens. Keep create/edit form layouts unchanged.
+- [P2] Budget group headings — Align category totals with item amounts and reserve a consistent action area aligned
+  with item edit/delete controls. Design compact group expand/collapse and category move-up/move-down controls in that
+  area. Final control order, add-item placement, and whether move controls use a separate reorder mode remain open.
 - [P2] Budget — After changing a planned cost that has a linked expense, show a one-time dismissible note offering to
   adjust the expense amount. Closing the note deliberately keeps actual spending unchanged; show it again after a later
   planned-cost amount change.
@@ -34,6 +50,12 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   Show it again only after a later date change.
 
 ## Technical and quality improvements
+
+- [P1] Backend dependencies — The backend test run reports NU1902/NU1903 advisories for existing transitive
+  System.Security.Cryptography.Pkcs and System.Security.Cryptography.Xml 10.0.11 packages. Assess and apply compatible
+  patched dependencies in a separate maintenance change.
+- [P2] Frontend tests — TripSetup.test.tsx imports the removed components/setup/TripSetup component, so the full unit
+  suite fails during collection despite the runnable tests passing. Update or replace that stale setup coverage.
 
 Add accessibility refinements, performance work, test-coverage gaps, dependency upgrades, error-handling improvements,
 and documentation corrections here.

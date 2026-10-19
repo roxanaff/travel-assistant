@@ -1,5 +1,5 @@
 // Handles requests for expected trip costs. It checks ownership and any
-// relationship to bookings or expenses before changing stored records.
+// relationship to expenses before changing stored records.
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;
@@ -38,9 +38,7 @@ public static class PlannedCostEndpoints
                     cost.CreatedAtUtc,
                     // The UI uses this derived flag to show whether a planned cost has been spent.
                     ExpenseAdded = cost.Expense != null,
-                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null,
-                    cost.BookingId,
-                    cost.HasPendingDeletedBookingNotice
+                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null
                 })
                 .ToListAsync();
 
@@ -107,40 +105,10 @@ public static class PlannedCostEndpoints
                 return Results.NotFound();
             }
 
-            if (plannedCost.BookingId is not null)
-            {
-                var booking = await database.Bookings.FindAsync(plannedCost.BookingId);
-                if (booking is not null)
-                {
-                    booking.HasPendingDeletedPlannedCostNotice = true;
-                    if (plannedCost.Expense is not null)
-                    {
-                        booking.HasPendingDeletedExpenseNotice = true;
-                    }
-                }
-            }
-
             database.PlannedCosts.Remove(plannedCost);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeletePlannedCost");
-
-        routes.MapPost("/planned-costs/{id:guid}/dismiss-deleted-booking-notice", async (
-            Guid tripId,
-            Guid id,
-            TravelAssistantDbContext database) =>
-        {
-            var plannedCost = await database.PlannedCosts.SingleOrDefaultAsync(cost =>
-                cost.Id == id && cost.TripId == tripId);
-            if (plannedCost is null)
-            {
-                return Results.NotFound();
-            }
-
-            plannedCost.HasPendingDeletedBookingNotice = false;
-            await database.SaveChangesAsync();
-            return Results.NoContent();
-        }).WithName("DismissPlannedCostDeletedBookingNotice");
 
         return app;
     }

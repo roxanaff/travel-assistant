@@ -116,20 +116,16 @@ public static class ExpenseEndpoints
         routes.MapDelete("/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var expense = await database.Expenses
-                .Include(item => item.PlannedCost)
+                .Include(item => item.Booking)
                 .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)
             {
                 return Results.NotFound();
             }
 
-            if (expense.PlannedCost?.BookingId is not null)
+            if (expense.Booking is not null)
             {
-                var booking = await database.Bookings.FindAsync(expense.PlannedCost.BookingId);
-                if (booking is not null)
-                {
-                    booking.HasPendingDeletedExpenseNotice = true;
-                }
+                expense.Booking.HasPendingDeletedExpenseNotice = true;
             }
 
             database.Expenses.Remove(expense);

@@ -1,5 +1,4 @@
-// Database model for an expected trip cost. It can be related to a booking
-// and to the separate expense that records what was actually spent.
+// Database model for an expected trip cost and its optional actual expense.
 namespace TravelAssistant.Models;
 
 /// <summary>
@@ -12,12 +11,6 @@ public class PlannedCost
     public Guid TripId { get; set; }
 
     public Trip Trip { get; set; } = null!;
-
-    public Guid? BookingId { get; set; }
-
-    public Booking? Booking { get; set; }
-
-    public bool HasPendingDeletedBookingNotice { get; set; }
 
     public string Name { get; set; } = "Cost item";
 

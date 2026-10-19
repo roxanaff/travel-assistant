@@ -27,8 +27,7 @@ public static class BookingEndpoints
             var bookings = await database.Bookings
                 .Where(booking => booking.TripId == tripId)
                 .Include(booking => booking.Activities)
-                .Include(booking => booking.PlannedCost)
-                    .ThenInclude(cost => cost!.Expense)
+                .Include(booking => booking.Expense)
                 .ToListAsync();
 
             var ordered = bookings
@@ -87,9 +86,9 @@ public static class BookingEndpoints
                 return Results.NotFound();
             }
 
-            if ((request.TotalCost is null || request.TotalCost == 0) && booking.PlannedCost is not null)
+            if ((request.TotalCost is null || request.TotalCost == 0) && booking.Expense is not null)
             {
-                return Results.Conflict("Remove or delete the linked budget entries before clearing this booking's cost.");
+                return Results.Conflict("Unlink or delete the related expense before clearing this booking's cost.");
             }
 
             foreach (var activity in booking.Activities)
@@ -125,13 +124,9 @@ public static class BookingEndpoints
                 activity.HasPendingDeletedBookingNotice = true;
             }
 
-            if (booking.PlannedCost is not null)
+            if (booking.Expense is not null)
             {
-                booking.PlannedCost.HasPendingDeletedBookingNotice = true;
-                if (booking.PlannedCost.Expense is not null)
-                {
-                    booking.PlannedCost.Expense.HasPendingDeletedBookingNotice = true;
-                }
+                booking.Expense.HasPendingDeletedBookingNotice = true;
             }
 
             database.Bookings.Remove(booking);
@@ -151,7 +146,6 @@ public static class BookingEndpoints
             }
 
             booking.HasPendingDeletedActivityNotice = false;
-            booking.HasPendingDeletedPlannedCostNotice = false;
             booking.HasPendingDeletedExpenseNotice = false;
             await database.SaveChangesAsync();
             return Results.NoContent();
@@ -262,58 +256,18 @@ public static class BookingEndpoints
             return Results.NoContent();
         }).WithName("DismissActivityUpdateReview");
 
-        routes.MapPost("/bookings/{id:guid}/planned-costs/{plannedCostId:guid}", async (
+        routes.MapPost("/bookings/{id:guid}/expenses", async (
             Guid tripId,
             Guid id,
-            Guid plannedCostId,
+            CreateBookingExpenseRequest request,
             TravelAssistantDbContext database) =>
         {
-            var booking = await FindBooking(tripId, id, database);
-            var plannedCost = await database.PlannedCosts
-                .Include(cost => cost.Booking)
-                .SingleOrDefaultAsync(cost => cost.Id == plannedCostId && cost.TripId == tripId);
-            if (booking is null || plannedCost is null)
-            {
-                return Results.NotFound();
-            }
-
-            if (booking.TotalCost is null || booking.TotalCost == 0)
-            {
-                return Results.Conflict("Add a total cost before linking this booking to the budget.");
-            }
-
-            if (booking.PlannedCost is not null && booking.PlannedCost.Id != plannedCost.Id)
-            {
-                return Results.Conflict("This booking already has a linked planned cost.");
-            }
-
-            if (plannedCost.BookingId is not null && plannedCost.BookingId != booking.Id)
-            {
-                return Results.Conflict("This planned cost is already linked to another booking.");
-            }
-
-            plannedCost.BookingId = booking.Id;
-            plannedCost.HasPendingDeletedBookingNotice = false;
-            try
-            {
-                await database.SaveChangesAsync();
-            }
-            catch (DbUpdateException exception) when (
-                BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(exception))
-            {
-                return Results.Conflict("This booking already has a linked planned cost.");
-            }
-
-            return Results.Ok(new { plannedCost.Id, plannedCost.BookingId });
-        }).WithName("LinkBookingPlannedCost");
-
-        routes.MapPost("/bookings/{id:guid}/planned-costs", async (
-            Guid tripId,
-            Guid id,
-            CreatePlannedCostRequest request,
-            TravelAssistantDbContext database) =>
-        {
-            var validationError = PlannedCostValidation.Validate(request);
+            var validationError = ExpenseValidation.Validate(new CreateExpenseRequest(
+                request.Name,
+                request.Category,
+                request.Amount,
+                request.ExpenseDate,
+                null));
             if (validationError is not null)
             {
                 return Results.BadRequest(validationError);
@@ -325,95 +279,21 @@ public static class BookingEndpoints
                 return Results.NotFound();
             }
 
-            var eligibilityError = ValidateBudgetEligibility(booking);
+            var eligibilityError = ValidateExpenseEligibility(booking);
             if (eligibilityError is not null)
             {
                 return eligibilityError;
             }
 
-            if (booking.PlannedCost is not null)
-            {
-                return Results.Conflict("This booking already has a linked planned cost.");
-            }
-
-            var plannedCost = CreatePlannedCost(tripId, booking.Id, request);
-            database.PlannedCosts.Add(plannedCost);
-            try
-            {
-                await database.SaveChangesAsync();
-            }
-            catch (DbUpdateException exception) when (
-                BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(exception))
-            {
-                return Results.Conflict("This booking already has a linked planned cost.");
-            }
-
-            return Results.Created(
-                $"/api/trips/{tripId}/planned-costs/{plannedCost.Id}",
-                ToPlannedCostResponse(plannedCost));
-        }).WithName("CreateBookingPlannedCost");
-
-        routes.MapPost("/bookings/{id:guid}/expenses", async (
-            Guid tripId,
-            Guid id,
-            CreateBookingExpenseRequest request,
-            TravelAssistantDbContext database) =>
-        {
-            var expenseRequest = new CreateExpenseRequest(
-                request.Name,
-                request.Category,
-                request.Amount,
-                request.ExpenseDate,
-                null);
-            var expenseValidationError = ExpenseValidation.Validate(expenseRequest);
-            if (expenseValidationError is not null)
-            {
-                return Results.BadRequest(expenseValidationError);
-            }
-
-            var booking = await FindBooking(tripId, id, database);
-            if (booking is null)
-            {
-                return Results.NotFound();
-            }
-
-            var eligibilityError = ValidateBudgetEligibility(booking);
-            if (eligibilityError is not null)
-            {
-                return eligibilityError;
-            }
-
-            var plannedCost = booking.PlannedCost;
-            if (plannedCost?.Expense is not null)
+            if (booking.Expense is not null)
             {
                 return Results.Conflict("This booking already has a linked expense.");
-            }
-
-            if (plannedCost is null)
-            {
-                if (request.PlannedCost is null)
-                {
-                    return Results.BadRequest("Add planned cost details before creating this expense.");
-                }
-
-                var plannedCostValidationError = PlannedCostValidation.Validate(request.PlannedCost);
-                if (plannedCostValidationError is not null)
-                {
-                    return Results.BadRequest(plannedCostValidationError);
-                }
-
-                plannedCost = CreatePlannedCost(tripId, booking.Id, request.PlannedCost);
-                database.PlannedCosts.Add(plannedCost);
-            }
-            else if (request.PlannedCost is not null)
-            {
-                return Results.BadRequest("This booking already has a linked planned cost.");
             }
 
             var expense = new Expense
             {
                 TripId = tripId,
-                PlannedCost = plannedCost,
+                BookingId = booking.Id,
                 Name = NormalizeBudgetName(request.Name),
                 Category = request.Category,
                 Amount = request.Amount,
@@ -425,39 +305,80 @@ public static class BookingEndpoints
                 await database.SaveChangesAsync();
             }
             catch (DbUpdateException exception) when (
-                BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(exception)
-                || BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception))
+                BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception))
             {
-                return Results.Conflict(
-                    "This booking already has linked budget records. Refresh and try again.");
+                return Results.Conflict("This booking already has a linked expense.");
             }
 
             return Results.Created(
                 $"/api/trips/{tripId}/expenses/{expense.Id}",
-                new
-                {
-                    Expense = ToExpenseResponse(expense),
-                    PlannedCost = ToPlannedCostResponse(plannedCost)
-                });
+                ToExpenseResponse(expense));
         }).WithName("CreateBookingExpense");
 
-        routes.MapDelete("/bookings/{id:guid}/planned-costs/{plannedCostId:guid}", async (
+        routes.MapPost("/bookings/{id:guid}/expenses/{expenseId:guid}", async (
             Guid tripId,
             Guid id,
-            Guid plannedCostId,
+            Guid expenseId,
             TravelAssistantDbContext database) =>
         {
-            var plannedCost = await database.PlannedCosts.SingleOrDefaultAsync(cost =>
-                cost.Id == plannedCostId && cost.TripId == tripId && cost.BookingId == id);
-            if (plannedCost is null)
+            var booking = await FindBooking(tripId, id, database);
+            var expense = await database.Expenses.SingleOrDefaultAsync(item =>
+                item.Id == expenseId && item.TripId == tripId);
+            if (booking is null || expense is null)
             {
                 return Results.NotFound();
             }
 
-            plannedCost.BookingId = null;
-            await database.SaveChangesAsync();
+            var eligibilityError = ValidateExpenseEligibility(booking);
+            if (eligibilityError is not null)
+            {
+                return eligibilityError;
+            }
+
+            if (booking.Expense is not null && booking.Expense.Id != expense.Id)
+            {
+                return Results.Conflict("This booking already has a linked expense.");
+            }
+
+            if (expense.BookingId is not null && expense.BookingId != booking.Id)
+            {
+                return Results.Conflict("This expense is already linked to another booking.");
+            }
+
+            try
+            {
+                // Do not overwrite a relationship another request established after this one loaded.
+                var updated = await database.Expenses
+                    .Where(item => item.Id == expense.Id && item.TripId == tripId
+                        && (item.BookingId == null || item.BookingId == booking.Id))
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(item => item.BookingId, booking.Id)
+                        .SetProperty(item => item.HasPendingDeletedBookingNotice, false));
+                if (updated == 0)
+                {
+                    return Results.Conflict("This expense is already linked to another booking.");
+                }
+            }
+            catch (Exception exception) when (
+                BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception))
+            {
+                return Results.Conflict("This booking already has a linked expense.");
+            }
+
             return Results.NoContent();
-        }).WithName("UnlinkBookingPlannedCost");
+        }).WithName("LinkBookingExpense");
+
+        routes.MapDelete("/bookings/{id:guid}/expenses/{expenseId:guid}", async (
+            Guid tripId,
+            Guid id,
+            Guid expenseId,
+            TravelAssistantDbContext database) =>
+        {
+            var updated = await database.Expenses
+                .Where(item => item.Id == expenseId && item.TripId == tripId && item.BookingId == id)
+                .ExecuteUpdateAsync(update => update.SetProperty(item => item.BookingId, (Guid?)null));
+            return updated == 0 ? Results.NotFound() : Results.NoContent();
+        }).WithName("UnlinkBookingExpense");
 
         return app;
     }
@@ -465,8 +386,7 @@ public static class BookingEndpoints
     private static Task<Booking?> FindBooking(Guid tripId, Guid id, TravelAssistantDbContext database) =>
         database.Bookings
             .Include(booking => booking.Activities)
-            .Include(booking => booking.PlannedCost)
-                .ThenInclude(cost => cost!.Expense)
+            .Include(booking => booking.Expense)
             .SingleOrDefaultAsync(booking => booking.Id == id && booking.TripId == tripId);
 
     private static void ApplyRequest(Booking booking, SaveBookingRequest request)
@@ -499,50 +419,26 @@ public static class BookingEndpoints
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    // A booking must have a usable cost before it can create or link budget records.
-    private static IResult? ValidateBudgetEligibility(Booking booking)
+    private static IResult? ValidateExpenseEligibility(Booking booking)
     {
-        if (booking.TotalCost is null || booking.TotalCost <= 0)
+        if (booking.TotalCost is null or <= 0
+            || booking.AmountPaid - (booking.AmountRefunded ?? 0) <= 0)
         {
-            return Results.Conflict("Add a positive total cost before adding this booking to the budget.");
+            return Results.Conflict("Record a positive paid amount before adding or linking an expense.");
         }
 
         return null;
     }
 
-    private static PlannedCost CreatePlannedCost(
-        Guid tripId,
-        Guid bookingId,
-        CreatePlannedCostRequest request) => new()
-    {
-        TripId = tripId,
-        BookingId = bookingId,
-        Name = NormalizeBudgetName(request.Name),
-        Category = request.Category,
-        Amount = request.Amount
-    };
-
     private static string NormalizeBudgetName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
-
-    private static object ToPlannedCostResponse(PlannedCost plannedCost) => new
-    {
-        plannedCost.Id,
-        plannedCost.TripId,
-        plannedCost.BookingId,
-        plannedCost.Name,
-        plannedCost.Category,
-        plannedCost.Amount,
-        plannedCost.CreatedAtUtc,
-        ExpenseAdded = plannedCost.Expense is not null,
-        ExpenseId = plannedCost.Expense?.Id
-    };
 
     private static object ToExpenseResponse(Expense expense) => new
     {
         expense.Id,
         expense.TripId,
         expense.PlannedCostId,
+        expense.BookingId,
         expense.Name,
         expense.Category,
         expense.Amount,
@@ -624,7 +520,6 @@ public static class BookingEndpoints
         booking.AmountPaid,
         booking.AmountRefunded,
         booking.HasPendingDeletedActivityNotice,
-        booking.HasPendingDeletedPlannedCostNotice,
         booking.HasPendingDeletedExpenseNotice,
         FinancialStatus = GetFinancialStatus(booking),
         NetCost = booking.AmountPaid - (booking.AmountRefunded ?? 0),
@@ -640,8 +535,7 @@ public static class BookingEndpoints
             activity.PendingBookingChangeFields,
             activity.PendingActivityChangeFields
         }),
-        PlannedCostId = booking.PlannedCost?.Id,
-        ExpenseId = booking.PlannedCost?.Expense?.Id,
+        ExpenseId = booking.Expense?.Id,
         booking.CreatedAtUtc
     };
 

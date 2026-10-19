@@ -65,10 +65,8 @@ export type Booking = {
     financialStatus: BookingFinancialStatus | null;
     netCost: number;
     activityLinks: BookingActivityLink[];
-    plannedCostId: string | null;
     expenseId: string | null;
     hasPendingDeletedActivityNotice: boolean;
-    hasPendingDeletedPlannedCostNotice: boolean;
     hasPendingDeletedExpenseNotice: boolean;
     createdAtUtc: string;
 };

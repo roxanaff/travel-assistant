@@ -248,6 +248,23 @@ Build on the existing default list:
 
 ## Better budget control
 
+### Separate Budget and Expenses pages (future direction)
+
+- Split the current combined Budget & expenses workspace tab into **Budget** and **Expenses**. This is future planned
+  work, not part of the current booking implementation.
+- Budget owns planned costs and can grow to include savings progress toward the trip's funding target, with an amount
+  saved, remaining amount, and progress indicator. Savings, planned costs, and actual spending remain distinct concepts.
+- Expenses owns actual spending and can grow to include progress/remaining amounts overall and per category.
+- Before implementation, define the savings target, how saved amounts are maintained, the denominator for overall and
+  category spending indicators, behavior when a target is absent or exceeded, and navigation between linked records
+  on the separate pages. A category's share of total spending is different from spending against a category budget.
+- Preserve current planned-cost and expense item layouts. Group collapse, category ordering, aligned heading totals,
+  and remembered view settings are separate shared usability work tracked in the maintenance backlog.
+- Budget and Expenses use the same initial category order, then remember independently customized orders. A change
+  on one page does not change the other page's order.
+
+### Other improvements
+
 Add:
 
 - Per-day and per-traveller totals

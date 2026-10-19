@@ -6,6 +6,76 @@ Bookings give a traveller one place to record actual reservations for a trip, in
 activities, events, and restaurants. The first version is a manual booking register. Ideas that have not reached the
 reservation stage belong in the To-do checklist or itinerary instead.
 
+## Current implementation revision
+
+Implementation has resumed with approval of the revised financial relationships and related-record review behavior.
+The decisions below supersede the earlier booking-to-planned-cost chain. The Status section distinguishes the current
+revision from historical chunks that implemented the previous design.
+
+### Agreed changes
+
+- Remove the booking-to-planned-cost relationship and its create/link actions.
+- Keep a direct booking-to-expense relationship and the existing planned-cost-to-expense relationship. Creating an
+  expense from a booking must not create a planned cost automatically.
+- After a planned cost creates an expense, replace the generic **Added** text with a navigation control naming the
+  actual expense, alongside **Undo**. Selecting it focuses and briefly highlights the matching expense.
+- A booking with a positive cost that is not fully paid offers **Mark as paid** outside the edit form. The action sets
+  Amount paid to Total cost. It does not by itself create an expense.
+- Show outside-trip-date warnings on saved booking cards as well as in their forms. Card warnings are dismissible
+  and identify the affected journey/date, following the existing orange warning treatment.
+- Vertically align related-record navigation controls and adjacent actions with their row labels. Reduce excess
+  padding and row height consistently across the app while retaining usable interaction targets and keyboard focus.
+- Saved booking cards use a single left-aligned column for secondary details. The create/edit form layout stays as is.
+- Within that detail column, labels and values have consistent alignment: values and related-record controls begin at
+  the same horizontal position regardless of label length. Wrapped values continue under the value, including long
+  notes and links. Apply the same treatment to expanded activity details; support narrow-screen wrapping without
+  horizontal overflow.
+- Relevant related-record change notices work in both directions, including expense changes prompting a notice on the
+  linked booking. Show a dismissible notice for each affected relationship, with **Keep as is** and an update action
+  that states the proposed change. Applying the update takes effect immediately, without a separate preview or
+  confirmation step. Records are never synchronized automatically.
+- On saved booking and activity cards, show related-record change notices inside the card immediately below the
+  summary, visible when collapsed as well as expanded. Identify the related record in the notice and allow the update
+  directly there without switching workspace tabs. Render each notice once, rather than duplicating it in expanded
+  relationship details; a separate collapsed **Update available** indicator is unnecessary.
+- Change notices identify only the exact fields that changed and their previous/current values, such as
+  **Departure date: 3 Oct -> 4 Oct**. Do not append unchanged cost, location, or other unrelated details. Applying an
+  update changes only the indicated fields; before/after values must be retained for this behavior.
+- Expense and planned-cost change notices span the width of the affected item, with update/keep actions available
+  there without changing tabs. Keep the existing planned-cost and expense item layouts; the proposed packing/to-do-style
+  item layout change is dropped.
+
+### Approved financial rules
+
+- Expense creation/linking requires a positive net paid amount. Partially paid bookings are eligible. Prefill the
+  expense amount with Amount paid minus Amount refunded; the user may review and change it before saving.
+- A booking has at most one expense and an expense has at most one booking. An expense may also belong to a planned
+  cost independently. Offer **Link existing expense** from the booking to avoid duplicating spending.
+- A later expense-amount change can offer to update the booking's Amount paid to Expense amount plus Amount refunded.
+  Refunds are stored as positive amounts, so this reconstructs the original payment rather than adding spending.
+  Keep Total cost unchanged. If the proposed Amount paid exceeds Total cost, explain the conflict and require editing
+  the booking; do not silently increase its price.
+- Keep existing planned costs and expenses when migrating old chains. Copy an existing chain's booking link directly
+  to its expense, then remove the booking/planned-cost relationship. A plan without an expense remains a plan without
+  creating any expense.
+- Place outside-trip warnings inside saved cards below their summaries. Place budget warnings beneath the affected
+  item's existing text and amount/actions, spanning the item width.
+- Dismissed warnings acknowledge the current change across visits; a subsequent relevant change may show a new notice.
+  An accepted update must not cause a reciprocal notice for the same change.
+- **Mark as paid** belongs beside Amount paid on active, positive-cost bookings that are not fully paid. It sets Amount
+  paid to Total cost and offers an immediate Undo. Cancelled bookings use their editable payment/refund fields instead.
+
+### Reported regression to verify and fix when implementation resumes
+
+- A deleted linked activity can remain visible as a stale navigation link in Bookings. Code inspection identifies a
+  likely race: itinerary deletion waits five seconds for Undo while Bookings loads relationships only on entering the
+  page. Entering Bookings before deletion commits can retain the old link until the page is loaded again. The observed
+  sequence has not yet been reproduced in a browser. Ensure committed deletions remove stale relationships and show
+  the persistent deleted-link notice without requiring another navigation; preserve Undo behavior.
+
+Implementation is authorized in commit-sized chunks. Shared group controls and remembered view settings are separate
+backlog work; the Budget/Expenses tab split and progress indicators remain future roadmap work.
+
 ## Workspace
 
 - Add a **Bookings** section to the trip workspace.
@@ -31,7 +101,7 @@ The booking name and start date are required. A booking has:
 - A free state selected explicitly in the form.
 - An optional amount paid. It must not exceed the total cost.
 - An optional amount refunded for a cancelled booking that had been partially or fully paid.
-- Optional links to multiple activities and one planned cost. Any related expense is reached through that planned cost.
+- Optional links to multiple activities and one expense directly.
 
 ### Provider and link guidance
 
@@ -165,36 +235,30 @@ details are deferred.
 
 ## Related itinerary and financial records
 
-A booking can link to multiple activities and one planned cost. Each activity can link to at most one booking. The
-planned cost can link to one expense using the existing budget relationship, so the financial records form one clear
-chain: booking to planned cost to expense. A booking does not maintain a second direct expense link. Related records
-remain independent after creation and are never silently overwritten when another record changes.
+A booking can link to multiple activities and one expense directly. Each activity can link to at most one booking.
+Planned costs remain separate from bookings; a planned cost can still link to an expense. One expense may therefore
+link to a booking and a planned cost independently. Related records remain independent after creation and are never
+silently overwritten when another record changes.
 
 ### Create financial records from a booking
 
-A booking offers actions analogous to the existing planned-cost-to-expense action. Financial actions are available only
-when the booking has a positive Total cost. A booking with blank Total cost or marked Free has no Add or Link budget
-actions; restaurant spending or another purchase can still be recorded independently in Budget & expenses.
-
-- **Add to planned costs** is available when no planned cost is linked. The new planned cost uses the booking's Total
-  cost.
-- **Link existing planned cost** connects an existing unlinked planned cost.
-- **Add to expenses** uses the same chain. If no planned cost exists, the review form clearly shows that it will create
-  both a planned cost and its expense. The planned cost uses Total cost and the expense uses the positive net paid
-  amount: Amount paid minus Amount refunded.
-- Either action opens a short prefilled form inside the expanded booking card, directly beneath its related-record
-  actions. It is not a modal, side panel, or separate Budget & expenses page.
-- The form prefills the name from the booking and suggests a financial category from the booking category. The user can review and
-  change every prefilled value before creating the record.
-- The expense date defaults to today because the booking's start date is not normally the payment date.
-- After creation, the booking shows its linked planned cost and, when present, the expense belonging to that planned
-  cost. Their names navigate to Budget & expenses and briefly emphasise the destination records.
-- Only one related-record form is open at a time. Starting another action or leaving the page follows the established
-  unsaved-changes confirmation behaviour.
+- **Add to expenses** is available for a positive net paid amount when no expense is linked. It creates only an expense.
+- **Link existing expense** selects an expense from this trip that is not already linked to a booking, including one
+  created from a planned cost.
+- Both actions use the established inline related-record form inside the expanded booking card. Expense creation uses
+  the same fields as the normal expense form and prefills the booking's name, suggested category, net paid amount,
+  and today's date. The user can change all prefilled fields.
+- Blank-cost, Free, unpaid, and fully refunded bookings do not offer expense creation/linking. A related expense is
+  still shown and can be unlinked if later payment changes make the booking ineligible.
+- Show the linked expense's name as a navigation control that focuses and briefly highlights the matching expense.
+  Unlinking preserves the expense and its independent planned-cost link.
+- Only one related-record form is open at a time. Changing actions or leaving follows the existing unsaved-changes
+  confirmation behavior.
+- API ownership and one-to-one uniqueness rules apply to both creation and linking.
 
 Booking categories map to suggested financial categories as follows:
 
-| Booking category             | Suggested planned-cost and expense category |
+| Booking category             | Suggested expense category                  |
 | ---------------------------- | ------------------------------------------- |
 | Not specified                | Not specified                               |
 | Accommodation                | Accommodation                               |
@@ -211,24 +275,8 @@ Booking categories map to suggested financial categories as follows:
 Every booking category therefore has a usable suggested financial category. The mapping is a convenience rather than an enforced
 classification; transport and events can be context-dependent, so the user can change the suggestion before saving.
 
-The booking, planned cost, and expense form one connected chain. A traveller cannot create two expenses for the same
-booking by using both creation paths:
-
-- If a booking has a linked planned cost, adding an expense from either the booking or planned cost creates the same one
-  expense belonging to that planned cost.
-- Once that expense exists, both places show it as already added and do not offer another Add expense action.
-- These uniqueness rules are enforced by the API as well as the interface.
-
-Existing financial records can be linked using these rules:
-
-- A booking links to at most one planned cost in the first version. Its expense relationship is derived from the planned
-  cost's existing one-to-one expense relationship.
-- Multiple payment expenses are deferred until the app supports transaction-level payments and refunds.
-- Linking a planned cost that already has an expense makes that expense visible from the booking automatically.
-- A standalone expense without a planned cost cannot be linked directly to a booking in the first version.
-- A planned cost already linked to another booking cannot be selected.
-- Unlinking the planned cost keeps both it and its expense unchanged.
-- The API enforces the one-to-one financial relationships and connected chain.
+Multiple payment expenses remain deferred. The first version uses one aggregate Amount paid/refunded on each booking
+and one linked expense, with explicit amount updates when those totals change.
 
 ### Itinerary links
 
@@ -308,44 +356,16 @@ cost changes may notify every related activity.
 
 ### Review changes from a booking
 
-If the booking's total cost, amount paid, or refund changes, linked financial records are not changed automatically:
+Changes never update the linked expense automatically. Compare the expense with the booking's net paid amount.
+When the relevant amount changes, show the exact before/after values and offer an immediate update or **Keep as is**.
+An update changes only the linked amount; names, categories, and payment/journey dates keep their separate meanings.
+Changes from the expense can similarly propose the Amount paid defined in the approved financial rules above.
 
-- Planned cost comparison uses the booking's total cost.
-- Expense comparison uses the booking's net cost.
-- Saving a difference shows a friendly review message with the old and new amounts and clear choices to keep or update
-  each affected record.
-- Adjusting changes only the linked record's amount in the first version, not its name, category, or date.
-- Keeping an existing amount is valid because it may include fees or another intentional adjustment.
-- A kept difference remains visible beside the affected booking with a **Review** action. If several bookings have
-  differences, the page header may also show a compact count that leads to them.
+When a fully refunded booking has an expense, its net cost is zero and expenses cannot store zero amounts. Offer
+**Keep expense and unlink** or **Delete expense**. Preserve the booking's original payment/refund history either way.
 
-Messages describe what changed in everyday language. For example, after a partial refund:
-
-> You received €20 back for this booking. The related expense still shows €100.  
-> **Update expense to €80** · **Keep €100**
-
-The expense also shows a dismissible notice that its related booking changed, with the same update choice. The planned
-cost does not need an amount update merely because a payment or refund changed; it represents what the traveller had
-planned to spend.
-
-When a fully refunded booking has an expense, its net cost is zero and the current budget cannot store a zero expense.
-Offer **Keep expense and unlink** or **Delete expense**. The booking retains its Amount paid, Amount refunded, and Fully
-refunded history either way.
-
-Cancelling a booking also shows a review message for its planned cost instead of changing or removing it automatically:
-
-> This booking was cancelled. Do you want to keep its planned cost in your budget?
-
-Offer **Keep linked**, **Keep but unlink**, and **Delete planned cost**. A partial or full refund does not decide this
-choice automatically because the original plan may still be useful for comparison.
-
-If Total cost is cleared or the booking is changed to Free, it cannot keep a budget link. Use concise language such as:
-
-> You removed the cost from this booking. What should happen to its budget entries?
-
-Offer **Go back**, **Keep them but remove the link**, and **Delete them too**. Tailor the wording and actions to the
-records that actually exist. Payment and refund history remains on the booking unless the traveller explicitly clears
-it while changing the booking.
+If Total cost is cleared or the booking is changed to Free while an expense is linked, require the user to unlink or
+delete the expense first; never delete recorded spending automatically.
 
 ### Planned-cost changes after an expense is created
 
@@ -397,8 +417,7 @@ Each booking is displayed as an expandable card, following the established itine
   breakdown, return journey information, related records, and related-record actions.
 - Information already shown in the persistent card summary, including its date range, location, and total cost, is not
   repeated in the expanded details.
-- Add to planned costs and Add to expenses automatically expand the relevant card and show their prefilled form inside
-  it.
+- Add to expenses automatically expands the relevant card and shows its prefilled form inside it.
 - Edit remains a distinct action and uses the app's established inline-form and unsaved-changes behaviour.
 - While editing, the form replaces the booking card rather than opening inside it, matching itinerary activities.
 - Show the expand control only when the booking has secondary information to reveal. Its action order matches itinerary:
@@ -494,7 +513,25 @@ The first version does not include:
 
 ## Status
 
-Implementation is in progress.
+Implementation is in progress under the approved revision above.
+
+Completed in the direct-expense chunk:
+
+- Direct booking/expense relationships across storage, API, and booking-card actions, including migration of existing
+  expense links and preservation of independent planned-cost/expense links.
+- Create a prefilled expense from net paid, or link/unlink an existing expense. Normal expense forms and booking forms
+  share their editable fields. Deleting a booking makes its surviving expense immediately available for relinking.
+- Linked-expense deletion uses an app-styled confirmation and keeps related records.
+- Backend/API and migration-backfill tests, affected frontend tests, production build, lint, and a Chromium
+  expense-creation/navigation test pass. Independent review has no remaining actionable findings. The full frontend
+  suite still has the pre-existing missing TripSetup import; a live PostgreSQL migration has not been exercised.
+
+Remaining: Mark as paid, exact bidirectional change notices and immediate updates, saved-card date warnings and aligned
+details, the planned-cost-to-expense navigation control, the reported stale deleted-activity link, and browser/user
+acceptance checks. Shared group/view improvements and the tab split remain separate work.
+
+The completed chunks below describe the earlier implementation history; the revised rules above supersede their
+booking/planned-cost-chain behavior.
 
 Completed in the backend foundation chunk:
 
