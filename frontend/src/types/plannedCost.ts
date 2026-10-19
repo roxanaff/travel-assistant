@@ -6,6 +6,7 @@ export type PlannedCost = {
     name: string;
     category: PlannedCostCategory | null;
     amount: number;
+    bookingId: string | null;
     createdAtUtc: string;
     expenseAdded?: boolean;
     expenseId?: string | null;

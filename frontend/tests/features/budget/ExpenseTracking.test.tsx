@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ExpenseTracking } from "../../../src/components/budget/ExpenseTracking";
@@ -52,11 +53,13 @@ describe("ExpenseTracking", () => {
 
     it("shows the loaded expense and recalculates the remaining budget", async () => {
         render(
-            <ExpenseTracking
-                trip={trip}
-                refreshKey={0}
-                onFormOpenChange={vi.fn()}
-            />,
+            <MemoryRouter>
+                <ExpenseTracking
+                    trip={trip}
+                    refreshKey={0}
+                    onFormOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
         );
         expect(await screen.findByText("Hotel")).toBeTruthy();
         expect(screen.getAllByText("€120").length).toBeGreaterThan(0);
@@ -68,11 +71,13 @@ describe("ExpenseTracking", () => {
     it("rejects a zero-value expense before calling the API", async () => {
         const user = userEvent.setup();
         render(
-            <ExpenseTracking
-                trip={trip}
-                refreshKey={0}
-                onFormOpenChange={vi.fn()}
-            />,
+            <MemoryRouter>
+                <ExpenseTracking
+                    trip={trip}
+                    refreshKey={0}
+                    onFormOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
         );
         await screen.findByText("Hotel");
         await user.click(screen.getByRole("button", { name: "Add expense" }));
@@ -89,11 +94,13 @@ describe("ExpenseTracking", () => {
     it("restores an expense when Undo is selected", async () => {
         const user = userEvent.setup();
         render(
-            <ExpenseTracking
-                trip={trip}
-                refreshKey={0}
-                onFormOpenChange={vi.fn()}
-            />,
+            <MemoryRouter>
+                <ExpenseTracking
+                    trip={trip}
+                    refreshKey={0}
+                    onFormOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
         );
         await screen.findByText("Hotel");
         await user.click(screen.getByRole("button", { name: "Delete Hotel" }));

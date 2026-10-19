@@ -3,6 +3,8 @@
 Travel Assistant is a full-stack trip-planning app. Create trips, organise activities, plan and track costs, and manage
 a packing checklist from one workspace.
 
+[Open the public app](https://travel-assistant-5cc.pages.dev/).
+
 The React frontend lives in `frontend/`; the ASP.NET Core API and PostgreSQL data layer live in `backend/`.
 
 Start with the [development guide](documentation/development-guide.md) for architecture, local setup, tests, and

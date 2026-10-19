@@ -514,6 +514,15 @@ Completed in the booking budget API chunk:
   boundary.
 - Stable response shapes for the planned cost and expense records created from a booking, with focused API coverage.
 
+Completed in the planned-cost frontend chunk:
+
+- Positive-cost bookings can create a prefilled planned cost or link an unlinked existing one from their expanded card.
+  Blank-cost and Free bookings do not offer these actions.
+- Linked planned costs and their expenses appear on the booking card and navigate to the matching budget record.
+  Unlinking a planned cost preserves the budget records.
+- Planned-cost forms use the app's unsaved-changes confirmation and amount validation; linked budget rows receive
+  navigation focus and a brief highlight.
+
 Completed in the first frontend chunk:
 
 - A Bookings workspace tab and route between Itinerary and Budget & expenses.
@@ -542,4 +551,4 @@ Completed in the itinerary integration foundation:
   activities in every group. Booking changes notify only the relevant journey group, except booking-wide cost changes.
 
 The booking/activity itinerary integration is complete for the first version. Remaining booking-feature work concerns
-budget interactions, broader browser coverage, and user testing rather than the itinerary relationship itself.
+expense creation and review from bookings, broader browser coverage, and user testing.

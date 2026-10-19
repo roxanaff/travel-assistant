@@ -16,7 +16,7 @@ type CardFocusState = {
 type Options = {
     availableIds: string[];
     elementIdPrefix: string;
-    expand: (id: string) => void;
+    expand?: (id: string) => void;
 };
 
 /** Consumes a one-use navigation request and briefly highlights its destination card. */
@@ -57,12 +57,22 @@ export function useNavigationCardFocus({
         if (!focusId || !availableIds.includes(focusId)) return;
 
         pendingFocusIdRef.current = null;
-        expand(focusId);
+        expand?.(focusId);
         setHighlightedId(focusId);
-        document.getElementById(`${elementIdPrefix}-${focusId}`)?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-        });
+        const element = document.getElementById(`${elementIdPrefix}-${focusId}`);
+        if (element) {
+            element.tabIndex = -1;
+            element.focus({ preventScroll: true });
+            const bounds = element.getBoundingClientRect();
+            if (bounds.top < 0 || bounds.bottom > window.innerHeight) {
+                element.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                        ? "instant"
+                        : "smooth",
+                    block: "nearest",
+                });
+            }
+        }
     }, [availableIds, elementIdPrefix, expand]);
 
     useEffect(() => {

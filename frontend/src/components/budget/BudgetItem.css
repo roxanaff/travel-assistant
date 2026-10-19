@@ -57,6 +57,26 @@
 .budget-item-editing .budget-item-form {
     margin-top: 0;
 }
+.budget-record-highlighted {
+    animation: budget-record-highlight 2.2s ease-out;
+}
+@keyframes budget-record-highlight {
+    0%, 35% {
+        outline: 3px solid var(--color-pink-500);
+        background: var(--color-pink-100);
+    }
+    100% {
+        outline: 3px solid transparent;
+        background: transparent;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .budget-record-highlighted {
+        animation: none;
+        outline: 3px solid var(--color-pink-500);
+        background: var(--color-pink-100);
+    }
+}
 @media (max-width: 700px) {
     .section-overview {
         grid-template-columns: 1fr;

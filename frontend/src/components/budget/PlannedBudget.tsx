@@ -23,6 +23,7 @@ import { GroupAddButton } from "../shared/GroupAddButton";
 import { UndoToast } from "../shared/UndoToast";
 import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
+import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 
 import "./PlannedBudget.css";
 import "./BudgetItem.css";
@@ -52,6 +53,10 @@ const localToday = () => {
  */
 export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: PlannedBudgetProps) {
     const [costs, setCosts] = useState<PlannedCost[]>([]);
+    const highlightedCostId = useNavigationCardFocus({
+        availableIds: costs.map((cost) => cost.id),
+        elementIdPrefix: "planned-cost",
+    });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
@@ -408,7 +413,11 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                             {form(editingCost, saveEdit, true)}
                                         </li>
                                     ) : (
-                                        <li className="list-row" key={cost.id}>
+                                        <li
+                                            id={`planned-cost-${cost.id}`}
+                                            className={`list-row${highlightedCostId === cost.id ? " budget-record-highlighted" : ""}`}
+                                            key={cost.id}
+                                        >
                                             <div className="budget-item-description">
                                                 <div className="budget-item-primary">
                                                     <strong>{cost.name}</strong>

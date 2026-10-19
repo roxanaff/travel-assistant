@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlannedBudget } from "../../../src/components/budget/PlannedBudget";
@@ -60,11 +61,13 @@ describe("PlannedBudget", () => {
 
     it("shows planned totals and remaining target budget", async () => {
         render(
-            <PlannedBudget
-                trip={trip}
-                onFormOpenChange={vi.fn()}
-                onExpenseAdded={vi.fn()}
-            />,
+            <MemoryRouter>
+                <PlannedBudget
+                    trip={trip}
+                    onFormOpenChange={vi.fn()}
+                    onExpenseAdded={vi.fn()}
+                />
+            </MemoryRouter>,
         );
 
         expect(await screen.findByText("Hotel")).toBeTruthy();
@@ -80,11 +83,13 @@ describe("PlannedBudget", () => {
         const user = userEvent.setup();
         const onExpenseAdded = vi.fn();
         render(
-            <PlannedBudget
-                trip={trip}
-                onFormOpenChange={vi.fn()}
-                onExpenseAdded={onExpenseAdded}
-            />,
+            <MemoryRouter>
+                <PlannedBudget
+                    trip={trip}
+                    onFormOpenChange={vi.fn()}
+                    onExpenseAdded={onExpenseAdded}
+                />
+            </MemoryRouter>,
         );
 
         await screen.findByText("Hotel");

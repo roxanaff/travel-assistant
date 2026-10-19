@@ -359,6 +359,43 @@
     padding-top: 4px;
 }
 
+.booking-related-budget {
+    display: grid;
+    justify-items: start;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.booking-related-budget > strong {
+    font-size: 0.9rem;
+}
+
+.booking-budget-record,
+.booking-budget-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 12px;
+}
+
+.booking-budget-record > span:first-child {
+    font-weight: 600;
+}
+
+.booking-budget-record > .text-button,
+.booking-budget-actions > .text-button {
+    padding: 0;
+}
+
+.booking-budget-form {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.booking-budget-form > p {
+    margin: 0;
+}
+
 .booking-create-activity-role {
     display: flex;
     align-items: center;

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense } from "../../api/expensesApi";
+import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 import type { Expense, NewExpenseForm } from "../../types/expense";
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
@@ -93,6 +94,10 @@ const sortExpenses = (expenses: Expense[]) =>
  */
 export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const highlightedExpenseId = useNavigationCardFocus({
+        availableIds: expenses.map((expense) => expense.id),
+        elementIdPrefix: "expense",
+    });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -474,7 +479,11 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                             {form(editingExpense, saveEdit, true)}
                                         </li>
                                     ) : (
-                                        <li className="list-row" key={expense.id}>
+                                        <li
+                                            id={`expense-${expense.id}`}
+                                            className={`list-row${highlightedExpenseId === expense.id ? " budget-record-highlighted" : ""}`}
+                                            key={expense.id}
+                                        >
                                             <div className="budget-item-description">
                                                 <div className="budget-item-primary">
                                                     <strong>{expense.name}</strong>
