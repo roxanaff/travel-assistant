@@ -20,7 +20,7 @@ import {
     createItineraryItem,
     getItineraryItems,
 } from "../../api/itineraryApi";
-import { getExpenses } from "../../api/expensesApi";
+import { deleteExpense, getExpenses } from "../../api/expensesApi";
 import type { Booking, BookingCategory, BookingForm } from "../../types/booking";
 import { createEmptyBookingForm } from "../../types/booking";
 import type { Expense, NewExpenseForm } from "../../types/expense";
@@ -52,6 +52,7 @@ import {
     useNavigationCardFocus,
 } from "../../utils/useNavigationCardFocus";
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
+import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { FieldLabel, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { FormDetailsToggle } from "../shared/FormDetailsToggle";
@@ -256,6 +257,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     const [budgetError, setBudgetError] = useState<string | null>(null);
     const [budgetErrorBookingId, setBudgetErrorBookingId] = useState<string | null>(null);
     const [isBudgetPending, setIsBudgetPending] = useState(false);
+    const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
     const [pendingBudgetTransition, setPendingBudgetTransition] = useState<(() => void) | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -740,6 +742,32 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         } catch (exception) {
             setBudgetError(
                 exception instanceof Error ? exception.message : "Could not unlink this expense.",
+            );
+        } finally {
+            setIsBudgetPending(false);
+        }
+    };
+
+    const confirmExpenseDeletion = async () => {
+        if (!expenseToDelete || isBudgetPending) return;
+
+        const expense = expenseToDelete;
+        setExpenseToDelete(null);
+        setIsBudgetPending(true);
+        setBudgetError(null);
+        setBudgetErrorBookingId(expense.bookingId);
+        try {
+            // A 404 means another view already removed it; clear the stale link as well.
+            await deleteExpense(trip.id, expense.id);
+            setExpenses((current) => current.filter((item) => item.id !== expense.id));
+            setBookings((current) => current.map((booking) => (
+                booking.expenseId === expense.id
+                    ? { ...booking, expenseId: null, hasPendingDeletedExpenseNotice: true }
+                    : booking
+            )));
+        } catch (exception) {
+            setBudgetError(
+                exception instanceof Error ? exception.message : "Could not delete this expense.",
             );
         } finally {
             setIsBudgetPending(false);
@@ -1875,6 +1903,16 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                         >
                                             Unlink
                                         </button>
+                                        {linkedExpense && (
+                                            <button
+                                                className="text-button"
+                                                type="button"
+                                                disabled={isBudgetPending}
+                                                onClick={() => setExpenseToDelete(linkedExpense)}
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                                 {!isBudgetLoading && !budgetLoadError && booking.netCost > 0
@@ -1990,6 +2028,20 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             {!isLoading && !error && bookings.length === 0 && !isAdding && <div className="booking-empty-state"><h3>No bookings yet</h3><p>Keep reservation details, confirmations, dates, and costs together.</p><button className="primary-button" type="button" onClick={startAdding}>Add booking</button></div>}
             {activeBookings.length > 0 && <ul className="list-items card-list booking-list">{activeBookings.map(renderBooking)}</ul>}
             {cancelledBookings.length > 0 && <section className="cancelled-bookings"><h3>Cancelled</h3><ul className="list-items card-list booking-list">{cancelledBookings.map(renderBooking)}</ul></section>}
+            <ConfirmDialog
+                isOpen={expenseToDelete !== null}
+                title="Delete linked expense?"
+                confirmLabel="Delete"
+                onCancel={() => setExpenseToDelete(null)}
+                onConfirm={() => void confirmExpenseDeletion()}
+            >
+                <p>
+                    Delete {expenseToDelete?.name}? It will be removed from spending.
+                    {expenseToDelete?.plannedCostId
+                        ? " Its booking and planned cost will be kept and unlinked."
+                        : " Its booking will be kept and unlinked."}
+                </p>
+            </ConfirmDialog>
             <FormDiscardDialog
                 isOpen={pendingBudgetTransition !== null}
                 onCancel={() => setPendingBudgetTransition(null)}

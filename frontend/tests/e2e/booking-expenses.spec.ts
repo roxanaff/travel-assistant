@@ -249,4 +249,22 @@ test("saved booking columns and budget amounts stay aligned", async ({ page }) =
     await expect(activityCard.locator(".itinerary-linked-booking a")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("activity-columns-mobile.png"), fullPage: true });
+
+    await activityCard.locator(".itinerary-linked-booking a").click();
+    const expenseSection = page.getByRole("region", { name: "Expenses for Round trip" });
+    await expenseSection.getByRole("button", { name: "Delete", exact: true }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Delete linked expense?" });
+    await expect(dialog).toContainText("Flight expense");
+    await expect(dialog).toContainText("removed from spending");
+    await expect(dialog).toContainText("booking will be kept and unlinked");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(expenseSection.getByRole("link", { name: "Flight expense", exact: true })).toBeVisible();
+    await expenseSection.getByRole("button", { name: "Delete", exact: true }).click();
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(expenseSection.getByRole("button", { name: "Add to expenses" })).toBeVisible();
+    expect((await browserRequest(page, `${tripApi}/expenses`)).body).toEqual([]);
+    const remainingBookings = (await browserRequest(page, `${tripApi}/bookings`)).body;
+    expect(remainingBookings).toHaveLength(1);
+    expect(remainingBookings[0].expenseId).toBeNull();
+    expect((await browserRequest(page, `${tripApi}/planned-costs`)).body).toHaveLength(1);
 });

@@ -591,9 +591,18 @@ Completed in the itinerary detail consistency chunk:
 - Twenty-three booking/itinerary tests, two Chromium tests with activity/booking desktop/mobile checks, production
   build, and lint pass. Independent review has no actionable findings; user acceptance is pending.
 
+Completed in the booking expense-deletion chunk:
+
+- Linked expenses offer **Delete** beside **Unlink**. The existing app confirmation names the expense, explains removal
+  from spending, and identifies the booking and any linked planned cost that will remain and be unlinked.
+- Cancel leaves records unchanged. Successful deletion clears the expense/link locally; a failed deletion preserves
+  the link and allows retry. An expense already deleted elsewhere is treated as removed rather than restored.
+- Thirteen booking tests, two Chromium tests including cancellation and actual deletion, production build, and lint
+  pass. Independent review has no actionable findings; user acceptance is pending. Browser tests used a separate
+  Release test server to avoid rebuilding files locked by the running local Debug app.
+
 Remaining: Mark as paid, exact bidirectional change notices and immediate updates (including collapsed activity
-warnings), saved-card date warnings, confirmed expense deletion from bookings, the planned-cost-to-expense navigation
-control, and further user acceptance checks. Shared group/view
+warnings), saved-card date warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their

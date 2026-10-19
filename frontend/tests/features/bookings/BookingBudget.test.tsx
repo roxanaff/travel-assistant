@@ -30,6 +30,7 @@ const itineraryApi = vi.hoisted(() => ({
     getItineraryItems: vi.fn(),
 }));
 const expensesApi = vi.hoisted(() => ({
+    deleteExpense: vi.fn(),
     getExpenses: vi.fn(),
 }));
 
@@ -211,6 +212,55 @@ describe("booking expense actions", () => {
         expect(suggestedBudgetCategory("CarHire")).toBe("LocalTransport");
         expect(suggestedBudgetCategory("ConcertEvent")).toBe("ActivitiesAndMuseums");
         expect(suggestedBudgetCategory("Restaurant")).toBe("Food");
+    });
+
+    it("confirms expense deletion separately from unlinking and keeps the booking", async () => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([{ ...hotel, expenseId: existingExpense.id }]);
+        expensesApi.getExpenses.mockResolvedValue([{ ...existingExpense, bookingId: hotel.id }]);
+        expensesApi.deleteExpense.mockResolvedValue(true);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        const region = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
+        await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
+        const dialog = screen.getByRole("alertdialog", { name: "Delete linked expense?" });
+        expect(within(dialog).getByText(/Hotel deposit.*removed from spending/)).toBeTruthy();
+        expect(within(dialog).getByText(/booking and planned cost will be kept and unlinked/)).toBeTruthy();
+        expect(expensesApi.deleteExpense).not.toHaveBeenCalled();
+        await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+        expect(screen.queryByRole("alertdialog")).toBeNull();
+        expect(within(region).getByRole("link", { name: existingExpense.name })).toBeTruthy();
+
+        await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
+        await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
+        await waitFor(() => expect(expensesApi.deleteExpense).toHaveBeenCalledWith(trip.id, existingExpense.id));
+        expect(await within(region).findByRole("button", { name: "Add to expenses" })).toBeTruthy();
+        expect(within(region).queryByRole("link", { name: existingExpense.name })).toBeNull();
+        expect(within(region).queryByRole("button", { name: "Link existing expense" })).toBeNull();
+        expect(screen.getByText(hotel.name)).toBeTruthy();
+        expect(bookingsApi.deleteBooking).not.toHaveBeenCalled();
+        expect(bookingsApi.unlinkBookingExpense).not.toHaveBeenCalled();
+    });
+
+    it("keeps the linked expense on deletion failure and allows a retry", async () => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([{ ...hotel, expenseId: existingExpense.id }]);
+        expensesApi.getExpenses.mockResolvedValue([{ ...existingExpense, bookingId: hotel.id, plannedCostId: null }]);
+        expensesApi.deleteExpense.mockRejectedValueOnce(new Error("Could not delete this expense."));
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        const region = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
+        await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
+        expect(within(screen.getByRole("alertdialog")).getByText(/Its booking will be kept and unlinked/)).toBeTruthy();
+        await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
+        expect(await within(region).findByText("Could not delete this expense.")).toBeTruthy();
+        expect(within(region).getByRole("link", { name: existingExpense.name })).toBeTruthy();
+
+        expensesApi.deleteExpense.mockResolvedValueOnce(false);
+        await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
+        await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
+        expect(await within(region).findByRole("button", { name: "Add to expenses" })).toBeTruthy();
+        expect(within(region).queryByText("Could not delete this expense.")).toBeNull();
     });
 
     it("removes a stale activity link when deletion completes after entering Bookings", async () => {
