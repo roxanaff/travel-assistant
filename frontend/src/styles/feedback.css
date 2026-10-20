@@ -44,6 +44,20 @@
     padding: 0;
 }
 
+.linked-record-warning {
+    display: grid;
+    grid-column: 1 / -1;
+    min-width: 0;
+    gap: 8px;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.linked-record-changes {
+    display: grid;
+    gap: 3px;
+}
+
 .inline-message-error,
 .form-error,
 .form-field-error {

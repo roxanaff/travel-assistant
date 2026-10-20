@@ -374,6 +374,54 @@ namespace TravelAssistant.Migrations
                     b.ToTable("ItineraryItems");
                 });
 
+            modelBuilder.Entity("TravelAssistant.Models.LinkedRecordReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChangesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsMismatch")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TargetSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId", "SourceId", "TargetId")
+                        .IsUnique();
+
+                    b.ToTable("LinkedRecordReviews");
+                });
+
             modelBuilder.Entity("TravelAssistant.Models.PackingItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -712,6 +760,17 @@ namespace TravelAssistant.Migrations
                         .IsRequired();
 
                     b.Navigation("Booking");
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.LinkedRecordReview", b =>
+                {
+                    b.HasOne("TravelAssistant.Models.Trip", "Trip")
+                        .WithMany()
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Trip");
                 });

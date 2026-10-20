@@ -48,6 +48,19 @@ revision from historical chunks that implemented the previous design.
 - Change notices identify only the exact fields that changed and their previous/current values, such as
   **Departure date: 3 Oct -> 4 Oct**. Do not append unchanged cost, location, or other unrelated details. Applying an
   update changes only the indicated fields; before/after values must be retained for this behavior.
+- Keep the first previous value and latest current value across repeated edits until the review is resolved. Reverting
+  a field removes its pending change. Reject decisions based on an outdated review revision and refresh the notice.
+- Updates respect the destination's existing validation and independent edits. Explain conflicts instead of
+  overwriting an independently edited field, creating a zero expense, exceeding a booking's total, or placing an
+  activity outside trip dates. A safe update must not create a reciprocal warning for the accepted fields; changes
+  affecting a different relationship still produce that relationship's own review.
+- Booking/activity schedule updates use the existing creation mappings. Moving an activity's start into a booking
+  preserves that booking's duration unless duration itself changed. A booking's explicit end changes can update the
+  activity's duration when the booking has sufficient date/time information. If a source field has no unambiguous
+  destination (such as a separate arrival location for an activity with one location), explain why manual review is
+  required rather than silently choosing another field.
+- Notices predating stored field history cannot reconstruct earlier values. Keep them dismissible with **Keep as is**,
+  explicitly state that the prior values were not recorded, and require manual editing instead of inventing a diff.
 - Expense and planned-cost change notices span the width of the affected item, with update/keep actions available
   there without changing tabs. Keep the existing planned-cost and expense item layouts; the proposed packing/to-do-style
   item layout change is dropped.
@@ -104,8 +117,8 @@ revision from historical chunks that implemented the previous design.
 
 - Finish the booking work before the broader budget/expense changes. Keep planned-cost **Ungrouped** viewing,
   expense-side related-record disclosures, and budget/expense layout/group controls in documentation for now.
-- Linking expenses with different amounts is allowed because a difference may be intentional. The later financial
-  review flow should also flag a mismatch at link time, comparing expense amount with net paid rather than Total cost,
+- Linking expenses with different amounts is allowed because a difference may be intentional. The financial
+  review flow flags a mismatch at link time, comparing expense amount with net paid rather than Total cost,
   with an explicit update or **Keep as is**. Do not silently change either amount or treat a linked expense as another
   payment added to the booking.
 
@@ -601,9 +614,42 @@ Completed in the booking expense-deletion chunk:
   pass. Independent review has no actionable findings; user acceptance is pending. Browser tests used a separate
   Release test server to avoid rebuilding files locked by the running local Debug app.
 
-Remaining: Mark as paid, exact bidirectional change notices and immediate updates (including collapsed activity
-warnings), saved-card date warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
-improvements and the tab split remain separate work.
+Completed in the related-change warning visibility chunk:
+
+- Existing booking/activity change notices appear below the saved card summary in both directions, even collapsed.
+  Each notice identifies the linked record and relevant journey and is rendered once, not repeated in expanded details.
+- Dismissal works without expanding and persists through the existing endpoints. A failed dismissal leaves the notice
+  visible for retry, with an error visible outside the collapsed details. Missing full linked-record details do not
+  hide the pending notice.
+- Twenty-seven booking/itinerary tests and two Chromium tests pass, including real changes in both directions,
+  collapsed/expanded visibility, no duplicate notices, and dismissal persistence across reloads. Production build
+  and lint pass; independent review has no actionable findings. User acceptance is pending.
+- The initial visibility chunk used current-details summaries; the completed review flow below supersedes them.
+
+Completed in the linked-record review/action chunk:
+
+- Persisted field-level reviews cover Bookings ↔ Activities, Bookings ↔ Expenses, and Planned costs ↔ Expenses in both
+  directions. Notices show only changed fields, keep their first/most recent values across edits, and disappear when
+  those source changes are reverted. Link-time financial mismatches are explicit rather than silently synchronised.
+- Shared inline **Update** and **Keep as is** actions work below collapsed card summaries and across the full width of
+  planned-cost/expense rows. Updates take effect immediately and refresh the displayed record; decisions persist.
+- Financial updates use net paid, reconstruct gross Amount paid with positive refunds, preserve Total cost, and keep
+  names/categories/payment dates independent. Full refunds explain the zero-expense restriction and offer keeping
+  the expense with unlinking, or named confirmed deletion, while preserving booking payment/refund history.
+- Ownership checks, review revisions, destination snapshots, validation and transactional saves protect decisions.
+  Conflicts refresh the warning instead of leaving permanently stale actions. Accepted fields clear reciprocal
+  reviews and corresponding legacy flags, while changes relevant to other links create their own reviews.
+- Earlier flag-only notices explicitly explain their unavailable history and allow **Keep as is**. No prior values
+  are fabricated. The new migration adds review storage without changing existing financial amounts or links.
+- All 77 backend tests, 38 affected frontend/shared tests, three Chromium tests, production build and lint pass.
+  Browser checks cover exact schedule changes and both financial relationships, immediate updates, persistent Keep
+  decisions, no reciprocal notices, and phone-sized layouts. Independent review has no actionable findings;
+  user acceptance is pending.
+  A live PostgreSQL migration has not yet been exercised; restart the API to apply the new review-storage migration.
+
+Remaining: Mark as paid, saved-card date warnings,
+the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view improvements
+and the tab split remain separate work.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their
 booking/planned-cost-chain behavior.

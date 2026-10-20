@@ -132,20 +132,24 @@ Notes / Decisions:
 
 Build:
 
-- Calendar / day timeline view alongside the existing list view.
-- Visual empty time slots.
+- Later: Calendar / day timeline view alongside the existing list view.
+- Later: Visual empty time slots.
 - Overlap detection.
 - Manual ordering for untimed items.
-- Drag and drop in or between days: in calendar view allow users to move an item
-  - up/down in a day or
-  - between days
+- Drag and drop in or between days: 
+  - in calendar view allow users to move an item
+    - up/down in a day or
+    - between days
+  - in normal view: 
+    - only between days
+    - keep time the same
 - Arrival/departure times (if available) displayed in daily headers.
 - Scheduling rules and hints for arrival and departure days, so activities do not clash with travel.
 - Link a booking to an activity.
-- Link an activity’s expected cost to a planned cost.
-- Opening-hours hints when an activity has opening hours but no selected start time.
-- Short and expanded layouts appropriate for calendar use.
-- Trip-date change review for scheduled activities. When the trip dates change, ask the traveller which result they
+- Link an activity’s expected cost to an expense.
+- No: Opening-hours hints when an activity has opening hours but no selected start time.
+- Later: Short and expanded layouts appropriate for calendar use.
+- Trip-date change review for scheduled activities. When the trip dates change, ask the traveler which result they
   want before changing the itinerary:
   1. **Keep activities on their dates:** leave activities still within the revised trip range exactly where they are;
      make only activities outside the range unscheduled. This suits a fixed event such as a concert, even when travel
@@ -155,23 +159,29 @@ Build:
 
 Note: how to best link related planned costs, expenses, activities, and bookings?
 
-Later: route optimisation - needs map data, travel modes, opening hours, and a clear location model.
+- keep planned cost separate
+- expenses related over booking? so itinerary <-> booking <-> expense (i.e. expand the current booking-expense 
+  relation to cover itinerary as well)
+
+Later: route optimization - needs map data, travel modes, opening hours, and a clear location model.
 
 ## Trip overview / Details
 
 Add **Overview** section or improve Details
 
-- Change "Details" to "Overview"? Or add an "Overview" section in the details? Maybe as a second column in wide-screen
+- Change "Details" to "Overview"? 
+  - Or add an "Overview" section in the details? 
+  - Maybe as a second column in wide-screen
 - To-do progress
-  - Later: with some message when tasks approach/reach their deadline and task not completed yet
-- Booking status: confirmed / awaiting payment
+  - Later: with some message/warning when tasks approach/reach their deadline and task not completed yet
+- Booking statuses: confirmed / awaiting payment
   - Later: if a link is provided, can the status be updated automatically?
 - Budget: planned, actual, remaining
 - Packing progress
-- Unscheduled high-priority activities
-- Near-trip notices, e.g. “Trip starts in 9 days”
+- Maybe/Not: Unscheduled high-priority activities
+- Near-trip notices, e.g. “Trip starts in 9 days” - or as a constant header. with x-th day of 10 for ongoing trips
 
-## Past-trip history
+## Later: Past-trip history
 
 Separate Past trips from active planning. Give each past trip a simple summary:
 
@@ -188,11 +198,11 @@ Separate Past trips from active planning. Give each past trip a simple summary:
 
 Goal: reduce repetitive entry and make the plans fit the user’s real travel style.
 
-## Preference profile
+## Preference profile - right after stage 2, before shared trips
 
-- Add number of travellers
+- Add number of travelers
   - directly improves budget interpretation and reservations.
-- Optional personal preferences - to the profile
+- Later: Optional personal preferences - to the profile
   - Interests: history, food, nightlife, hiking, museums, beach, architecture, etc.
   - Pace: relaxed, balanced, busy
   - Dietary and accessibility needs
@@ -201,6 +211,14 @@ Goal: reduce repetitive entry and make the plans fit the user’s real travel st
 
 - Preferences do not affect the manual workflow.
   - Later: They become inputs for suggestions.
+
+Also around here/now: add stuff required for shared trips:
+
+- Password recovery by a single-use email link with an expiry
+- Transactional email provider and sending address for account recovery
+- Nah: Rate limiting for account-sensitive endpoints
+- Why: Device and session management, including active-session listing, device revocation, and sign-out everywhere
+- What's this: Audit-friendly data changes, at least for shared financial records
 
 ## Trip structure
 
@@ -335,7 +353,7 @@ Weather-aware packing
 
 ---
 
-## Shared trips
+## Shared trips - after second stage, and preference profile
 
 Goal: allow a group to use the same trip without losing clarity over ownership and money.
 

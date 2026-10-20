@@ -20,6 +20,19 @@ const api = vi.hoisted(() => ({
     updateItineraryItem: vi.fn(),
 }));
 vi.mock("../../../src/api/itineraryApi", () => api);
+vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
+    getLinkedRecordReviews: vi.fn().mockResolvedValue([]),
+    resolveLinkedRecordReview: vi.fn(),
+}));
+
+const bookingsApi = vi.hoisted(() => ({
+    getBookings: vi.fn(),
+    dismissBookingActivityUpdateReview: vi.fn(),
+}));
+vi.mock("../../../src/api/bookingsApi", async (importOriginal) => ({
+    ...await importOriginal<typeof import("../../../src/api/bookingsApi")>(),
+    ...bookingsApi,
+}));
 
 const trip: Trip = {
     id: "trip-1",
@@ -69,6 +82,34 @@ describe("Itinerary", () => {
         vi.clearAllMocks();
         window.localStorage.clear();
         api.getItineraryItems.mockResolvedValue([]);
+        bookingsApi.getBookings.mockResolvedValue([]);
+    });
+
+    it("shows and dismisses a booking change on a collapsed activity even without loaded booking details", async () => {
+        const user = userEvent.setup();
+        api.getItineraryItems.mockResolvedValue([{
+            ...museum,
+            bookingId: "booking-1",
+            bookingName: "Museum reservation",
+            bookingRole: "General",
+            hasPendingActivityUpdateReview: true,
+            pendingActivityChangeFields: "schedule",
+        }]);
+        bookingsApi.dismissBookingActivityUpdateReview.mockRejectedValueOnce(new Error("Could not dismiss this review."));
+        bookingsApi.dismissBookingActivityUpdateReview.mockResolvedValueOnce(undefined);
+        renderItinerary();
+        const expand = await screen.findByRole("button", { name: "Expand Museum details" });
+        expect(screen.getAllByText(/Linked booking “Museum reservation”/)).toHaveLength(1);
+        await user.click(expand);
+        expect(screen.getAllByText(/Linked booking “Museum reservation”/)).toHaveLength(1);
+        await user.click(screen.getByRole("button", { name: "Collapse Museum details" }));
+        await user.click(screen.getByRole("button", { name: "Keep linked booking changes as is" }));
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Could not dismiss this review.");
+        expect(screen.getByText(/Linked booking “Museum reservation”/)).toBeTruthy();
+        await user.click(screen.getByRole("button", { name: "Keep linked booking changes as is" }));
+        await waitFor(() => expect(screen.queryByText(/Linked booking “Museum reservation”/)).toBeNull());
+        expect(bookingsApi.dismissBookingActivityUpdateReview).toHaveBeenLastCalledWith(trip.id, "booking-1", museum.id, "activity");
+        expect(screen.getByRole("button", { name: "Expand Museum details" })).toBeTruthy();
     });
 
     it("creates a dated activity with the expected API payload", async () => {

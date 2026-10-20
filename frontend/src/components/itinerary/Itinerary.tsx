@@ -26,6 +26,8 @@ import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { InlineMessage } from "../shared/InlineMessage";
+import { LegacyLinkedRecordWarning, LinkedRecordWarnings } from "../shared/LinkedRecordWarnings";
+import { useLinkedRecordReviews } from "../../utils/useLinkedRecordReviews";
 import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { StatusPill } from "../shared/StatusPill";
 import { UndoToast } from "../shared/UndoToast";
@@ -77,40 +79,19 @@ type PendingDeletion = {
     item: ItineraryItem;
 };
 
-const describeBookingDetails = (
-    booking: Booking,
-    role: BookingActivityRole,
-    currency: string,
-) => {
-    const isReturn = role === "Return";
-    const date = isReturn ? booking.returnStartDate : booking.startDate;
-    const time = isReturn ? booking.returnStartTime : booking.startTime;
-    const location = isReturn
-        ? booking.returnStartLocation
-        : role === "Outbound"
-            ? booking.startLocation
-            : booking.location;
-    const details = [
-        date ? `${formatDate(date)}${time ? ` at ${time.slice(0, 5)}` : ""}` : null,
-        location,
-        booking.totalCost !== null
-            ? booking.totalCost === 0
-                ? "Free"
-                : formatMoney(booking.totalCost, currency)
-            : null,
-    ];
-
-    return details.filter(Boolean).join(" · ");
-};
-
 // This component owns the itinerary workflow: scheduling, optional activity details, inline editing, and Undo.
 
 /** Renders and coordinates all activities belonging to the current trip. */
 export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [items, setItems] = useState<ItineraryItem[]>([]);
+    const linkedReviews = useLinkedRecordReviews(trip.id, "Activity", items);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [bookingReviewError, setBookingReviewError] = useState<{
+        activityId: string;
+        message: string;
+    } | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [addingForDate, setAddingForDate] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -363,6 +344,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setBookingLinkError(null);
         try {
             await linkBookingActivity(trip.id, booking.id, item.id, selectedBookingRole);
+            setBookingReviewError((current) => current?.activityId === item.id ? null : current);
             setItems((current) => current.map((candidate) => candidate.id === item.id
                 ? {
                     ...candidate,
@@ -410,6 +392,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         setBookingLinkError(null);
         try {
             await unlinkBookingActivity(trip.id, item.bookingId, item.id);
+            setBookingReviewError((current) => current?.activityId === item.id ? null : current);
             setItems((current) => current.map((candidate) => candidate.id === item.id
                 ? {
                     ...candidate,
@@ -451,6 +434,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         if (!item.bookingId) return;
 
         setDismissingBookingChangeId(item.id);
+        setBookingReviewError(null);
         try {
             await dismissBookingActivityUpdateReview(
                 trip.id,
@@ -466,11 +450,9 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                 }
                 : candidate));
         } catch (exception) {
-            setBookingLinkError({
+            setBookingReviewError({
                 activityId: item.id,
-                message: exception instanceof Error
-                    ? exception.message
-                    : "Could not dismiss this review.",
+                message: exception instanceof Error ? exception.message : "Could not dismiss this review.",
             });
         } finally {
             setDismissingBookingChangeId(null);
@@ -649,6 +631,39 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                         />
                     </div>
                 </div>
+                <LinkedRecordWarnings
+                    tripId={trip.id}
+                    currency={trip.currency}
+                    reviews={linkedReviews.reviews.filter((review) => review.targetId === item.id)}
+                    disabled={isSaving || isLinkingBooking}
+                    onResolved={async () => {
+                        const [loadedItems, loadedBookings] = await Promise.all([
+                            getItineraryItems(trip.id), getBookings(trip.id),
+                        ]);
+                        setItems((current) => current === items ? loadedItems : current);
+                        setBookings((current) => current === bookings ? loadedBookings : current);
+                    }}
+                />
+                {linkedReviews.loaded && item.hasPendingActivityUpdateReview && item.bookingId
+                    && !linkedReviews.reviews.some((review) => review.targetId === item.id) && (
+                    <LegacyLinkedRecordWarning
+                        label="Keep linked booking changes as is"
+                        disabled={dismissingBookingChangeId === item.id}
+                        onKeep={() => void dismissLinkedBookingChangeNotice(item)}
+                    >
+                        Linked booking “{linkedBooking?.name ?? item.bookingName ?? "Booking"}”: {formatLinkChangeFields(
+                            item.pendingActivityChangeFields,
+                            item.bookingRole === "Return"
+                                ? "return schedule"
+                                : item.bookingRole === "Outbound"
+                                    ? "outbound schedule"
+                                    : "schedule",
+                        )} changed.
+                    </LegacyLinkedRecordWarning>
+                )}
+                {bookingReviewError?.activityId === item.id && (
+                    <InlineMessage variant="error">{bookingReviewError.message}</InlineMessage>
+                )}
                 {item.hasPendingDeletedBookingNotice && (
                     <InlineMessage
                         className="itinerary-deleted-link-notice"
@@ -712,30 +727,6 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                                 Unlink
                                             </button>
                                         </div>
-                                        {item.hasPendingActivityUpdateReview && linkedBooking && (
-                                            <InlineMessage
-                                                variant="warning"
-                                                dismissLabel="Dismiss linked booking change notice"
-                                                isDismissDisabled={dismissingBookingChangeId === item.id}
-                                                onDismiss={() => void dismissLinkedBookingChangeNotice(item)}
-                                            >
-                                                The linked booking’s{" "}
-                                                {formatLinkChangeFields(
-                                                    item.pendingActivityChangeFields,
-                                                    item.bookingRole === "Return"
-                                                        ? "return schedule"
-                                                        : item.bookingRole === "Outbound"
-                                                            ? "outbound schedule"
-                                                            : "schedule",
-                                                )}{" "}
-                                                changed. Current details:{" "}
-                                                {describeBookingDetails(
-                                                    linkedBooking,
-                                                    item.bookingRole ?? "General",
-                                                    trip.currency,
-                                                ) || "No schedule, location, or cost information."}
-                                            </InlineMessage>
-                                        )}
                                     </>
                                 ) : linkingActivityId === item.id ? (
                                     <ExistingRecordLinkForm
@@ -861,6 +852,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
             {isAdding && !addingForDate && form(newItem, saveNewItem)}
             {isLoading && <p className="detail-message">Loading itinerary…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
+            {linkedReviews.error && <InlineMessage variant="error">{linkedReviews.error}</InlineMessage>}
             {pendingDeletion && <UndoToast message="Activity deleted." onUndo={undoDelete} />}
             {!isLoading && !error && (
                 <div className="itinerary-list">

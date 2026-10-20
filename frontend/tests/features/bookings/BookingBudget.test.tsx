@@ -37,6 +37,10 @@ const expensesApi = vi.hoisted(() => ({
 vi.mock("../../../src/api/bookingsApi", () => bookingsApi);
 vi.mock("../../../src/api/itineraryApi", () => itineraryApi);
 vi.mock("../../../src/api/expensesApi", () => expensesApi);
+vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
+    getLinkedRecordReviews: vi.fn().mockResolvedValue([]),
+    resolveLinkedRecordReview: vi.fn(),
+}));
 
 const trip: Trip = {
     id: "trip-1",
@@ -261,6 +265,46 @@ describe("booking expense actions", () => {
         await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
         expect(await within(region).findByRole("button", { name: "Add to expenses" })).toBeTruthy();
         expect(within(region).queryByText("Could not delete this expense.")).toBeNull();
+    });
+
+    it("shows each activity change once while collapsed and allows dismissal without expanding", async () => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([{
+            ...hotel,
+            activityLinks: [
+                {
+                    id: "activity-1",
+                    name: "Check-in",
+                    role: "General",
+                    hasPendingBookingUpdateReview: true,
+                    pendingBookingChangeFields: "schedule",
+                },
+                {
+                    id: "activity-2",
+                    name: "Return flight",
+                    role: "Return",
+                    hasPendingBookingUpdateReview: true,
+                    pendingBookingChangeFields: "location",
+                },
+            ],
+        }]);
+        bookingsApi.dismissBookingActivityUpdateReview.mockRejectedValueOnce(new Error("Could not dismiss this review."));
+        bookingsApi.dismissBookingActivityUpdateReview.mockResolvedValueOnce(undefined);
+        renderBookings();
+        const expand = await screen.findByRole("button", { name: "Expand Hotel Rome details" });
+        expect(screen.getAllByText(/Activity “Check-in”/)).toHaveLength(1);
+        expect(screen.getAllByText(/Activity “Return flight”.*Return journey/)).toHaveLength(1);
+        await user.click(expand);
+        expect(screen.getAllByText(/Activity “Check-in”/)).toHaveLength(1);
+        await user.click(screen.getByRole("button", { name: "Collapse Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Keep changes from Check-in as is" }));
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Could not dismiss this review.");
+        expect(screen.getByText(/Activity “Check-in”/)).toBeTruthy();
+        await user.click(screen.getByRole("button", { name: "Keep changes from Check-in as is" }));
+        await waitFor(() => expect(screen.queryByText(/Activity “Check-in”/)).toBeNull());
+        expect(bookingsApi.dismissBookingActivityUpdateReview).toHaveBeenLastCalledWith(trip.id, hotel.id, "activity-1", "booking");
+        expect(screen.getByText(/Activity “Return flight”/)).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Expand Hotel Rome details" })).toBeTruthy();
     });
 
     it("removes a stale activity link when deletion completes after entering Bookings", async () => {

@@ -3,16 +3,21 @@ import { expect, test, type Page } from "@playwright/test";
 const api = `http://127.0.0.1:${process.env.PLAYWRIGHT_API_PORT ?? "5263"}/api`;
 
 // Use browser fetch so test setup follows the same cookie policy as the application.
-async function browserRequest(page: Page, url: string, data?: Record<string, unknown>) {
-    return page.evaluate(async ({ requestUrl, requestData }) => {
+async function browserRequest(
+    page: Page,
+    url: string,
+    data?: Record<string, unknown>,
+    method = data ? "POST" : "GET",
+) {
+    return page.evaluate(async ({ requestUrl, requestData, requestMethod }) => {
         const response = await fetch(requestUrl, {
-            method: requestData ? "POST" : "GET",
+            method: requestMethod,
             credentials: "include",
             headers: requestData ? { "Content-Type": "application/json" } : undefined,
             body: requestData ? JSON.stringify(requestData) : undefined,
         });
-        return { status: response.status, body: await response.json() };
-    }, { requestUrl: url, requestData: data });
+        return { status: response.status, body: response.status === 204 ? null : await response.json() };
+    }, { requestUrl: url, requestData: data, requestMethod: method });
 }
 
 test("a booking records actual spending directly and navigates to the expense", async ({ page }) => {
@@ -250,7 +255,43 @@ test("saved booking columns and budget amounts stay aligned", async ({ page }) =
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("activity-columns-mobile.png"), fullPage: true });
 
-    await activityCard.locator(".itinerary-linked-booking a").click();
+    const changedBooking = await browserRequest(page, `${tripApi}/bookings/${booking.body.id}`, {
+        ...booking.body,
+        startTime: "10:00",
+    }, "PUT");
+    expect(changedBooking.status).toBe(200);
+    await page.reload();
+    await page.getByRole("button", { name: "Collapse Outbound activity details" }).click();
+    const bookingNotice = page.locator(".linked-record-warning").filter({ hasText: "Booking “Round trip”" });
+    await expect(bookingNotice).toHaveCount(2);
+    await page.getByRole("button", { name: "Expand Outbound activity details" }).click();
+    await expect(bookingNotice).toHaveCount(2);
+    await page.getByRole("button", { name: "Collapse Outbound activity details" }).click();
+    const outboundCard = page.locator(".item-card").filter({ has: page.getByRole("button", { name: "Expand Outbound activity details" }) });
+    await outboundCard.getByRole("button", { name: "Keep as is", exact: true }).click();
+    await expect(outboundCard.getByText(/Booking “Round trip”/)).toHaveCount(0);
+    await page.reload();
+    await expect(outboundCard.getByText(/Booking “Round trip”/)).toHaveCount(0);
+
+    const activities = (await browserRequest(page, `${tripApi}/itinerary-items`)).body;
+    const outboundActivity = activities.find((activity: { name: string }) => activity.name === "Outbound activity");
+    const changedActivity = await browserRequest(page, `${tripApi}/itinerary-items/${outboundActivity.id}`, {
+        ...outboundActivity,
+        startTime: "11:00",
+    }, "PUT");
+    expect(changedActivity.status).toBe(200);
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await page.getByRole("button", { name: "Collapse Round trip details" }).click();
+    const activityNotice = page.getByRole("status").filter({ hasText: "Activity “Outbound activity”" });
+    await expect(activityNotice).toHaveCount(1);
+    await page.getByRole("button", { name: "Expand Round trip details" }).click();
+    await expect(activityNotice).toHaveCount(1);
+    await page.getByRole("button", { name: "Collapse Round trip details" }).click();
+    await activityNotice.getByRole("button", { name: "Keep as is", exact: true }).click();
+    await expect(activityNotice).toHaveCount(0);
+    await page.reload();
+    await expect(activityNotice).toHaveCount(0);
+    await page.getByRole("button", { name: "Expand Round trip details" }).click();
     const expenseSection = page.getByRole("region", { name: "Expenses for Round trip" });
     await expenseSection.getByRole("button", { name: "Delete", exact: true }).click();
     const dialog = page.getByRole("alertdialog", { name: "Delete linked expense?" });
@@ -267,4 +308,91 @@ test("saved booking columns and budget amounts stay aligned", async ({ page }) =
     expect(remainingBookings).toHaveLength(1);
     expect(remainingBookings[0].expenseId).toBeNull();
     expect((await browserRequest(page, `${tripApi}/planned-costs`)).body).toHaveLength(1);
+});
+
+test("linked reviews apply exact fields and financial amounts without reciprocal warnings", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Review traveller");
+    await page.getByLabel("Email").fill(`reviews-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Linked reviews", startDate: "2027-04-02", endDate: "2027-04-12", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Museum booking", category: "MuseumAttraction", status: "Confirmed",
+        startDate: "2027-04-02", startTime: "09:00", endDate: "2027-04-02", endTime: "10:00",
+        location: "Museum", totalCost: 200, amountPaid: 100,
+    })).body;
+    const activity = (await browserRequest(page, `${tripApi}/itinerary-items`, {
+        name: "Museum visit", date: "2027-04-02", startTime: "09:00", durationMinutes: 60,
+        location: "Museum", cost: 200, priority: "Optional",
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, { role: "General" })).status).toBe(200);
+    const plan = (await browserRequest(page, `${tripApi}/planned-costs`, {
+        name: "Museum budget", category: "ActivitiesAndMuseums", amount: 100,
+    })).body;
+    const expense = (await browserRequest(page, `${tripApi}/expenses`, {
+        name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100,
+        expenseDate: "2027-03-01", plannedCostId: plan.id,
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
+    await browserRequest(page, `${tripApi}/expenses/${expense.id}`, { ...expense, amount: 120 }, "PUT");
+    await page.goto(`/trips/${trip.id}/bookings`);
+    const notice = page.locator(".linked-record-warning");
+    await expect(notice).toContainText("Amount: €100 → €120");
+    await expect(page.getByRole("button", { name: "Expand Museum booking details" })).toBeVisible();
+    await notice.getByRole("button", { name: "Update amount paid to €120" }).click();
+    await expect(notice).toHaveCount(0);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.amountPaid).toBe(120);
+
+    await page.getByRole("link", { name: "Budget & expenses", exact: true }).click();
+    const planRow = page.locator(`#planned-cost-${plan.id}`);
+    await expect(planRow.locator(".linked-record-warning")).toContainText("Amount: €100 → €120");
+    await planRow.getByRole("button", { name: "Update planned amount to €120" }).click();
+    await expect(planRow.locator(".budget-item-amount")).toHaveText("€120");
+    await browserRequest(page, `${tripApi}/planned-costs/${plan.id}`, { ...plan, amount: 140 }, "PUT");
+    await page.reload();
+    const expenseRow = page.locator(`#expense-${expense.id}`);
+    await expect(expenseRow.locator(".linked-record-warning")).toContainText("Amount: €120 → €140");
+    await expenseRow.getByRole("button", { name: "Keep as is", exact: true }).click();
+    await page.reload();
+    await expect(expenseRow.locator(".linked-record-warning")).toHaveCount(0);
+    await expect(expenseRow.locator(".budget-item-amount")).toHaveText("€120");
+    await browserRequest(page, `${tripApi}/planned-costs/${plan.id}`, { ...plan, amount: 160 }, "PUT");
+    await page.reload();
+    await expect(expenseRow.locator(".linked-record-warning")).toContainText("Amount: €140 → €160");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: test.info().outputPath("financial-warning-mobile.png"), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expenseRow.getByRole("button", { name: "Update expense amount to €160" }).click();
+    await expect(expenseRow.locator(".budget-item-amount")).toHaveText("€160");
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await expect(notice).toContainText("Amount: €120 → €160");
+    await notice.getByRole("button", { name: "Update amount paid to €160" }).click();
+    await expect(notice).toHaveCount(0);
+
+    const updatedBooking = (await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body;
+    await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
+        ...updatedBooking, startDate: "2027-04-03", endDate: "2027-04-03",
+    }, "PUT");
+    await page.getByRole("link", { name: "Itinerary", exact: true }).click();
+    await expect(notice).toContainText("Date: 2 Apr 2027 → 3 Apr 2027");
+    await expect(notice).not.toContainText("Cost:");
+    await notice.getByRole("button", { name: "Update activity", exact: true }).click();
+    await expect(notice).toHaveCount(0);
+    const updatedActivity = (await browserRequest(page, `${tripApi}/itinerary-items`)).body[0];
+    expect(updatedActivity.date).toBe("2027-04-03");
+    expect(updatedActivity.cost).toBe(200);
+    await browserRequest(page, `${tripApi}/itinerary-items/${activity.id}`, { ...updatedActivity, durationMinutes: 90 }, "PUT");
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await expect(notice).toContainText("Duration: 60 min → 90 min");
+    await notice.getByRole("button", { name: "Update booking: duration to 90 min" }).click();
+    await expect(notice).toHaveCount(0);
+    const finishedBooking = (await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body;
+    expect(finishedBooking.endTime).toBe("10:30:00");
+    expect(finishedBooking.totalCost).toBe(200);
+    expect((await browserRequest(page, `${tripApi}/linked-record-reviews`)).body).toEqual([]);
 });

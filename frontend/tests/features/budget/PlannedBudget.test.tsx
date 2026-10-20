@@ -20,6 +20,10 @@ const expensesApi = vi.hoisted(() => ({
 
 vi.mock("../../../src/api/plannedCostsApi", () => plannedCostsApi);
 vi.mock("../../../src/api/expensesApi", () => expensesApi);
+vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
+    getLinkedRecordReviews: vi.fn().mockResolvedValue([]),
+    resolveLinkedRecordReview: vi.fn(),
+}));
 
 const trip: Trip = {
     id: "trip-1",

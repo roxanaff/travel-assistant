@@ -190,6 +190,7 @@ app.MapItineraryEndpoints();
 app.MapPackingItemEndpoints();
 app.MapTodoItemEndpoints();
 app.MapBookingEndpoints();
+app.MapLinkedRecordReviewEndpoints();
 app.MapAuthEndpoints();
 
 app.Run();

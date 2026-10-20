@@ -5,6 +5,7 @@ using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
 using TravelAssistant.Validation;
+using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
@@ -107,6 +108,7 @@ public static class BookingEndpoints
             }
 
             ApplyRequest(booking, request);
+            await LinkedRecordReviews.TrackAsync(database, booking);
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(booking));
         }).WithName("UpdateBooking");
@@ -130,6 +132,7 @@ public static class BookingEndpoints
             }
 
             database.Bookings.Remove(booking);
+            await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeleteBooking");
@@ -183,6 +186,7 @@ public static class BookingEndpoints
             }
 
             activity.BookingId = booking.Id;
+            await LinkedRecordReviews.ClearPairAsync(database, booking.Id, activity.Id);
             activity.BookingRole = request.Role;
             activity.BookingRequired = true;
             activity.HasPendingDeletedBookingNotice = false;
@@ -209,6 +213,7 @@ public static class BookingEndpoints
             }
 
             activity.BookingId = null;
+            await LinkedRecordReviews.ClearPairAsync(database, id, activityId);
             activity.BookingRole = null;
             activity.HasPendingBookingUpdateReview = false;
             activity.HasPendingActivityUpdateReview = false;
@@ -233,6 +238,9 @@ public static class BookingEndpoints
 
             activity.HasPendingBookingUpdateReview = false;
             activity.PendingBookingChangeFields = null;
+            var review = await database.LinkedRecordReviews.SingleOrDefaultAsync(item =>
+                item.TripId == tripId && item.SourceId == activityId && item.TargetId == id);
+            if (review is not null) database.LinkedRecordReviews.Remove(review);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DismissBookingUpdateReview");
@@ -252,6 +260,9 @@ public static class BookingEndpoints
 
             activity.HasPendingActivityUpdateReview = false;
             activity.PendingActivityChangeFields = null;
+            var review = await database.LinkedRecordReviews.SingleOrDefaultAsync(item =>
+                item.TripId == tripId && item.SourceId == id && item.TargetId == activityId);
+            if (review is not null) database.LinkedRecordReviews.Remove(review);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DismissActivityUpdateReview");
@@ -300,6 +311,7 @@ public static class BookingEndpoints
                 ExpenseDate = request.ExpenseDate
             };
             database.Expenses.Add(expense);
+            await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
             try
             {
                 await database.SaveChangesAsync();
@@ -321,6 +333,9 @@ public static class BookingEndpoints
             Guid expenseId,
             TravelAssistantDbContext database) =>
         {
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
             var booking = await FindBooking(tripId, id, database);
             var expense = await database.Expenses.SingleOrDefaultAsync(item =>
                 item.Id == expenseId && item.TripId == tripId);
@@ -348,15 +363,23 @@ public static class BookingEndpoints
             try
             {
                 // Do not overwrite a relationship another request established after this one loaded.
-                var updated = await database.Expenses
-                    .Where(item => item.Id == expense.Id && item.TripId == tripId
-                        && (item.BookingId == null || item.BookingId == booking.Id))
-                    .ExecuteUpdateAsync(update => update
-                        .SetProperty(item => item.BookingId, booking.Id)
-                        .SetProperty(item => item.HasPendingDeletedBookingNotice, false));
-                if (updated == 0)
+                if (database.Database.IsRelational())
                 {
-                    return Results.Conflict("This expense is already linked to another booking.");
+                    var updated = await database.Expenses
+                        .Where(item => item.Id == expense.Id && item.TripId == tripId
+                            && (item.BookingId == null || item.BookingId == booking.Id))
+                        .ExecuteUpdateAsync(update => update
+                            .SetProperty(item => item.BookingId, booking.Id)
+                            .SetProperty(item => item.HasPendingDeletedBookingNotice, false));
+                    if (updated == 0)
+                        return Results.Conflict("This expense is already linked to another booking.");
+                    await database.Entry(expense).ReloadAsync();
+                }
+                else
+                {
+                    // The isolated browser-test store does not implement relational bulk updates.
+                    expense.BookingId = booking.Id;
+                    expense.HasPendingDeletedBookingNotice = false;
                 }
             }
             catch (Exception exception) when (
@@ -365,6 +388,10 @@ public static class BookingEndpoints
                 return Results.Conflict("This booking already has a linked expense.");
             }
 
+            await LinkedRecordReviews.ClearPairAsync(database, booking.Id, expense.Id);
+            await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
+            await database.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
             return Results.NoContent();
         }).WithName("LinkBookingExpense");
 
@@ -374,10 +401,27 @@ public static class BookingEndpoints
             Guid expenseId,
             TravelAssistantDbContext database) =>
         {
-            var updated = await database.Expenses
-                .Where(item => item.Id == expenseId && item.TripId == tripId && item.BookingId == id)
-                .ExecuteUpdateAsync(update => update.SetProperty(item => item.BookingId, (Guid?)null));
-            return updated == 0 ? Results.NotFound() : Results.NoContent();
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
+            if (database.Database.IsRelational())
+            {
+                var updated = await database.Expenses
+                    .Where(item => item.Id == expenseId && item.TripId == tripId && item.BookingId == id)
+                    .ExecuteUpdateAsync(update => update.SetProperty(item => item.BookingId, (Guid?)null));
+                if (updated == 0) return Results.NotFound();
+            }
+            else
+            {
+                var expense = await database.Expenses.SingleOrDefaultAsync(item =>
+                    item.Id == expenseId && item.TripId == tripId && item.BookingId == id);
+                if (expense is null) return Results.NotFound();
+                expense.BookingId = null;
+            }
+            await LinkedRecordReviews.ClearPairAsync(database, id, expenseId);
+            await database.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
+            return Results.NoContent();
         }).WithName("UnlinkBookingExpense");
 
         return app;

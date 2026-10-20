@@ -53,6 +53,8 @@ import {
 } from "../../utils/useNavigationCardFocus";
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
+import { LegacyLinkedRecordWarning, LinkedRecordWarnings } from "../shared/LinkedRecordWarnings";
+import { useLinkedRecordReviews } from "../../utils/useLinkedRecordReviews";
 import { FieldLabel, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { FormDetailsToggle } from "../shared/FormDetailsToggle";
@@ -133,28 +135,6 @@ const labelsFor = (category: BookingForm["category"]) => {
     return { start: "Start", end: "End", startLocation: "Location", endLocation: "Location" };
 };
 
-const describeActivityDetails = (activity: ItineraryItem, currency: string) => {
-    const duration = activity.durationMinutes
-        ? `${Math.floor(activity.durationMinutes / 60)}h${activity.durationMinutes % 60
-            ? ` ${activity.durationMinutes % 60}min`
-            : ""}`
-        : null;
-    const details = [
-        activity.date
-            ? `${formatDate(activity.date)}${activity.startTime ? ` at ${activity.startTime.slice(0, 5)}` : ""}`
-            : null,
-        duration,
-        activity.location,
-        activity.cost !== null
-            ? activity.cost === 0
-                ? "Free"
-                : formatMoney(activity.cost, currency)
-            : null,
-    ];
-
-    return details.filter(Boolean).join(" · ");
-};
-
 // Give quick feedback in the form; the backend checks these rules again on save.
 const getImmediateErrors = (values: BookingForm): FormErrors => {
     const errors: FormErrors = {};
@@ -231,6 +211,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         setLoadedBookings(update);
     }, []);
     const [activities, setActivities] = useState<ItineraryItem[]>([]);
+    const linkedReviews = useLinkedRecordReviews(trip.id, "Booking", bookings);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loadedBudgetTripId, setLoadedBudgetTripId] = useState<string | null>(null);
     const isBudgetLoading = loadedBudgetTripId !== trip.id;
@@ -875,6 +856,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         activityId: string,
     ) => {
         setDismissingActivityChangeId(activityId);
+        setError(null);
         try {
             await dismissBookingActivityUpdateReview(
                 trip.id,
@@ -902,10 +884,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                 }
                 : activity));
         } catch (exception) {
-            setRelationshipError({
-                bookingId,
-                message: exception instanceof Error ? exception.message : "Could not dismiss this review.",
-            });
+            setError(exception instanceof Error ? exception.message : "Could not dismiss this review.");
         } finally {
             setDismissingActivityChangeId(null);
         }
@@ -1589,7 +1568,6 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             : [{ label: "Activities", links: booking.activityLinks }];
 
         const renderRelatedActivity = (activity: Booking["activityLinks"][number]) => {
-            const currentActivity = activities.find((candidate) => candidate.id === activity.id);
             return (
                 <div className="booking-related-activity-entry" key={activity.id}>
                     <div className="booking-related-activity">
@@ -1614,21 +1592,6 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                             Unlink
                         </button>
                     </div>
-                    {activity.hasPendingBookingUpdateReview && (
-                        <InlineMessage
-                            variant="warning"
-                            dismissLabel="Dismiss activity change notice"
-                            isDismissDisabled={dismissingActivityChangeId === activity.id}
-                            onDismiss={() => void dismissActivityChangeNotice(
-                                booking.id,
-                                activity.id,
-                            )}
-                        >
-                            {currentActivity
-                                ? `This activity’s ${formatLinkChangeFields(activity.pendingBookingChangeFields)} changed. Current details: ${describeActivityDetails(currentActivity, trip.currency) || "No schedule, location, or cost information."}`
-                                : "This activity changed. The booking was not changed."}
-                        </InlineMessage>
-                    )}
                 </div>
             );
         };
@@ -1693,6 +1656,37 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                         onDelete={() => requestRemove(booking)}
                     />
                 </div>
+                <LinkedRecordWarnings
+                    tripId={trip.id}
+                    currency={trip.currency}
+                    reviews={linkedReviews.reviews.filter((review) => review.targetId === booking.id)}
+                    disabled={isSaving || isBudgetPending || budgetAction !== null}
+                    onResolved={async () => {
+                        const mutationVersion = bookingsMutationVersion.current;
+                        const [loadedBookings, loadedActivities, loadedExpenses] = await Promise.all([
+                            getBookings(trip.id), getItineraryItems(trip.id), getExpenses(trip.id),
+                        ]);
+                        if (mutationVersion !== bookingsMutationVersion.current) return;
+                        setBookings(loadedBookings);
+                        setActivities(loadedActivities);
+                        setExpenses(loadedExpenses);
+                    }}
+                />
+                {booking.activityLinks.filter((activity) => linkedReviews.loaded && activity.hasPendingBookingUpdateReview
+                    && !linkedReviews.reviews.some((review) => review.targetId === booking.id && review.sourceId === activity.id)).map((activity) => {
+                    return (
+                        <LegacyLinkedRecordWarning
+                            key={activity.id}
+                            label={`Keep changes from ${activity.name} as is`}
+                            disabled={dismissingActivityChangeId === activity.id}
+                            onKeep={() => void dismissActivityChangeNotice(booking.id, activity.id)}
+                        >
+                            Activity “{activity.name}”{activity.role && activity.role !== "General"
+                                ? ` (${formatBookingRole(activity.role)})`
+                                : ""}: {formatLinkChangeFields(activity.pendingBookingChangeFields)} changed.
+                        </LegacyLinkedRecordWarning>
+                    );
+                })}
                 {(booking.hasPendingDeletedActivityNotice
                     || booking.hasPendingDeletedExpenseNotice) && (
                     <InlineMessage
@@ -2025,6 +2019,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             {isAdding && renderForm()}
             {isLoading && <p className="detail-message">Loading bookings…</p>}
             {error && <InlineMessage variant="error">{error}</InlineMessage>}
+            {linkedReviews.error && <InlineMessage variant="error">{linkedReviews.error}</InlineMessage>}
             {!isLoading && !error && bookings.length === 0 && !isAdding && <div className="booking-empty-state"><h3>No bookings yet</h3><p>Keep reservation details, confirmations, dates, and costs together.</p><button className="primary-button" type="button" onClick={startAdding}>Add booking</button></div>}
             {activeBookings.length > 0 && <ul className="list-items card-list booking-list">{activeBookings.map(renderBooking)}</ul>}
             {cancelledBookings.length > 0 && <section className="cancelled-bookings"><h3>Cancelled</h3><ul className="list-items card-list booking-list">{cancelledBookings.map(renderBooking)}</ul></section>}

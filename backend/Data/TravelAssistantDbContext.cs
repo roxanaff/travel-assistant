@@ -22,6 +22,8 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
     public DbSet<Booking> Bookings => Set<Booking>();
+
+    public DbSet<LinkedRecordReview> LinkedRecordReviews => Set<LinkedRecordReview>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     // Sets up field limits, links, and database rules that protect stored data
@@ -29,6 +31,18 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<LinkedRecordReview>(review =>
+        {
+            review.Property(item => item.SourceKind).HasConversion<string>().HasMaxLength(30);
+            review.Property(item => item.TargetKind).HasConversion<string>().HasMaxLength(30);
+            review.Property(item => item.Revision).IsConcurrencyToken();
+            review.HasIndex(item => new { item.TripId, item.SourceId, item.TargetId }).IsUnique();
+            review.HasOne(item => item.Trip)
+                .WithMany()
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // These database rules mirror the validation layer and protect data even if an API client
         // bypasses the frontend.

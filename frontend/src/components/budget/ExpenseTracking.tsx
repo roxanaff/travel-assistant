@@ -14,6 +14,8 @@ import { SectionHeader } from "../shared/SectionHeader";
 import { FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
+import { LinkedRecordWarnings } from "../shared/LinkedRecordWarnings";
+import { useLinkedRecordReviews } from "../../utils/useLinkedRecordReviews";
 import { GroupHeading } from "../shared/GroupHeading";
 import { GroupAddButton } from "../shared/GroupAddButton";
 import { GroupingControl } from "../shared/GroupingControl";
@@ -75,6 +77,7 @@ const sortExpenses = (expenses: Expense[]) =>
  */
 export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const linkedReviews = useLinkedRecordReviews(trip.id, "Expense", expenses);
     const highlightedExpenseId = useNavigationCardFocus({
         availableIds: expenses.map((expense) => expense.id),
         elementIdPrefix: "expense",
@@ -396,6 +399,7 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
             {isLoading && <p className="detail-message">Loading expenses…</p>}
             {error && <p className="detail-message form-error">{error}</p>}
             {actionError && <p className="detail-message form-error">{actionError}</p>}
+            {linkedReviews.error && <p className="form-error">{linkedReviews.error}</p>}
             {pendingDeletion && <UndoToast message="Expense deleted." onUndo={undoDelete} />}
             {!isLoading && !error && expenses.length === 0 && <p className="detail-message">No expenses yet.</p>}
             {!isLoading &&
@@ -491,6 +495,16 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                     <Trash2 size={17} />
                                                 </button>
                                             </div>
+                                            <LinkedRecordWarnings
+                                                tripId={trip.id}
+                                                currency={trip.currency}
+                                                reviews={linkedReviews.reviews.filter((review) => review.targetId === expense.id)}
+                                                disabled={isSaving || editingExpenseId !== null || isAdding}
+                                                onResolved={async () => {
+                                                    const loaded = await getExpenses(trip.id);
+                                                    setExpenses((current) => current === expenses ? loaded : current);
+                                                }}
+                                            />
                                         </li>
                                     ),
                                 )}

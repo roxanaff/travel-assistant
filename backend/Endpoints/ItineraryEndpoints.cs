@@ -5,6 +5,7 @@ using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
 using TravelAssistant.Validation;
+using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
@@ -123,6 +124,7 @@ public static class ItineraryEndpoints
             itineraryItem.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
             itineraryItem.BookingRequired = request.BookingRequired;
 
+            await LinkedRecordReviews.TrackAsync(database, itineraryItem);
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(itineraryItem));
         }).WithName("UpdateItineraryItem");
@@ -145,6 +147,7 @@ public static class ItineraryEndpoints
             }
 
             database.ItineraryItems.Remove(itineraryItem);
+            await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeleteItineraryItem");

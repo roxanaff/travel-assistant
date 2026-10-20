@@ -14,6 +14,10 @@ const api = vi.hoisted(() => ({
     updateExpense: vi.fn(),
 }));
 vi.mock("../../../src/api/expensesApi", () => api);
+vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
+    getLinkedRecordReviews: vi.fn().mockResolvedValue([]),
+    resolveLinkedRecordReview: vi.fn(),
+}));
 
 const trip: Trip = {
     id: "trip-1",

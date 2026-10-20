@@ -11,8 +11,15 @@ const configuredApiBaseUrl = import.meta.env.DEV
 export const apiBaseUrl = configuredApiBaseUrl.replace(/\/$/, "");
 
 /** Every API call includes the browser's authentication cookie. */
-export function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
-    return fetch(input, { ...init, credentials: "include" });
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+    const response = await fetch(input, { ...init, credentials: "include" });
+    const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+    if (response.ok && method !== "GET" && method !== "HEAD") {
+        const url = input instanceof Request ? input.url : String(input);
+        const tripId = url.match(/\/api\/trips\/([^/]+)/)?.[1];
+        if (tripId) window.dispatchEvent(new CustomEvent("linked-records-changed", { detail: tripId }));
+    }
+    return response;
 }
 
 /** Keeps internal server failures private while retaining safe validation messages. */

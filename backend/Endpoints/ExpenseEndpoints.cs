@@ -5,6 +5,7 @@ using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
 using TravelAssistant.Validation;
+using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
@@ -71,6 +72,12 @@ public static class ExpenseEndpoints
             };
 
             database.Expenses.Add(expense);
+            if (request.PlannedCostId is Guid planId)
+            {
+                var plan = await database.PlannedCosts.SingleOrDefaultAsync(item => item.Id == planId && item.TripId == tripId);
+                if (plan is null) return Results.Conflict("The related planned cost no longer exists.");
+                await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, plan, expense);
+            }
             try
             {
                 await database.SaveChangesAsync();
@@ -81,7 +88,7 @@ public static class ExpenseEndpoints
                 return Results.Conflict("This planned cost has already been added to expenses.");
             }
 
-            return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", expense);
+            return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", ToResponse(expense));
         }).WithName("CreateExpense");
 
         routes.MapPut("/expenses/{id:guid}", async (Guid tripId, Guid id, CreateExpenseRequest request, TravelAssistantDbContext database) =>
@@ -109,8 +116,9 @@ public static class ExpenseEndpoints
             expense.Amount = request.Amount;
             expense.ExpenseDate = request.ExpenseDate;
 
+            await LinkedRecordReviews.TrackAsync(database, expense);
             await database.SaveChangesAsync();
-            return Results.Ok(expense);
+            return Results.Ok(ToResponse(expense));
         }).WithName("UpdateExpense");
 
         routes.MapDelete("/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
@@ -129,6 +137,7 @@ public static class ExpenseEndpoints
             }
 
             database.Expenses.Remove(expense);
+            await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeleteExpense");
@@ -153,6 +162,20 @@ public static class ExpenseEndpoints
     }
 
     /// <summary>Provides a consistent display name when an optional expense name is omitted.</summary>
+    private static object ToResponse(Expense expense) => new
+    {
+        expense.Id,
+        expense.TripId,
+        expense.Name,
+        expense.Category,
+        expense.Amount,
+        expense.ExpenseDate,
+        expense.PlannedCostId,
+        expense.BookingId,
+        expense.HasPendingDeletedBookingNotice,
+        expense.CreatedAtUtc
+    };
+
     private static string NormalizeName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 }

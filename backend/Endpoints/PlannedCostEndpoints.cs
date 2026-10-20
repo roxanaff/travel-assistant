@@ -5,6 +5,7 @@ using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
 using TravelAssistant.Validation;
+using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
@@ -91,8 +92,19 @@ public static class PlannedCostEndpoints
             plannedCost.Category = request.Category;
             plannedCost.Amount = request.Amount;
 
+            await LinkedRecordReviews.TrackAsync(database, plannedCost);
             await database.SaveChangesAsync();
-            return Results.Ok(plannedCost);
+            return Results.Ok(new
+            {
+                plannedCost.Id,
+                plannedCost.TripId,
+                plannedCost.Name,
+                plannedCost.Category,
+                plannedCost.Amount,
+                plannedCost.CreatedAtUtc,
+                ExpenseAdded = plannedCost.Expense is not null,
+                ExpenseId = plannedCost.Expense?.Id
+            });
         }).WithName("UpdatePlannedCost");
 
         routes.MapDelete("/planned-costs/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
@@ -106,6 +118,7 @@ public static class PlannedCostEndpoints
             }
 
             database.PlannedCosts.Remove(plannedCost);
+            await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
             await database.SaveChangesAsync();
             return Results.NoContent();
         }).WithName("DeletePlannedCost");
