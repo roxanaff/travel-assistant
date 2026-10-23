@@ -707,6 +707,18 @@ Completed in the payment-display refinement chunk:
 - Twenty-eight booking API tests, nineteen booking frontend tests, production build, lint, and a focused Chromium
   desktop/mobile check pass. Independent review has no actionable findings; user acceptance is pending.
 
+Completed in the compact-warning presentation chunk:
+
+- Shared linked-record warnings put the bold source and changed fields on the left, with short Update / Keep as is
+  actions stacked on the right. Phone layouts put the wrapping actions beneath the text; no changed fields are truncated.
+- Monetary changes use Cost, booking Total cost, or booking Net cost for the financial relationship's paid-minus-refunded
+  value. When refunds make the proposed payment differ from the expense cost, Paid after update remains explicit.
+  Initial mismatches identify both values; older notices still explain that their previous values were not recorded.
+- Affected frontend tests, production build, lint, and the linked-review Chromium flow pass, including desktop/mobile
+  warning placement, immediate updates, persistent Keep decisions, and both financial relationships.
+- Update eligibility, independent-edit handling, outside-trip activity actions, and outgoing review controls are
+  unchanged in this presentation-only chunk and remain pending below.
+
 Remaining: implement the other agreed usability refinements at the top of this document, Mark as paid, saved-card date
 warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product

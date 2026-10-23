@@ -25,8 +25,10 @@ export function LegacyLinkedRecordWarning({ children, onKeep, disabled, label }:
 }) {
     return (
         <div className="inline-message inline-message-warning linked-record-warning" role="status">
-            <span>{children}</span>
-            <span>Previous values for this earlier change were not recorded. Review the linked record manually or keep it as is.</span>
+            <div className="linked-record-warning-content">
+                <strong>{children}</strong>
+                <span>Previous values were not recorded. Review manually or keep as is.</span>
+            </div>
             <div className="linked-review-actions">
                 <button className="text-button" type="button" disabled={disabled} aria-label={label} onClick={onKeep}>
                     Keep as is
@@ -49,9 +51,9 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
         if (field === "Duration") return `${value} min`;
         return String(value);
     };
-    const fieldLabel = (field: string) => ({
-        Amount: "Amount",
-        Cost: "Total cost",
+    const fieldLabel = (field: string, kind: LinkedRecordReview["sourceKind"]) => ({
+        Amount: kind === "Booking" ? "Net cost" : "Cost",
+        Cost: kind === "Booking" ? "Total cost" : "Cost",
         Date: "Date",
         Time: "Start time",
         Duration: "Duration",
@@ -90,30 +92,33 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
         <>
             {reviews.map((review) => (
                 <div className="inline-message inline-message-warning linked-record-warning" role="status" key={review.id}>
-                    <strong>
-                        {kindLabels[review.sourceKind]} “{review.sourceName}”
-                        {review.role && review.role !== "General" ? ` (${review.role.toLowerCase()} journey)` : ""}
-                        {review.isMismatch ? ": linked amounts differ" : " changed"}
-                    </strong>
-                    <div className="linked-record-changes">
-                        {review.changes.map((change) => (
-                            <div key={change.field}>
-                                {review.isMismatch
-                                    ? `Linked amount ${formatValue(change.field, change.before)} · Source amount ${formatValue(change.field, change.after)}`
-                                    : `${fieldLabel(change.field)}: ${formatValue(change.field, change.before)} → ${formatValue(change.field, change.after)}`}
-                            </div>
-                        ))}
+                    <div className="linked-record-warning-content">
+                        <strong>
+                            {kindLabels[review.sourceKind]} “{review.sourceName}”
+                            {review.role && review.role !== "General" ? ` (${review.role.toLowerCase()} journey)` : ""}
+                            {review.isMismatch ? ": linked values differ" : " changed"}
+                        </strong>
+                        <div className="linked-record-changes">
+                            {review.changes.map((change) => (
+                                <div key={change.field}>
+                                    {review.isMismatch
+                                        ? `${fieldLabel(change.field, review.targetKind)} ${formatValue(change.field, change.before)} · ${kindLabels[review.sourceKind]} ${fieldLabel(change.field, review.sourceKind).toLowerCase()} ${formatValue(change.field, change.after)}`
+                                        : `${fieldLabel(change.field, review.sourceKind)}: ${formatValue(change.field, change.before)} → ${formatValue(change.field, change.after)}`}
+                                </div>
+                            ))}
+                            {review.targetKind === "Booking" && review.proposedAmount !== null
+                                && review.changes.some((change) => change.field === "Amount"
+                                    && Number(change.after) !== review.proposedAmount) && (
+                                <div>Paid after update: {formatMoney(review.proposedAmount, currency)}</div>
+                            )}
+                        </div>
+                        {review.blockedReason && <span>{review.blockedReason}</span>}
                     </div>
-                    {review.blockedReason && <span>{review.blockedReason}</span>}
                     <div className="linked-review-actions">
                         {!review.blockedReason && (
                             <button className="text-button" type="button" disabled={pending || disabled}
                                 onClick={() => void run(() => resolveLinkedRecordReview(tripId, review, "apply"))}>
-                                {review.updateLabel}{review.proposedAmount !== null
-                                    ? ` to ${formatMoney(review.proposedAmount, currency)}`
-                                    : review.changes.length === 1
-                                        ? `: ${fieldLabel(review.changes[0].field).toLowerCase()} to ${formatValue(review.changes[0].field, review.changes[0].after)}`
-                                        : ""}
+                                Update
                             </button>
                         )}
                         <button className="text-button" type="button" disabled={pending || disabled}

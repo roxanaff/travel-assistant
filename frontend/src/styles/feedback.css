@@ -34,9 +34,8 @@
 
 .linked-review-actions {
     display: flex;
-    flex: 0 0 auto;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 8px 12px;
 }
 
@@ -47,15 +46,34 @@
 .linked-record-warning {
     display: grid;
     grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     min-width: 0;
-    gap: 8px;
+    gap: 8px 20px;
     margin: 0;
     overflow-wrap: anywhere;
+}
+
+.linked-record-warning-content {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
 }
 
 .linked-record-changes {
     display: grid;
     gap: 3px;
+}
+
+@media (max-width: 620px) {
+    .linked-record-warning {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .linked-review-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
 }
 
 .inline-message-error,

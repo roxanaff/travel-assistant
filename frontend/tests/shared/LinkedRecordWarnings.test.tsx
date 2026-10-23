@@ -37,9 +37,10 @@ it("shows only changed values and applies the explicit proposed amount immediate
     const refreshed = vi.fn().mockResolvedValue(undefined);
     api.resolveLinkedRecordReview.mockResolvedValue(undefined);
     render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[review]} onResolved={refreshed} />);
-    expect(screen.getByText("Amount: €50 → €70")).toBeTruthy();
+    expect(screen.getByText("Cost: €50 → €70")).toBeTruthy();
+    expect(screen.getByText("Paid after update: €90")).toBeTruthy();
     expect(screen.queryByText(/location|schedule|Current details/i)).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Update amount paid to €90" }));
+    await user.click(screen.getByRole("button", { name: "Update", exact: true }));
     expect(api.resolveLinkedRecordReview).toHaveBeenCalledWith("trip-1", review, "apply");
     expect(refreshed).toHaveBeenCalledOnce();
     expect(screen.queryByRole("alertdialog")).toBeNull();
@@ -59,6 +60,36 @@ it("keeps records independent and leaves failed decisions actionable for retry",
     expect(api.resolveLinkedRecordReview).toHaveBeenLastCalledWith("trip-1", review, "keep");
 });
 
+it.each([
+    ["Booking", "Activity", "Cost", "Total cost"],
+    ["Activity", "Booking", "Cost", "Cost"],
+    ["Booking", "Expense", "Amount", "Net cost"],
+    ["PlannedCost", "Expense", "Amount", "Cost"],
+] as const)("labels %s monetary changes by meaning", (sourceKind, targetKind, field, label) => {
+    render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" onResolved={vi.fn()} reviews={[{
+        ...review,
+        sourceKind,
+        targetKind,
+        changes: [{ field, before: 50, after: 70 }],
+        proposedAmount: null,
+    }]} />);
+
+    expect(screen.getByText(`${label}: €50 → €70`)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Update", exact: true })).toBeTruthy();
+});
+
+it("identifies both linked values for an initial payment mismatch", () => {
+    render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" onResolved={vi.fn()} reviews={[{
+        ...review,
+        isMismatch: true,
+        proposedAmount: 70,
+    }]} />);
+
+    expect(screen.getByText("Expense “Flight deposit”: linked values differ")).toBeTruthy();
+    expect(screen.getByText("Net cost €50 · Expense cost €70")).toBeTruthy();
+    expect(screen.queryByText(/Paid after update/)).toBeNull();
+});
+
 it("refreshes a conflicting notice before retrying with its new revision", async () => {
     const user = userEvent.setup();
     const revised = { ...review, revision: "version-2", changes: [{ field: "Amount", before: 50, after: 80 }], proposedAmount: 100 };
@@ -68,9 +99,10 @@ it("refreshes a conflicting notice before retrying with its new revision", async
         view.rerender(<LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[revised]} onResolved={refreshed} />);
     });
     const view = render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[review]} onResolved={refreshed} />);
-    await user.click(screen.getByRole("button", { name: "Update amount paid to €90" }));
-    expect(await screen.findByText("Amount: €50 → €80")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Update amount paid to €100" }));
+    await user.click(screen.getByRole("button", { name: "Update", exact: true }));
+    expect(await screen.findByText("Cost: €50 → €80")).toBeTruthy();
+    expect(screen.getByText("Paid after update: €100")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Update", exact: true }));
     expect(api.resolveLinkedRecordReview).toHaveBeenLastCalledWith("trip-1", revised, "apply");
 });
 
@@ -79,7 +111,7 @@ it("explains blocked changes without offering an unsafe update", () => {
         reviews={[{ ...review, blockedReason: "Amount paid cannot exceed the total cost." }]}
         onResolved={vi.fn()} />);
     expect(screen.getByText("Amount paid cannot exceed the total cost.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Update amount paid/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update", exact: true })).toBeNull();
     expect(screen.getByRole("button", { name: "Keep as is" })).toBeTruthy();
 });
 
