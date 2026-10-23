@@ -31,6 +31,12 @@ public static class LinkedRecordReviews
         if (entry.State == EntityState.Added) return;
 
         var before = entry.OriginalValues.ToObject();
+        if (source is Booking booking && before is Booking originalBooking
+            && (booking.StartDate != originalBooking.StartDate || booking.EndDate != originalBooking.EndDate
+                || booking.ReturnStartDate != originalBooking.ReturnStartDate || booking.ReturnEndDate != originalBooking.ReturnEndDate))
+        {
+            booking.DismissedOutsideTripWarningKey = null;
+        }
         foreach (var edge in await GetEdges(database, source))
         {
             if (Id(edge.Target) == excludedTarget) continue;
@@ -192,14 +198,30 @@ public static class LinkedRecordReviews
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
     }
 
+    public static async Task<bool> NeedsUnscheduledAsync(
+        TravelAssistantDbContext database,
+        LinkedRecordReview review,
+        Edge edge)
+    {
+        if (edge.Source is not Booking || edge.Target is not ItineraryItem) return false;
+        var dateChange = ReadChanges(review).SingleOrDefault(change => change.Field == "Date");
+        if (dateChange?.After.ValueKind != JsonValueKind.String) return false;
+        var proposedDate = DateOnly.Parse(dateChange.After.GetString()!);
+        var trip = await database.Trips.SingleAsync(item => item.Id == review.TripId);
+        return trip.StartDate is null || trip.EndDate is null
+            || proposedDate < trip.StartDate || proposedDate > trip.EndDate;
+    }
+
     public static object Response(
         TravelAssistantDbContext database,
         LinkedRecordReview review,
         Edge edge,
-        string? blockedReason) => new
+        string? blockedReason,
+        bool requiresUnscheduled) => new
     {
         review.Id,
         review.Revision,
+        RequiresUnscheduled = requiresUnscheduled,
         TargetVersion = TargetVersion(database, edge.Target),
         review.SourceKind,
         review.SourceId,
@@ -227,7 +249,11 @@ public static class LinkedRecordReviews
     };
 
     /// <summary>Changes only affected fields. The caller restores proposed values after validation-only checks.</summary>
-    public static async Task<string?> ApplyAsync(TravelAssistantDbContext database, LinkedRecordReview review, Edge edge)
+    public static async Task<string?> ApplyAsync(
+        TravelAssistantDbContext database,
+        LinkedRecordReview review,
+        Edge edge,
+        bool makeUnscheduled = false)
     {
         var current = Project(edge.Target, edge);
         var changes = ReadChanges(review);
@@ -319,6 +345,11 @@ public static class LinkedRecordReviews
             if (values.TryGetValue("Duration", out var duration)) activity.DurationMinutes = duration.ValueKind == JsonValueKind.Null ? null : duration.GetInt32();
             if (values.TryGetValue("Location", out var location)) activity.Location = Text(location);
             if (values.TryGetValue("Cost", out var cost)) activity.Cost = Number(cost);
+            if (makeUnscheduled)
+            {
+                activity.Date = null;
+                activity.StartTime = null;
+            }
             var trip = await database.Trips.SingleAsync(item => item.Id == review.TripId);
             var error = ItineraryItemValidation.Validate(new CreateItineraryItemRequest(
                 activity.Name, activity.Date, activity.StartTime, activity.DurationMinutes,

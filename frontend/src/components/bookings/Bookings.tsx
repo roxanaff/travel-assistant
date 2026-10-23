@@ -8,6 +8,7 @@ import {
     deleteBooking,
     dismissBookingActivityUpdateReview,
     dismissBookingDeletedLinkNotices,
+    dismissBookingOutsideTripWarning,
     getBookings,
     linkBookingActivity,
     linkBookingExpense,
@@ -265,6 +266,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     const [isActivityMoreDetailsOpen, setIsActivityMoreDetailsOpen] = useState(false);
     const [dismissingDeletedNoticeId, setDismissingDeletedNoticeId] = useState<string | null>(null);
     const [dismissingActivityChangeId, setDismissingActivityChangeId] = useState<string | null>(null);
+    const [dismissingDateWarningId, setDismissingDateWarningId] = useState<string | null>(null);
     const [sourceActivityId, setSourceActivityId] = useState<string | null>(
         initialBookingDraft?.activityId ?? null,
     );
@@ -829,6 +831,20 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
 
     const requestRemove = (booking: Booking) => {
         requestBudgetTransition(() => void remove(booking));
+    };
+
+    const dismissDateWarning = async (booking: Booking, key: string) => {
+        setDismissingDateWarningId(booking.id);
+        try {
+            await dismissBookingOutsideTripWarning(trip.id, booking.id, key);
+            setBookings(current => current.map(item => item.id === booking.id && item.outsideTripWarning?.key === key
+                ? { ...item, dismissedOutsideTripWarningKey: key }
+                : item));
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not dismiss this date warning.");
+        } finally {
+            setDismissingDateWarningId(null);
+        }
     };
 
     const dismissDeletedLinkNotices = async (bookingId: string) => {
@@ -1658,6 +1674,24 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                         onDelete={() => requestRemove(booking)}
                     />
                 </div>
+                {booking.outsideTripWarning && booking.outsideTripWarning.key !== booking.dismissedOutsideTripWarningKey && (
+                    <InlineMessage
+                        className="booking-deleted-link-notice"
+                        variant="warning"
+                        dismissLabel={`Dismiss outside-trip dates for ${booking.name}`}
+                        isDismissDisabled={dismissingDateWarningId === booking.id}
+                        onDismiss={() => void dismissDateWarning(booking, booking.outsideTripWarning!.key)}
+                    >
+                        Outside trip dates: {booking.outsideTripWarning.dates.map(({ field, date }) => {
+                            const labels = labelsFor(booking.category ?? "");
+                            const label = field === "ReturnStartDate" ? "Return departure"
+                                : field === "ReturnEndDate" ? "Return arrival"
+                                : field === "StartDate" ? `${returnJourney ? "Outbound " : ""}${labels.start.toLowerCase()}`
+                                : `${returnJourney ? "Outbound " : ""}${labels.end.toLowerCase()}`;
+                            return `${label} ${formatDate(date)}`;
+                        }).join(" · ")}.
+                    </InlineMessage>
+                )}
                 <LinkedRecordWarnings
                     tripId={trip.id}
                     currency={trip.currency}

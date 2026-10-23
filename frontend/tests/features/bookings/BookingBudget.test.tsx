@@ -18,6 +18,7 @@ const bookingsApi = vi.hoisted(() => ({
     deleteBooking: vi.fn(),
     dismissBookingActivityUpdateReview: vi.fn(),
     dismissBookingDeletedLinkNotices: vi.fn(),
+    dismissBookingOutsideTripWarning: vi.fn(),
     getBookings: vi.fn(),
     linkBookingActivity: vi.fn(),
     linkBookingExpense: vi.fn(),
@@ -180,6 +181,29 @@ describe("booking expense actions", () => {
             const detail = within(card).getByText(label, { selector: "strong", exact: true }).parentElement!;
             expect(detail.textContent).toBe(`${label}${value}`);
         }
+    });
+
+    it("shows dismissible date warnings when collapsed and keeps failed dismissals visible", async () => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([{
+            ...hotel,
+            outsideTripWarning: {
+                key: "dates-1",
+                dates: [{ field: "StartDate", date: "2027-03-31" }],
+            },
+        }]);
+        bookingsApi.dismissBookingOutsideTripWarning.mockRejectedValueOnce(new Error("Could not dismiss dates."));
+        bookingsApi.dismissBookingOutsideTripWarning.mockResolvedValueOnce(undefined);
+        renderBookings();
+        const dismiss = await screen.findByRole("button", { name: "Dismiss outside-trip dates for Hotel Rome" });
+        expect(screen.getByText("Outside trip dates: check-in 31 Mar 2027.")).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Expand Hotel Rome details" })).toBeTruthy();
+        await user.click(dismiss);
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Could not dismiss dates.");
+        expect(screen.getByRole("button", { name: "Dismiss outside-trip dates for Hotel Rome" })).toBeTruthy();
+        await user.click(dismiss);
+        await waitFor(() => expect(screen.queryByText(/Outside trip dates:/)).toBeNull());
+        expect(bookingsApi.dismissBookingOutsideTripWarning).toHaveBeenLastCalledWith(trip.id, hotel.id, "dates-1");
     });
 
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {

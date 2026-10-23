@@ -66,6 +66,11 @@ export type Booking = {
     expenseId: string | null;
     hasPendingDeletedActivityNotice: boolean;
     hasPendingDeletedExpenseNotice: boolean;
+    outsideTripWarning?: {
+        key: string;
+        dates: Array<{ field: "StartDate" | "EndDate" | "ReturnStartDate" | "ReturnEndDate"; date: string }>;
+    } | null;
+    dismissedOutsideTripWarningKey?: string | null;
     createdAtUtc: string;
 };
 

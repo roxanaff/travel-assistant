@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LinkedRecordWarnings } from "../../src/components/shared/LinkedRecordWarnings";
 import type { LinkedRecordReview } from "../../src/api/linkedRecordReviewsApi";
@@ -129,6 +130,31 @@ it("explains blocked changes without offering an unsafe update", () => {
     expect(screen.getByText("Amount paid cannot exceed the total cost.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Update", exact: true })).toBeNull();
     expect(screen.getByRole("button", { name: "Keep as is" })).toBeTruthy();
+});
+
+it("offers unscheduling and trip-date editing for an outside-trip activity date", async () => {
+    const user = userEvent.setup();
+    const outside = {
+        ...review,
+        sourceKind: "Booking" as const,
+        targetKind: "Activity" as const,
+        requiresUnscheduled: true,
+        changes: [{ field: "Date", before: "2027-04-02", after: "2027-04-06" }],
+        proposedAmount: null,
+    };
+    api.resolveLinkedRecordReview.mockResolvedValue(undefined);
+    render(
+        <MemoryRouter>
+            <LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[outside]} onResolved={vi.fn()} />
+        </MemoryRouter>,
+    );
+
+    expect(screen.getByText("The date is outside this trip. Updating will make the activity unscheduled.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Edit trip dates" }).getAttribute("href")).toBe("/trips/trip-1/details");
+    expect(screen.queryByRole("button", { name: "Update", exact: true })).toBeNull();
+    expect(screen.getByRole("button", { name: "Keep as is" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Make unscheduled" }));
+    expect(api.resolveLinkedRecordReview).toHaveBeenCalledWith("trip-1", outside, "unschedule");
 });
 
 it("offers unlink or confirmed named deletion for a fully refunded booking", async () => {

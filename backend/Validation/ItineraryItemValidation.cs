@@ -45,7 +45,7 @@ public static class ItineraryItemValidation
 
         if (request.Date is not null && (trip.StartDate is null || trip.EndDate is null || request.Date < trip.StartDate || request.Date > trip.EndDate))
         {
-            return "The itinerary date must fall within the trip dates.";
+            return "The activity date must fall within the trip dates.";
         }
 
         if (request.DurationMinutes is <= 0)

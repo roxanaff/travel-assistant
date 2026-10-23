@@ -80,6 +80,99 @@ test("booking payment summaries and refund pills remain clear on desktop and mob
     await expect(details).toContainText("Refunded€50 · Net cost €30");
 });
 
+test("saved bookings show and persist dismissible outside-trip journey warnings", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Booking date traveller");
+    await page.getByLabel("Email").fill(`booking-dates-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Booking date warnings", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Return flight", category: "Flight", startDate: "2027-04-01", returnStartDate: "2027-04-06",
+    })).body;
+    await page.goto(`/trips/${trip.id}/bookings`);
+    const warning = page.locator(".booking-card .inline-message");
+    await expect(page.getByRole("button", { name: "Expand Return flight details" })).toBeVisible();
+    await expect(warning).toContainText("Outbound departure 1 Apr 2027");
+    await expect(warning).toContainText("Return departure 6 Apr 2027");
+    await warning.getByRole("button", { name: "Dismiss outside-trip dates for Return flight" }).click();
+    await expect(warning).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByText("Return flight", { exact: true })).toBeVisible();
+    await expect(warning).toHaveCount(0);
+    await browserRequest(page, `${tripApi}/bookings/${booking.id}`, { ...booking, returnStartDate: "2027-04-07" }, "PUT");
+    await page.reload();
+    await expect(warning).toContainText("Return departure 7 Apr 2027");
+    await page.getByRole("button", { name: "Expand Return flight details" }).click();
+    await expect(warning).toHaveCount(1);
+});
+
+test("outside-trip activity reviews offer unscheduling and the existing trip editor", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Outside-trip traveller");
+    await page.getByLabel("Email").fill(`outside-trip-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Outside-trip review", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Museum reservation", category: "MuseumAttraction", startDate: "2027-04-02", totalCost: 25,
+    })).body;
+    const activity = (await browserRequest(page, `${tripApi}/itinerary-items`, {
+        name: "Museum visit", date: "2027-04-02", startTime: "10:00", durationMinutes: 60,
+        location: "Museum", note: "Keep my notes", cost: 25, priority: "Optional",
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, {
+        role: "General",
+    })).status).toBe(200);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
+        ...booking, startDate: "2027-04-06", totalCost: 30,
+    }, "PUT")).status).toBe(200);
+
+    await page.goto(`/trips/${trip.id}/itinerary`);
+    const warning = page.locator(".linked-record-warning");
+    await expect(warning).toContainText("Date: 2 Apr 2027 → 6 Apr 2027");
+    await expect(warning).toContainText("Updating will make the activity unscheduled.");
+    const editDates = warning.getByRole("link", { name: "Edit trip dates" });
+    const actionColor = await warning.getByRole("button", { name: "Keep as is" })
+        .evaluate(element => getComputedStyle(element).color);
+    await expect(editDates).toHaveCSS("color", actionColor);
+    await expect(editDates).toHaveCSS("text-decoration-line", "none");
+    await expect(editDates).toHaveCSS("font-weight", "600");
+    await warning.getByRole("link", { name: "Edit trip dates" }).click();
+    await expect(page.getByRole("heading", { name: "Edit trip", exact: true })).toBeVisible();
+    await expect(page.getByLabel("End date", { exact: true })).toHaveValue("2027-04-05");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.getByRole("link", { name: "Itinerary", exact: true }).click();
+    await page.getByRole("link", { name: "Details", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Edit trip", exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Itinerary", exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(warning.getByRole("button", { name: "Keep as is" })).toBeVisible();
+    await expect(editDates).toHaveCSS("color", actionColor);
+    await expect(editDates).toHaveCSS("text-decoration-line", "none");
+    await page.screenshot({ path: test.info().outputPath("outside-trip-warning-mobile.png"), fullPage: true });
+    await warning.getByRole("button", { name: "Make unscheduled" }).click();
+    await expect(warning).toHaveCount(0);
+    await expect(page.locator(".itinerary-unscheduled")).toContainText("Museum visit");
+    const updated = (await browserRequest(page, `${tripApi}/itinerary-items`)).body[0];
+    expect(updated.date).toBeNull();
+    expect(updated.startTime).toBeNull();
+    expect(updated.cost).toBe(30);
+    expect(updated.durationMinutes).toBe(60);
+    expect(updated.note).toBe("Keep my notes");
+    expect((await browserRequest(page, tripApi)).body.endDate).toBe("2027-04-05");
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.startDate).toBe("2027-04-06");
+    expect((await browserRequest(page, `${tripApi}/linked-record-reviews`)).body).toEqual([]);
+});
+
 test("booking activity links wait for loading and scroll to a distant activity", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Activity traveller");

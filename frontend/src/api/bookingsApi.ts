@@ -123,6 +123,15 @@ export async function unlinkBookingActivity(
     await throwIfApiError(response, "Could not unlink this booking.");
 }
 
+export async function dismissBookingOutsideTripWarning(tripId: string, bookingId: string, key: string): Promise<void> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/dismiss-outside-trip-warning`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+    });
+    await throwIfApiError(response, "Could not dismiss this date warning.");
+}
+
 export async function dismissBookingActivityUpdateReview(
     tripId: string,
     bookingId: string,

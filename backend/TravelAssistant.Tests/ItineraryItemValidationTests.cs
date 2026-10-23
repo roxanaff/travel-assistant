@@ -38,7 +38,7 @@ public class ItineraryItemValidationTests
     [InlineData(2026, 8, 31)]
     [InlineData(2026, 9, 8)]
     public void Validate_ReturnsError_WhenDateFallsOutsideTrip(int year, int month, int day) =>
-        Assert.Equal("The itinerary date must fall within the trip dates.",
+        Assert.Equal("The activity date must fall within the trip dates.",
             ItineraryItemValidation.Validate(CreateRequest(date: new DateOnly(year, month, day)), DatedTrip));
 
     [Theory]

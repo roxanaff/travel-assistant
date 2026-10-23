@@ -41,6 +41,7 @@
 
 .linked-review-actions .text-button {
     padding: 0;
+    text-decoration: none;
 }
 
 .linked-record-warning {

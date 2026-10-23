@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { resolveLinkedRecordReview, type LinkedRecordReview } from "../../api/linkedRecordReviewsApi";
 import { unlinkBookingExpense } from "../../api/bookingsApi";
 import { deleteExpense } from "../../api/expensesApi";
@@ -128,19 +129,29 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
                                 <div>Paid after update: {formatMoney(review.proposedAmount, currency)}</div>
                             )}
                         </div>
+                        {review.requiresUnscheduled && (
+                            <span>The date is outside this trip. Updating will make the activity unscheduled.</span>
+                        )}
                         {review.blockedReason && <span>{review.blockedReason}</span>}
                     </div>
                     <div className="linked-review-actions">
                         {!review.blockedReason && (
                             <button className="text-button" type="button" disabled={pending || disabled}
-                                onClick={() => void run(() => resolveLinkedRecordReview(tripId, review, "apply"))}>
-                                Update
+                                onClick={() => void run(() => resolveLinkedRecordReview(
+                                    tripId, review, review.requiresUnscheduled ? "unschedule" : "apply",
+                                ))}>
+                                {review.requiresUnscheduled ? "Make unscheduled" : "Update"}
                             </button>
                         )}
                         <button className="text-button" type="button" disabled={pending || disabled}
                             onClick={() => void run(() => resolveLinkedRecordReview(tripId, review, "keep"))}>
                             Keep as is
                         </button>
+                        {review.requiresUnscheduled && (
+                            <Link className="text-button" to={`/trips/${tripId}/details`} state={{ editTripDates: true }}>
+                                Edit trip dates
+                            </Link>
+                        )}
                         {review.sourceKind === "Booking" && review.targetKind === "Expense"
                             && review.changes.some((change) => change.field === "Amount" && Number(change.after) <= 0) && (
                             <>

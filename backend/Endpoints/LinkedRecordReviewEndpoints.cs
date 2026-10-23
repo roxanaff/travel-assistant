@@ -25,9 +25,10 @@ public static class LinkedRecordReviewEndpoints
                 if (edge is null) continue;
                 var target = database.Entry(edge.Target);
                 var original = target.CurrentValues.Clone();
-                var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge);
+                var requiresUnscheduled = await LinkedRecordReviews.NeedsUnscheduledAsync(database, review, edge);
+                var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge, requiresUnscheduled);
                 target.CurrentValues.SetValues(original);
-                responses.Add(LinkedRecordReviews.Response(database, review, edge, blocked));
+                responses.Add(LinkedRecordReviews.Response(database, review, edge, blocked, requiresUnscheduled));
             }
             return Results.Ok(responses);
         }).WithName("GetLinkedRecordReviews");
@@ -38,7 +39,7 @@ public static class LinkedRecordReviewEndpoints
             ResolveLinkedReviewRequest request,
             TravelAssistantDbContext database) =>
         {
-            if (request.Action is not "apply" and not "keep")
+            if (request.Action is not "apply" and not "keep" and not "unschedule")
                 return Results.BadRequest("Choose update or keep as is.");
 
             await using var transaction = database.Database.IsRelational()
@@ -51,14 +52,17 @@ public static class LinkedRecordReviewEndpoints
 
             var edge = await LinkedRecordReviews.LoadEdge(database, review);
             if (edge is null) return Results.Conflict("These records are no longer linked. Refresh the page.");
-            if (request.Action == "apply")
+            if (request.Action is "apply" or "unschedule")
             {
                 if (request.TargetVersion != LinkedRecordReviews.TargetVersion(database, edge.Target))
                     return Results.Conflict("This record changed again. Refresh the notice before updating it.");
-                var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge);
+                var makeUnscheduled = request.Action == "unschedule";
+                if (makeUnscheduled && !await LinkedRecordReviews.NeedsUnscheduledAsync(database, review, edge))
+                    return Results.Conflict("This activity no longer needs to become unscheduled. Refresh the notice.");
+                var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge, makeUnscheduled);
                 if (blocked is not null) return Results.Conflict(blocked);
                 await LinkedRecordReviews.TrackAsync(database, edge.Target, review.SourceId);
-                var oppositeStillPending = await ClearReciprocalFields(database, review);
+                var oppositeStillPending = await ClearReciprocalFields(database, review, makeUnscheduled);
                 if (!oppositeStillPending) ClearLegacyFlag(edge, review.SourceKind);
             }
 
@@ -93,13 +97,21 @@ public static class LinkedRecordReviewEndpoints
         }
     }
 
-    private static async Task<bool> ClearReciprocalFields(TravelAssistantDbContext database, LinkedRecordReview review)
+    private static async Task<bool> ClearReciprocalFields(
+        TravelAssistantDbContext database,
+        LinkedRecordReview review,
+        bool makeUnscheduled)
     {
         var opposite = await database.LinkedRecordReviews.SingleOrDefaultAsync(item =>
             item.TripId == review.TripId && item.SourceId == review.TargetId && item.TargetId == review.SourceId);
         // Legacy notices without exact history cannot safely be acknowledged implicitly.
         if (opposite is null) return true;
         var appliedFields = LinkedRecordReviews.ReadChanges(review).Select(change => change.Field).ToHashSet();
+        if (makeUnscheduled)
+        {
+            appliedFields.Add("Date");
+            appliedFields.Add("Time");
+        }
         // Booking end fields and activity duration represent the same accepted schedule change.
         if (appliedFields.Contains("Duration"))
         {

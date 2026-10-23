@@ -132,6 +132,10 @@ namespace TravelAssistant.Migrations
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DismissedOutsideTripWarningKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 

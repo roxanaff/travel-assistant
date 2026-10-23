@@ -88,6 +88,15 @@ public static class TripEndpoints
             trip.Currency = request.Currency.Trim().ToUpperInvariant();
             trip.Note = NormalizeOptionalText(request.Note);
 
+            if (trip.StartDate != previousStartDate || trip.EndDate != previousEndDate)
+            {
+                var bookings = await database.Bookings.Where(item => item.TripId == trip.Id).ToListAsync();
+                foreach (var booking in bookings)
+                {
+                    booking.DismissedOutsideTripWarningKey = null;
+                }
+            }
+
             var unscheduledActivityCount = await ApplyItineraryDateChanges(
                 trip,
                 previousStartDate,

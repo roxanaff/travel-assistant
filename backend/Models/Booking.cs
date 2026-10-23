@@ -62,6 +62,8 @@ public class Booking
 
     public bool HasPendingDeletedExpenseNotice { get; set; }
 
+    public string? DismissedOutsideTripWarningKey { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public List<ItineraryItem> Activities { get; set; } = [];

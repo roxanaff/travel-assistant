@@ -2,7 +2,7 @@
 // the shared trip in Workspace after a successful edit.
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { TripForm } from "../trips/TripForm";
 import { deleteTrip, updateTrip } from "../../api/tripsApi";
 import { formatDateRange, formatMoney } from "../../utils/format";
@@ -17,11 +17,24 @@ import "./TripDetails.css";
 /** Displays the complete trip details and provides the edit/delete actions. */
 export function TripDetails({ trip, setTrip, setHasUnsavedForm }: TripWorkspaceContext) {
     const navigate = useNavigate();
-    const [editing, setEditing] = useState(false);
+    const location = useLocation();
+    const navigationState = location.state as { editTripDates?: boolean } | null;
+    const [editing, setEditing] = useState(() => navigationState?.editTripDates === true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
     const [isConfirmingDeletion, setIsConfirmingDeletion] = useState(false);
+
+    // The warning's edit request is one-use; returning to Details must not reopen a saved/cancelled form.
+    useEffect(() => {
+        if (!navigationState?.editTripDates) return;
+        const remainingState = { ...navigationState };
+        delete remainingState.editTripDates;
+        navigate(
+            { pathname: location.pathname, search: location.search, hash: location.hash },
+            { replace: true, state: Object.keys(remainingState).length ? remainingState : null },
+        );
+    }, [location.hash, location.pathname, location.search, navigate, navigationState]);
 
     // An open trip form should be protected from accidental tab changes.
     useEffect(() => {

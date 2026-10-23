@@ -74,6 +74,46 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SavedOutsideTripWarningsPersistDismissalAndReturnAfterDateChanges()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "saved-date-warning@example.com");
+        var trip = await CreateTripAsync(client);
+        var request = CreateBookingRequest(startDate: new DateOnly(2027, 4, 1), returnStartDate: new DateOnly(2027, 4, 6));
+        var created = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", request));
+        var id = created.GetProperty("id").GetGuid();
+        var warning = created.GetProperty("outsideTripWarning");
+        Assert.Equal(2, warning.GetProperty("dates").GetArrayLength());
+        var key = warning.GetProperty("key").GetString();
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync(
+            $"{trip}/bookings/{id}/dismiss-outside-trip-warning", new { Key = key })).StatusCode);
+        var saved = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.Equal(key, saved.GetProperty("dismissedOutsideTripWarningKey").GetString());
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", request with { Name = "Renamed flight" });
+        saved = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.Equal(key, saved.GetProperty("dismissedOutsideTripWarningKey").GetString());
+
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", request with { ReturnStartDate = new DateOnly(2027, 4, 7) });
+        saved = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.Equal(JsonValueKind.Null, saved.GetProperty("dismissedOutsideTripWarningKey").ValueKind);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(
+            $"{trip}/bookings/{id}/dismiss-outside-trip-warning", new { Key = key })).StatusCode);
+
+        using var other = CreateClient();
+        await RegisterAsync(other, "Other", "other-date-warning@example.com");
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync(
+            $"{trip}/bookings/{id}/dismiss-outside-trip-warning", new { Key = key })).StatusCode);
+
+        key = saved.GetProperty("outsideTripWarning").GetProperty("key").GetString();
+        await client.PostAsJsonAsync($"{trip}/bookings/{id}/dismiss-outside-trip-warning", new { Key = key });
+        await client.PutAsJsonAsync(trip, new CreateTripRequest(
+            "Rome weekend", "Rome", new DateOnly(2027, 4, 3), new DateOnly(2027, 4, 5),
+            null, null, 500, "EUR", null));
+        saved = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.Equal(JsonValueKind.Null, saved.GetProperty("dismissedOutsideTripWarningKey").ValueKind);
+    }
+
+    [Fact]
     public async Task ActivityCanBelongToOnlyOneBooking()
     {
         using var client = CreateClient();
@@ -748,8 +788,70 @@ public sealed class BookingApiTests : IAsyncLifetime
 
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(startDate: new DateOnly(2027, 4, 6), totalCost: 200, amountPaid: 0));
         var dateReview = (await GetReviews(client, trip)).Single(review => review.GetProperty("targetKind").GetString() == "Activity");
-        Assert.Contains("trip dates", dateReview.GetProperty("blockedReason").GetString());
+        Assert.True(dateReview.GetProperty("requiresUnscheduled").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, dateReview.GetProperty("blockedReason").ValueKind);
         Assert.Equal(HttpStatusCode.Conflict, (await Resolve(client, trip, dateReview, "apply")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("unschedule")]
+    [InlineData("keep")]
+    public async Task OutsideTripReviewOffersExplicitUnscheduledOrKeepDecision(string action)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "outside-review@example.com");
+        var trip = await CreateTripAsync(client);
+        var bookingId = await CreateBookingAsync(client, trip, "Flight");
+        var activityId = await CreateActivityAsync(client, trip);
+        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(
+            startDate: new DateOnly(2027, 4, 6), totalCost: 250, amountPaid: 150));
+
+        var review = Assert.Single(await GetReviews(client, trip));
+        Assert.True(review.GetProperty("requiresUnscheduled").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, review.GetProperty("blockedReason").ValueKind);
+        Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, review, action)).StatusCode);
+        Assert.Empty(await GetReviews(client, trip));
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        var activity = await database.ItineraryItems.AsNoTracking().SingleAsync(item => item.Id == activityId);
+        Assert.Equal(action == "keep" ? new DateOnly(2027, 4, 2) : null, activity.Date);
+        Assert.Equal(action == "keep" ? new TimeOnly(10, 0) : null, activity.StartTime);
+        Assert.Equal(action == "keep" ? null : 250m, activity.Cost);
+        Assert.Equal(60, activity.DurationMinutes);
+        Assert.Equal("Rome airport", activity.Location);
+        Assert.Equal("Airport transfer", activity.Name);
+        Assert.Equal(bookingId, activity.BookingId);
+        var booking = await database.Bookings.AsNoTracking().SingleAsync(item => item.Id == bookingId);
+        Assert.Equal(new DateOnly(2027, 4, 6), booking.StartDate);
+        Assert.Equal(new DateOnly(2027, 4, 5), (await database.Trips.AsNoTracking().SingleAsync()).EndDate);
+    }
+
+    [Fact]
+    public async Task UnscheduledDecisionRejectsStaleTargetAndCannotBeUsedForAnInTripChange()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "stale-unscheduled@example.com");
+        var trip = await CreateTripAsync(client);
+        var bookingId = await CreateBookingAsync(client, trip, "Flight");
+        var activityId = await CreateActivityAsync(client, trip);
+        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(
+            startDate: new DateOnly(2027, 4, 6), totalCost: 200, amountPaid: 150));
+        var stale = Assert.Single(await GetReviews(client, trip));
+        await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
+            "Renamed transfer", new DateOnly(2027, 4, 2), new TimeOnly(10, 0), 60,
+            null, null, ItineraryCategory.Other, null, "Rome airport", null, ItineraryPriority.MustDo, null, true));
+        Assert.Equal(HttpStatusCode.Conflict, (await Resolve(client, trip, stale, "unschedule")).StatusCode);
+        var refreshed = Assert.Single(await GetReviews(client, trip));
+        await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(
+            startDate: new DateOnly(2027, 4, 3), totalCost: 200, amountPaid: 150));
+        Assert.Equal(HttpStatusCode.Conflict, (await Resolve(client, trip, refreshed, "unschedule")).StatusCode);
+        var inTrip = Assert.Single(await GetReviews(client, trip));
+        Assert.False(inTrip.GetProperty("requiresUnscheduled").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, (await Resolve(client, trip, inTrip, "unschedule")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, inTrip, "apply")).StatusCode);
     }
 
     [Fact]

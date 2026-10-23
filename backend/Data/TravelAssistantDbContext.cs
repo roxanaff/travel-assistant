@@ -147,6 +147,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             booking.Property(item => item.AmountRefunded).HasPrecision(12, 2);
             booking.Property(item => item.HasPendingDeletedActivityNotice).HasDefaultValue(false);
             booking.Property(item => item.HasPendingDeletedExpenseNotice).HasDefaultValue(false);
+            booking.Property(item => item.DismissedOutsideTripWarningKey).HasMaxLength(64);
             booking.HasOne(item => item.Trip)
                 .WithMany(trip => trip.Bookings)
                 .HasForeignKey(item => item.TripId)

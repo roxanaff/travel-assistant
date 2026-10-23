@@ -6,6 +6,7 @@ export type LinkedRecordReview = {
     id: string;
     revision: string;
     targetVersion: string;
+    requiresUnscheduled?: boolean;
     sourceKind: LinkedRecordKind;
     sourceId: string;
     sourceName: string;
@@ -31,7 +32,7 @@ export async function getLinkedRecordReviews(tripId: string): Promise<LinkedReco
     return response.json();
 }
 
-export async function resolveLinkedRecordReview(tripId: string, review: LinkedRecordReview, action: "apply" | "keep") {
+export async function resolveLinkedRecordReview(tripId: string, review: LinkedRecordReview, action: "apply" | "keep" | "unschedule") {
     const response = await apiFetch(`${apiBaseUrl}/api/trips/${tripId}/linked-record-reviews/${review.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

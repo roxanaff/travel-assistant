@@ -9,6 +9,8 @@ using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
+public sealed record DismissBookingDateWarningRequest(string Key);
+
 /// <summary>Defines the API workflow for trip bookings and their first-version relationships.</summary>
 public static class BookingEndpoints
 {
@@ -27,6 +29,7 @@ public static class BookingEndpoints
 
             var bookings = await database.Bookings
                 .Where(booking => booking.TripId == tripId)
+                .Include(booking => booking.Trip)
                 .Include(booking => booking.Activities)
                 .Include(booking => booking.Expense)
                 .ToListAsync();
@@ -55,13 +58,13 @@ public static class BookingEndpoints
                 return Results.BadRequest(validationError);
             }
 
-            var tripExists = await database.Trips.AnyAsync(trip => trip.Id == tripId);
-            if (!tripExists)
+            var trip = await database.Trips.SingleOrDefaultAsync(trip => trip.Id == tripId);
+            if (trip is null)
             {
                 return Results.NotFound();
             }
 
-            var booking = new Booking { TripId = tripId };
+            var booking = new Booking { TripId = tripId, Trip = trip };
             ApplyRequest(booking, request);
             database.Bookings.Add(booking);
             await database.SaveChangesAsync();
@@ -424,11 +427,28 @@ public static class BookingEndpoints
             return Results.NoContent();
         }).WithName("UnlinkBookingExpense");
 
+        routes.MapPost("/bookings/{id:guid}/dismiss-outside-trip-warning", async (
+            Guid tripId,
+            Guid id,
+            DismissBookingDateWarningRequest request,
+            TravelAssistantDbContext database) =>
+        {
+            var booking = await FindBooking(tripId, id, database);
+            if (booking is null) return Results.NotFound();
+            var warning = BookingDateWarnings.Get(booking);
+            if (warning is null || warning.Key != request.Key)
+                return Results.Conflict("The booking or trip dates changed. Refresh before dismissing this warning.");
+            booking.DismissedOutsideTripWarningKey = warning.Key;
+            await database.SaveChangesAsync();
+            return Results.NoContent();
+        }).WithName("DismissBookingOutsideTripWarning");
+
         return app;
     }
 
     private static Task<Booking?> FindBooking(Guid tripId, Guid id, TravelAssistantDbContext database) =>
         database.Bookings
+            .Include(booking => booking.Trip)
             .Include(booking => booking.Activities)
             .Include(booking => booking.Expense)
             .SingleOrDefaultAsync(booking => booking.Id == id && booking.TripId == tripId);
@@ -566,6 +586,8 @@ public static class BookingEndpoints
         booking.HasPendingDeletedActivityNotice,
         booking.HasPendingDeletedExpenseNotice,
         FinancialStatus = GetFinancialStatus(booking),
+        OutsideTripWarning = BookingDateWarnings.Get(booking),
+        booking.DismissedOutsideTripWarningKey,
         NetCost = booking.AmountPaid - (booking.AmountRefunded ?? 0),
         ActivityLinks = booking.Activities.Select(activity => new
         {
