@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Contracts;
@@ -176,10 +178,29 @@ public static class LinkedRecordReviews
             Id(edge.Target) == review.TargetId && Kind(edge.Target) == review.TargetKind);
     }
 
-    public static object Response(LinkedRecordReview review, Edge edge, string? blockedReason) => new
+    public static string TargetVersion(TravelAssistantDbContext database, object target)
+    {
+        // Scalar values avoid navigation cycles and protect all destination inputs used by validation/mapping.
+        var values = database.Entry(target).CurrentValues;
+        var snapshot = values.Properties
+            .OrderBy(property => property.Name)
+            .ToDictionary(
+                property => property.Name,
+                property => values[property] is decimal number
+                    ? number.ToString("G29", CultureInfo.InvariantCulture)
+                    : values[property]);
+        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
+    }
+
+    public static object Response(
+        TravelAssistantDbContext database,
+        LinkedRecordReview review,
+        Edge edge,
+        string? blockedReason) => new
     {
         review.Id,
         review.Revision,
+        TargetVersion = TargetVersion(database, edge.Target),
         review.SourceKind,
         review.SourceId,
         SourceName = Name(edge.Source),
@@ -188,7 +209,13 @@ public static class LinkedRecordReviews
         TargetName = Name(edge.Target),
         review.IsMismatch,
         Role = edge.Activity?.BookingRole,
-        Changes = ReadChanges(review),
+        Changes = ReadChanges(review).Select(change => new
+        {
+            change.Field,
+            change.Before,
+            change.After,
+            TargetValue = Project(edge.Target, edge)[change.Field],
+        }),
         ProposedAmount = edge.IsFinancial
             ? Project(edge.Source, edge)["Amount"].GetDecimal()
                 + (edge.Target is Booking booking ? booking.AmountRefunded ?? 0 : 0)
@@ -203,16 +230,7 @@ public static class LinkedRecordReviews
     public static async Task<string?> ApplyAsync(TravelAssistantDbContext database, LinkedRecordReview review, Edge edge)
     {
         var current = Project(edge.Target, edge);
-        var baseline = ReadSnapshot(review);
         var changes = ReadChanges(review);
-        foreach (var change in changes)
-        {
-            if (!baseline.TryGetValue(change.Field, out var original)
-                || (!Equal(current[change.Field], original) && !Equal(current[change.Field], change.After)))
-            {
-                return "The related field was also edited. Keep it as is or edit the record manually to resolve the difference.";
-            }
-        }
 
         if (changes.Any(change => change.Field == "ArrivalLocation"))
         {

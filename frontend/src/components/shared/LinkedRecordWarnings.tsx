@@ -99,13 +99,29 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
                             {review.isMismatch ? ": linked values differ" : " changed"}
                         </strong>
                         <div className="linked-record-changes">
-                            {review.changes.map((change) => (
-                                <div key={change.field}>
-                                    {review.isMismatch
-                                        ? `${fieldLabel(change.field, review.targetKind)} ${formatValue(change.field, change.before)} · ${kindLabels[review.sourceKind]} ${fieldLabel(change.field, review.sourceKind).toLowerCase()} ${formatValue(change.field, change.after)}`
-                                        : `${fieldLabel(change.field, review.sourceKind)}: ${formatValue(change.field, change.before)} → ${formatValue(change.field, change.after)}`}
-                                </div>
-                            ))}
+                            {review.changes.map((change) => {
+                                const targetValue = change.targetValue === undefined ? change.before : change.targetValue;
+                                const sourceLabel = fieldLabel(change.field, review.sourceKind);
+                                const before = formatValue(change.field, change.before);
+                                const after = formatValue(change.field, change.after);
+                                const target = formatValue(change.field, targetValue);
+                                return (
+                                    <div key={change.field}>
+                                        {review.isMismatch ? (
+                                            <>
+                                                {fieldLabel(change.field, review.targetKind)} {target}
+                                                {` · ${kindLabels[review.sourceKind]} ${sourceLabel.toLowerCase()} ${after}`}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {`${sourceLabel}: ${before} → ${after}`}
+                                                {targetValue !== change.before && targetValue !== change.after
+                                                    && ` · Replaces ${target}`}
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {review.targetKind === "Booking" && review.proposedAmount !== null
                                 && review.changes.some((change) => change.field === "Amount"
                                     && Number(change.after) !== review.proposedAmount) && (

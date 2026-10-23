@@ -137,7 +137,7 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     } = useExpandableCards(expandableItemIds, `trip:${trip.id}:itinerary:expanded`);
 
     const highlightedActivityId = useNavigationCardFocus({
-        availableIds: items.map((item) => item.id),
+        availableIds: isLoading || error ? [] : items.map((item) => item.id),
         elementIdPrefix: "activity",
         expand,
     });

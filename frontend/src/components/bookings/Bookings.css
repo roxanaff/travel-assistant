@@ -397,7 +397,6 @@
     grid-template-columns: subgrid;
     align-items: start;
     gap: 8px 12px;
-    margin-top: 10px;
 }
 
 .booking-related-budget > strong {

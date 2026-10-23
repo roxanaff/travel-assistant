@@ -56,31 +56,34 @@ export function useNavigationCardFocus({
         const focusId = pendingFocusIdRef.current;
         if (!focusId || !availableIds.includes(focusId)) return;
 
+        const element = document.getElementById(`${elementIdPrefix}-${focusId}`);
+        if (!element) return;
+
         pendingFocusIdRef.current = null;
         expand?.(focusId);
         setHighlightedId(focusId);
-        const element = document.getElementById(`${elementIdPrefix}-${focusId}`);
-        if (element) {
-            element.tabIndex = -1;
-            element.focus({ preventScroll: true });
-            const bounds = element.getBoundingClientRect();
-            if (bounds.top < 0 || bounds.bottom > window.innerHeight) {
-                element.scrollIntoView({
-                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                        ? "instant"
-                        : "smooth",
-                    block: "nearest",
-                });
-            }
-        }
     }, [availableIds, elementIdPrefix, expand]);
 
     useEffect(() => {
         if (!highlightedId) return;
 
+        // Expansion must commit before measuring the card, otherwise its new details can remain offscreen.
+        const element = document.getElementById(`${elementIdPrefix}-${highlightedId}`);
+        if (!element) return;
+        element.tabIndex = -1;
+        element.focus({ preventScroll: true });
+        const bounds = element.getBoundingClientRect();
+        if (bounds.top < 0 || bounds.bottom > window.innerHeight) {
+            element.scrollIntoView({
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                    ? "instant"
+                    : "smooth",
+                block: "nearest",
+            });
+        }
         const timer = window.setTimeout(() => setHighlightedId(null), 2200);
         return () => window.clearTimeout(timer);
-    }, [highlightedId]);
+    }, [elementIdPrefix, highlightedId]);
 
     return highlightedId;
 }

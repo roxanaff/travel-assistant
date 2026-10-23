@@ -7,7 +7,7 @@ using TravelAssistant.Services;
 
 namespace TravelAssistant.Endpoints;
 
-public sealed record ResolveLinkedReviewRequest(Guid Revision, string Action);
+public sealed record ResolveLinkedReviewRequest(Guid Revision, string Action, string? TargetVersion);
 
 public static class LinkedRecordReviewEndpoints
 {
@@ -27,7 +27,7 @@ public static class LinkedRecordReviewEndpoints
                 var original = target.CurrentValues.Clone();
                 var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge);
                 target.CurrentValues.SetValues(original);
-                responses.Add(LinkedRecordReviews.Response(review, edge, blocked));
+                responses.Add(LinkedRecordReviews.Response(database, review, edge, blocked));
             }
             return Results.Ok(responses);
         }).WithName("GetLinkedRecordReviews");
@@ -53,6 +53,8 @@ public static class LinkedRecordReviewEndpoints
             if (edge is null) return Results.Conflict("These records are no longer linked. Refresh the page.");
             if (request.Action == "apply")
             {
+                if (request.TargetVersion != LinkedRecordReviews.TargetVersion(database, edge.Target))
+                    return Results.Conflict("This record changed again. Refresh the notice before updating it.");
                 var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge);
                 if (blocked is not null) return Results.Conflict(blocked);
                 await LinkedRecordReviews.TrackAsync(database, edge.Target, review.SourceId);
@@ -98,6 +100,16 @@ public static class LinkedRecordReviewEndpoints
         // Legacy notices without exact history cannot safely be acknowledged implicitly.
         if (opposite is null) return true;
         var appliedFields = LinkedRecordReviews.ReadChanges(review).Select(change => change.Field).ToHashSet();
+        // Booking end fields and activity duration represent the same accepted schedule change.
+        if (appliedFields.Contains("Duration"))
+        {
+            appliedFields.Add("EndDate");
+            appliedFields.Add("EndTime");
+        }
+        else if (appliedFields.Contains("EndDate") || appliedFields.Contains("EndTime"))
+        {
+            appliedFields.Add("Duration");
+        }
         var remaining = LinkedRecordReviews.ReadChanges(opposite).Where(change => !appliedFields.Contains(change.Field)).ToList();
         if (remaining.Count == 0)
         {

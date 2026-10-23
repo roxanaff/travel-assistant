@@ -719,6 +719,25 @@ Completed in the compact-warning presentation chunk:
 - Update eligibility, independent-edit handling, outside-trip activity actions, and outgoing review controls are
   unchanged in this presentation-only chunk and remain pending below.
 
+Completed in the explicit two-sided update chunk:
+
+- Independent edits no longer block a valid Update. Warnings identify the current destination value being replaced;
+  initial mismatch warnings also show that current value rather than the original link-time value.
+- Update resolves matching fields in both directions, including duration/end-time equivalents, while unrelated
+  changes remain pending. Keep as is dismisses only its selected direction. Existing record validation still applies.
+- Source-review revisions and a destination snapshot guard reject updates after further edits; refreshing offers a
+  fresh decision. Equivalent decimal representations do not cause false conflicts. No storage migration is required.
+- Removed the extra top margin before booking expense actions, using the existing saved-detail row spacing.
+- Backend tests cover independent date/cost/payment edits, stale decisions, reciprocal schedule fields and unrelated
+  location changes. Affected frontend tests and desktop/mobile Chromium flows cover current-value text and spacing.
+
+Completed in the activity-navigation follow-up:
+
+- Booking-to-activity links retain their focus request until the itinerary finishes loading and the destination card
+  exists. Scrolling measures the expanded card after rendering, so its details are brought into view as well.
+- Twenty-six booking/itinerary tests, two focused Chromium flows, build and lint pass. The browser regression delays
+  booking loading and navigates to a distant activity; expense navigation remains covered. Independent review is clear.
+
 Remaining: implement the other agreed usability refinements at the top of this document, Mark as paid, saved-card date
 warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product

@@ -80,6 +80,54 @@ test("booking payment summaries and refund pills remain clear on desktop and mob
     await expect(details).toContainText("Refunded€50 · Net cost €30");
 });
 
+test("booking activity links wait for loading and scroll to a distant activity", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Activity traveller");
+    await page.getByLabel("Email").fill(`activity-scroll-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Activity scrolling", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Concert reservation", startDate: "2027-04-05",
+    })).body;
+    await Promise.all(Array.from({ length: 16 }, async (_, index) => {
+        const response = await browserRequest(page, `${tripApi}/itinerary-items`, {
+            name: `Earlier activity ${index + 1}`, date: "2027-04-02", priority: "Optional",
+        });
+        expect(response.status).toBe(201);
+    }));
+    const activity = (await browserRequest(page, `${tripApi}/itinerary-items`, {
+        name: "Evening concert", date: "2027-04-05", priority: "Optional",
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, {
+        role: "General",
+    })).status).toBe(200);
+    await page.goto(`/trips/${trip.id}/bookings`);
+    await page.getByRole("button", { name: "Expand Concert reservation details" }).click();
+
+    let finishLoading!: () => void;
+    const gate = new Promise<void>(resolve => { finishLoading = resolve; });
+    await page.route(`**/trips/${trip.id}/bookings`, async route => {
+        await gate;
+        await route.continue();
+    });
+    await page.getByRole("link", { name: "Evening concert", exact: true }).click();
+    await expect(page.getByText("Loading itinerary…")).toBeVisible();
+    finishLoading();
+    const card = page.locator(`#activity-${activity.id}`);
+    await expect(card).toBeFocused();
+    await expect(card).toHaveClass(/itinerary-item-highlighted/);
+    await expect.poll(() => card.evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.top >= 0 && bounds.bottom <= window.innerHeight;
+    })).toBe(true);
+    await expect(page.getByRole("button", { name: "Collapse Evening concert details" })).toBeVisible();
+});
+
 test("a booking records actual spending directly and navigates to the expense", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Booking traveller");
@@ -111,6 +159,9 @@ test("a booking records actual spending directly and navigates to the expense", 
     await page.goto(`/trips/${trip.id}/bookings`);
     await page.getByRole("button", { name: "Expand Rome hotel details" }).click();
     await expect(page.getByRole("button", { name: "Add to planned costs" })).toHaveCount(0);
+    const activityAction = await page.getByRole("button", { name: "Add activity", exact: true }).boundingBox();
+    const expenseAction = await page.getByRole("button", { name: "Add to expenses", exact: true }).boundingBox();
+    expect(expenseAction!.y - (activityAction!.y + activityAction!.height)).toBeLessThan(14);
     await page.getByRole("button", { name: "Add to expenses" }).click();
     await expect(page.getByLabel("What did you pay for?")).toHaveValue("Rome hotel");
     await expect(page.getByLabel("Amount (EUR)")).toHaveValue("150");
@@ -466,4 +517,25 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     expect(finishedBooking.endTime).toBe("10:30:00");
     expect(finishedBooking.totalCost).toBe(200);
     expect((await browserRequest(page, `${tripApi}/linked-record-reviews`)).body).toEqual([]);
+
+    // Accept one side's cost while leaving the other side's independent location pending.
+    await browserRequest(page, `${tripApi}/bookings/${booking.id}`, { ...finishedBooking, totalCost: 250 }, "PUT");
+    const currentActivity = (await browserRequest(page, `${tripApi}/itinerary-items`)).body[0];
+    await browserRequest(page, `${tripApi}/itinerary-items/${activity.id}`, {
+        ...currentActivity, cost: 190, location: "New museum entrance",
+    }, "PUT");
+    await page.reload();
+    await expect(notice).toContainText("Cost: €200 → €190 · Replaces €250");
+    await expect(notice).toContainText("Location: Museum → New museum entrance");
+    await page.getByRole("link", { name: "Itinerary", exact: true }).click();
+    await expect(notice).toContainText("Total cost: €200 → €250 · Replaces €190");
+    await notice.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(notice).toHaveCount(0);
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await expect(notice).toContainText("Location: Museum → New museum entrance");
+    await expect(notice).not.toContainText("Cost:");
+    expect((await browserRequest(page, `${tripApi}/itinerary-items`)).body[0].cost).toBe(250);
+    await notice.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(notice).toHaveCount(0);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.location).toBe("New museum entrance");
 });

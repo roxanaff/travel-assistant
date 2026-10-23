@@ -20,6 +20,8 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 
 ## Usability and interaction improvements
 
+- [P2] Expenses — Within each category, keep entries ordered by expense date. Add user-selectable sorting options
+  later; implement this separately from the booking work.
 - [P1] Workspace view state — Remember view choices when moving between workspace tabs instead of resetting them.
   Expenses currently resets Group by to Category when the page is remounted. Extend the established checklist
   preference pattern as appropriate. Include grouping, collapsed groups, and custom category order in the design;

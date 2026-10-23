@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -83,6 +84,45 @@ describe("Itinerary", () => {
         window.localStorage.clear();
         api.getItineraryItems.mockResolvedValue([]);
         bookingsApi.getBookings.mockResolvedValue([]);
+    });
+
+    it("waits for the card to render before scrolling to a linked activity", async () => {
+        let finishLoading!: () => void;
+        bookingsApi.getBookings.mockReturnValue(new Promise<[]>(resolve => {
+            finishLoading = () => resolve([]);
+        }));
+        api.getItineraryItems.mockResolvedValue([museum]);
+        const scroll = vi.fn();
+        const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+            top: 1200, bottom: 1300, left: 0, right: 400, width: 400, height: 100,
+            x: 0, y: 1200, toJSON: () => ({}),
+        });
+        vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+        const originalScroll = HTMLElement.prototype.scrollIntoView;
+        HTMLElement.prototype.scrollIntoView = scroll;
+        try {
+            render(
+                <MemoryRouter initialEntries={[{
+                    pathname: "/itinerary",
+                    state: { cardFocus: { cardId: museum.id } },
+                }]}>
+                    <Itinerary trip={trip} />
+                </MemoryRouter>,
+            );
+            await waitFor(() => expect(bookingsApi.getBookings).toHaveBeenCalled());
+            expect(screen.getByText("Loading itinerary…")).toBeTruthy();
+            expect(scroll).not.toHaveBeenCalled();
+            await act(async () => finishLoading());
+            await waitFor(() => expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" }));
+            const card = document.getElementById(`activity-${museum.id}`)!;
+            expect(document.activeElement).toBe(card);
+            expect(card.className).toContain("itinerary-item-highlighted");
+            expect(screen.getByRole("button", { name: "Collapse Museum details" })).toBeTruthy();
+        } finally {
+            bounds.mockRestore();
+            HTMLElement.prototype.scrollIntoView = originalScroll;
+            vi.unstubAllGlobals();
+        }
     });
 
     it("shows and dismisses a booking change on a collapsed activity even without loaded booking details", async () => {

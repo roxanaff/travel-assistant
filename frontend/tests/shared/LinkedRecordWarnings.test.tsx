@@ -15,6 +15,7 @@ vi.mock("../../src/api/bookingsApi", () => bookingApi);
 const review: LinkedRecordReview = {
     id: "review-1",
     revision: "version-1",
+    targetVersion: "target-version-1",
     sourceKind: "Expense",
     sourceId: "expense-1",
     sourceName: "Flight deposit",
@@ -83,11 +84,26 @@ it("identifies both linked values for an initial payment mismatch", () => {
         ...review,
         isMismatch: true,
         proposedAmount: 70,
+        changes: [{ field: "Amount", before: 50, after: 70, targetValue: 60 }],
     }]} />);
 
     expect(screen.getByText("Expense “Flight deposit”: linked values differ")).toBeTruthy();
-    expect(screen.getByText("Net cost €50 · Expense cost €70")).toBeTruthy();
+    expect(screen.getByText("Net cost €60 · Expense cost €70")).toBeTruthy();
     expect(screen.queryByText(/Paid after update/)).toBeNull();
+});
+
+it("shows the independently edited value that Update will replace", async () => {
+    const user = userEvent.setup();
+    const changed = {
+        ...review,
+        changes: [{ field: "Amount", before: 50, after: 70, targetValue: 60 }],
+    };
+    api.resolveLinkedRecordReview.mockResolvedValue(undefined);
+    render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" onResolved={vi.fn()} reviews={[changed]} />);
+
+    expect(screen.getByText("Cost: €50 → €70 · Replaces €60")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Update", exact: true }));
+    expect(api.resolveLinkedRecordReview).toHaveBeenCalledWith("trip-1", changed, "apply");
 });
 
 it("refreshes a conflicting notice before retrying with its new revision", async () => {
