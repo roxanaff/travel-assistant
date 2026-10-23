@@ -27,6 +27,7 @@ import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { InlineMessage } from "../shared/InlineMessage";
 import { LegacyLinkedRecordWarning, LinkedRecordWarnings } from "../shared/LinkedRecordWarnings";
+import { RelatedRecordReviews } from "../shared/RelatedRecordReviews";
 import { useLinkedRecordReviews } from "../../utils/useLinkedRecordReviews";
 import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { StatusPill } from "../shared/StatusPill";
@@ -85,6 +86,10 @@ type PendingDeletion = {
 export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     const [items, setItems] = useState<ItineraryItem[]>([]);
     const linkedReviews = useLinkedRecordReviews(trip.id, "Activity", items);
+    const {
+        isExpanded: isRelatedReviewOpen,
+        toggleExpanded: toggleRelatedReview,
+    } = useExpandableCards(items.map((item) => item.id), `trip:${trip.id}:itinerary:related-reviews`);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -530,6 +535,14 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
     );
 
     /** Renders a compact itinerary card, with secondary details available on demand. */
+    const refreshRelatedRecords = async () => {
+        const [loadedItems, loadedBookings] = await Promise.all([
+            getItineraryItems(trip.id), getBookings(trip.id),
+        ]);
+        setItems((current) => current === items ? loadedItems : current);
+        setBookings((current) => current === bookings ? loadedBookings : current);
+    };
+
     const renderItem = (item: ItineraryItem) => {
         if (editingItemId === item.id) {
             return <li key={item.id}>{form(editingItem, saveEdit, true)}</li>;
@@ -636,13 +649,19 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                     currency={trip.currency}
                     reviews={linkedReviews.reviews.filter((review) => review.targetId === item.id)}
                     disabled={isSaving || isLinkingBooking}
-                    onResolved={async () => {
-                        const [loadedItems, loadedBookings] = await Promise.all([
-                            getItineraryItems(trip.id), getBookings(trip.id),
-                        ]);
-                        setItems((current) => current === items ? loadedItems : current);
-                        setBookings((current) => current === bookings ? loadedBookings : current);
-                    }}
+                    onResolved={refreshRelatedRecords}
+                />
+                <RelatedRecordReviews
+                    tripId={trip.id}
+                    currency={trip.currency}
+                    recordName={item.name}
+                    panelId={`activity-related-reviews-${item.id}`}
+                    reviews={linkedReviews.outgoingReviews.filter((review) => review.sourceId === item.id)}
+                    isExpanded={isRelatedReviewOpen(item.id)}
+                    onToggle={() => toggleRelatedReview(item.id)}
+                    disabled={isSaving || isLinkingBooking || creatingBookingForActivityId !== null
+                        || linkingActivityId !== null}
+                    onResolved={refreshRelatedRecords}
                 />
                 {linkedReviews.loaded && item.hasPendingActivityUpdateReview && item.bookingId
                     && !linkedReviews.reviews.some((review) => review.targetId === item.id) && (

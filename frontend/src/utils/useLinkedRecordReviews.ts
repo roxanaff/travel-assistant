@@ -15,7 +15,7 @@ export function useLinkedRecordReviews(tripId: string, kind: LinkedRecordKind, r
             try {
                 const loaded = await getLinkedRecordReviews(tripId);
                 if (!active || version !== requestVersion.current) return;
-                setReviews(loaded.filter((review) => review.targetKind === kind));
+                setReviews(loaded);
                 setLoadedTripId(tripId);
                 setError(null);
             } catch (exception) {
@@ -34,5 +34,10 @@ export function useLinkedRecordReviews(tripId: string, kind: LinkedRecordKind, r
         };
     }, [tripId, kind, records]);
 
-    return { reviews, error, loaded: loadedTripId === tripId };
+    return {
+        reviews: reviews.filter((review) => review.targetKind === kind),
+        outgoingReviews: reviews.filter((review) => review.sourceKind === kind),
+        error,
+        loaded: loadedTripId === tripId,
+    };
 }

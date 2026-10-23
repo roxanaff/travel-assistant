@@ -34,6 +34,52 @@ const review: LinkedRecordReview = {
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
+it.each([false, true])("renders neutral review rows and reserves yellow for cautions (%s)", (requiresUnscheduled) => {
+    const outgoing: LinkedRecordReview = {
+        ...review,
+        sourceKind: "Booking",
+        sourceName: "Museum booking",
+        targetKind: "Activity",
+        targetName: "Museum visit",
+        requiresUnscheduled,
+        proposedAmount: null,
+    };
+    const { container } = render(
+        <MemoryRouter>
+            <LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[outgoing]}
+                perspective="target" presentation="review" onResolved={vi.fn()} />
+        </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Activity “Museum visit”")).toBeTruthy();
+    expect(screen.queryByText(/update available/)).toBeNull();
+    expect(container.querySelector(".linked-record-review")?.classList.contains("inline-message-warning")).toBe(false);
+    expect(container.querySelectorAll(".inline-message-warning")).toHaveLength(requiresUnscheduled ? 1 : 0);
+    expect(screen.getByRole("button", { name: requiresUnscheduled ? "Make unscheduled" : "Update", exact: true })).toBeTruthy();
+});
+
+it.each(["Activity", "Expense"] as const)("names the affected %s in a booking's outgoing review", async (targetKind) => {
+    const user = userEvent.setup();
+    const outgoing: LinkedRecordReview = {
+        ...review,
+        sourceKind: "Booking",
+        sourceName: "Flight booking",
+        targetKind,
+        targetName: "Flight there",
+        role: targetKind === "Activity" ? "Outbound" : null,
+        proposedAmount: null,
+        changes: [{ field: targetKind === "Activity" ? "Cost" : "Amount", before: 50, after: 70 }],
+    };
+    api.resolveLinkedRecordReview.mockResolvedValue(undefined);
+    render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" reviews={[outgoing]}
+        perspective="target" onResolved={vi.fn()} />);
+
+    expect(screen.getByText(`${targetKind} “Flight there”${targetKind === "Activity" ? " (outbound journey)" : ""}: update available`)).toBeTruthy();
+    expect(screen.getByText(`${targetKind === "Activity" ? "Total cost" : "Net cost"}: €50 → €70`)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Update", exact: true }));
+    expect(api.resolveLinkedRecordReview).toHaveBeenCalledWith("trip-1", outgoing, "apply");
+});
+
 it("shows only changed values and applies the explicit proposed amount immediately", async () => {
     const user = userEvent.setup();
     const refreshed = vi.fn().mockResolvedValue(undefined);

@@ -698,6 +698,104 @@ test("saved booking columns and budget amounts stay aligned", async ({ page }) =
     expect((await browserRequest(page, `${tripApi}/planned-costs`)).body).toHaveLength(1);
 });
 
+test("booking panels review each destination without leaving the card", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Panel traveller");
+    await page.getByLabel("Email").fill(`review-panel-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Related changes", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Museum booking", category: "MuseumAttraction", startDate: "2027-04-02",
+        startTime: "09:00", endDate: "2027-04-02", endTime: "10:00",
+        location: "Museum", totalCost: 200, amountPaid: 100,
+    })).body;
+    const activity = (await browserRequest(page, `${tripApi}/itinerary-items`, {
+        name: "Museum visit", date: "2027-04-02", startTime: "09:00", durationMinutes: 60,
+        location: "Museum", cost: 200, priority: "Optional",
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, { role: "General" })).status).toBe(200);
+    const expense = (await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses`, {
+        name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100, expenseDate: "2027-04-02",
+    })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
+        ...booking, startDate: "2027-04-03", endDate: "2027-04-03", totalCost: 250, amountPaid: 120,
+    }, "PUT")).status).toBe(200);
+    await browserRequest(page, `${tripApi}/itinerary-items/${activity.id}`, {
+        ...activity, location: "New entrance",
+    }, "PUT");
+
+    await page.goto(`/trips/${trip.id}/bookings`);
+    await expect(page.getByRole("button", { name: "Expand Museum booking details" })).toBeVisible();
+    await page.getByRole("button", { name: "Review related changes (2)", exact: true }).click();
+    const panel = page.getByRole("region", { name: "Related changes for Museum booking" });
+    const activityNotice = panel.getByRole("status").filter({ hasText: "Activity “Museum visit”" });
+    const expenseNotice = panel.getByRole("status").filter({ hasText: "Expense “Museum payment”" });
+    await expect(activityNotice).toContainText("Date: 2 Apr 2027 → 3 Apr 2027");
+    await expect(activityNotice).toContainText("Total cost: €200 → €250");
+    await expect(expenseNotice).toContainText("Net cost: €100 → €120");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(panel.locator(".inline-message-warning")).toHaveCount(0);
+    await expect(panel.locator(".linked-record-review").nth(1)).toHaveCSS("border-top-width", "1px");
+    await expect(panel.locator(".related-review-toggle")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(panel.locator(".related-review-toggle")).toHaveCSS("color", "rgb(145, 39, 106)");
+    await expect(panel.locator(".related-review-toggle")).toHaveCSS("font-weight", "700");
+    await expect(panel.locator(".related-review-list")).toHaveCSS("font-size", "14.4px");
+    await expect(panel.locator(".related-review-list")).toHaveCSS("background-color", "rgb(255, 253, 248)");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("related-review-panel-mobile.png"), fullPage: true });
+    await expenseNotice.getByRole("button", { name: "Keep as is", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Review related changes (1)", exact: true })).toBeVisible();
+    await activityNotice.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    // Accepting the outgoing date/cost leaves the unrelated incoming location pending.
+    await expect(page.locator(".linked-record-warning")).toContainText("Location: Museum → New entrance");
+    const updatedActivity = (await browserRequest(page, `${tripApi}/itinerary-items`)).body[0];
+    expect(updatedActivity.date).toBe("2027-04-03");
+    expect(updatedActivity.cost).toBe(250);
+    expect(updatedActivity.location).toBe("New entrance");
+    expect((await browserRequest(page, `${tripApi}/expenses`)).body[0].amount).toBe(100);
+    await page.getByRole("link", { name: "Itinerary", exact: true }).click();
+    await expect(page.locator(".linked-record-warning")).toHaveCount(0);
+
+    // The same neutral panel is available on a collapsed activity, in the opposite direction.
+    await expect(page.getByRole("button", { name: "Expand Museum visit details" })).toBeVisible();
+    await page.getByRole("button", { name: "Review related changes (1)", exact: true }).click();
+    const activityPanel = page.getByRole("region", { name: "Related changes for Museum visit" });
+    await expect(activityPanel).toContainText("Booking “Museum booking”");
+    await expect(activityPanel).toContainText("Location: Museum → New entrance");
+    await expect(activityPanel.locator(".inline-message-warning")).toHaveCount(0);
+    await page.screenshot({ path: test.info().outputPath("activity-review-panel-mobile.png"), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await activityPanel.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(activityPanel).toHaveCount(0);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.location).toBe("New entrance");
+    await browserRequest(page, `${tripApi}/itinerary-items/${activity.id}`, {
+        ...updatedActivity, cost: 275,
+    }, "PUT");
+    await page.reload();
+    await expect(activityPanel.getByRole("button", { name: "Review related changes (1)", exact: true })).toHaveAttribute("aria-expanded", "true");
+    await activityPanel.getByRole("button", { name: "Keep as is", exact: true }).click();
+    await expect(activityPanel).toHaveCount(0);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.totalCost).toBe(250);
+
+    // A destination-side decision resolves the same review used by the panel.
+    const currentBooking = (await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body;
+    await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
+        ...currentBooking, totalCost: 260,
+    }, "PUT");
+    await page.reload();
+    await page.locator(".linked-record-warning").getByRole("button", { name: "Update", exact: true }).click();
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await expect(page.getByRole("button", { name: /Review related changes/ })).toHaveCount(0);
+    expect((await browserRequest(page, `${tripApi}/itinerary-items`)).body[0].cost).toBe(260);
+    expect((await browserRequest(page, `${tripApi}/expenses`)).body[0].id).toBe(expense.id);
+});
+
 test("linked reviews apply exact fields and financial amounts without reciprocal warnings", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Review traveller");

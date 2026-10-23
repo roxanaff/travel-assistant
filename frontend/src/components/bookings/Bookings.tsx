@@ -57,6 +57,7 @@ import {
 import { ExpandedCardDetails } from "../shared/ExpandedCardDetails";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { LegacyLinkedRecordWarning, LinkedRecordWarnings } from "../shared/LinkedRecordWarnings";
+import { RelatedRecordReviews } from "../shared/RelatedRecordReviews";
 import { useLinkedRecordReviews } from "../../utils/useLinkedRecordReviews";
 import { FieldLabel, FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
@@ -221,6 +222,10 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     }, []);
     const [activities, setActivities] = useState<ItineraryItem[]>([]);
     const linkedReviews = useLinkedRecordReviews(trip.id, "Booking", bookings);
+    const {
+        isExpanded: isRelatedReviewOpen,
+        toggleExpanded: toggleRelatedReview,
+    } = useExpandableCards(bookings.map((booking) => booking.id), `trip:${trip.id}:bookings:related-reviews`);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loadedBudgetTripId, setLoadedBudgetTripId] = useState<string | null>(null);
     const isBudgetLoading = loadedBudgetTripId !== trip.id;
@@ -1579,12 +1584,25 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         );
     };
 
+    const refreshRelatedRecords = async () => {
+        const mutationVersion = bookingsMutationVersion.current;
+        const [loadedBookings, loadedActivities, loadedExpenses] = await Promise.all([
+            getBookings(trip.id), getItineraryItems(trip.id), getExpenses(trip.id),
+        ]);
+        if (mutationVersion !== bookingsMutationVersion.current) return;
+        setBookings(loadedBookings);
+        setActivities(loadedActivities);
+        setExpenses(loadedExpenses);
+    };
+
     const renderBooking = (booking: Booking) => {
         if (editingId === booking.id) {
             return <li key={booking.id}>{renderForm()}</li>;
         }
 
         const linkableActivities = activities.filter((activity) => activity.bookingId === null);
+        const outgoingReviews = linkedReviews.outgoingReviews.filter((review) => review.sourceId === booking.id);
+        const relatedReviewPanelId = `booking-related-reviews-${booking.id}`;
         const linkedExpense = expenses.find((expense) => expense.id === booking.expenseId);
         const canAddExpense = booking.totalCost !== null && booking.totalCost > 0
             && (booking.amountPaid === 0 || booking.netCost > 0);
@@ -1779,16 +1797,19 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     currency={trip.currency}
                     reviews={linkedReviews.reviews.filter((review) => review.targetId === booking.id)}
                     disabled={isSaving || isBudgetPending || isPaymentPending || budgetAction !== null}
-                    onResolved={async () => {
-                        const mutationVersion = bookingsMutationVersion.current;
-                        const [loadedBookings, loadedActivities, loadedExpenses] = await Promise.all([
-                            getBookings(trip.id), getItineraryItems(trip.id), getExpenses(trip.id),
-                        ]);
-                        if (mutationVersion !== bookingsMutationVersion.current) return;
-                        setBookings(loadedBookings);
-                        setActivities(loadedActivities);
-                        setExpenses(loadedExpenses);
-                    }}
+                    onResolved={refreshRelatedRecords}
+                />
+                <RelatedRecordReviews
+                    tripId={trip.id}
+                    currency={trip.currency}
+                    recordName={booking.name}
+                    panelId={relatedReviewPanelId}
+                    reviews={outgoingReviews}
+                    isExpanded={isRelatedReviewOpen(booking.id)}
+                    onToggle={() => toggleRelatedReview(booking.id)}
+                    disabled={isSaving || isBudgetPending || isPaymentPending || budgetAction !== null
+                        || creatingActivityForBookingId !== null || linkingBookingId !== null}
+                    onResolved={refreshRelatedRecords}
                 />
                 {booking.activityLinks.filter((activity) => linkedReviews.loaded && activity.hasPendingBookingUpdateReview
                     && !linkedReviews.reviews.some((review) => review.targetId === booking.id && review.sourceId === activity.id)).map((activity) => {

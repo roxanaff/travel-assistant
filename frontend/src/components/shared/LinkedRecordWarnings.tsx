@@ -13,6 +13,8 @@ type Props = {
     reviews: LinkedRecordReview[];
     onResolved: () => Promise<void>;
     disabled?: boolean;
+    perspective?: "source" | "target";
+    presentation?: "warning" | "review";
 };
 
 const kindLabels = { Booking: "Booking", Activity: "Activity", Expense: "Expense", PlannedCost: "Planned cost" };
@@ -39,7 +41,15 @@ export function LegacyLinkedRecordWarning({ children, onKeep, disabled, label }:
     );
 }
 
-export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, disabled = false }: Props) {
+export function LinkedRecordWarnings({
+    tripId,
+    currency,
+    reviews,
+    onResolved,
+    disabled = false,
+    perspective = "source",
+    presentation = "warning",
+}: Props) {
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<LinkedRecordReview | null>(null);
@@ -92,12 +102,21 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
     return (
         <>
             {reviews.map((review) => (
-                <div className="inline-message inline-message-warning linked-record-warning" role="status" key={review.id}>
+                <div
+                    className={presentation === "review"
+                        ? "linked-record-warning linked-record-review"
+                        : "inline-message inline-message-warning linked-record-warning"}
+                    role="status"
+                    key={review.id}
+                >
                     <div className="linked-record-warning-content">
                         <strong>
-                            {kindLabels[review.sourceKind]} “{review.sourceName}”
+                            {perspective === "target"
+                                ? `${kindLabels[review.targetKind]} “${review.targetName}”`
+                                : `${kindLabels[review.sourceKind]} “${review.sourceName}”`}
                             {review.role && review.role !== "General" ? ` (${review.role.toLowerCase()} journey)` : ""}
-                            {review.isMismatch ? ": linked values differ" : " changed"}
+                            {presentation !== "review" && (review.isMismatch ? ": linked values differ"
+                                : perspective === "target" ? ": update available" : " changed")}
                         </strong>
                         <div className="linked-record-changes">
                             {review.changes.map((change) => {
@@ -136,10 +155,23 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
                                 <div>Paid after update: {formatMoney(review.proposedAmount, currency)}</div>
                             )}
                         </div>
-                        {review.requiresUnscheduled && (
-                            <span>The date is outside this trip. Updating will make the activity unscheduled.</span>
+                        {(review.requiresUnscheduled || review.blockedReason) && (
+                            presentation === "review" ? (
+                                <InlineMessage variant="warning">
+                                    {[
+                                        review.requiresUnscheduled
+                                            ? "The date is outside this trip. Updating will make the activity unscheduled."
+                                            : null,
+                                        review.blockedReason,
+                                    ].filter(Boolean).join(" ")}
+                                </InlineMessage>
+                            ) : (
+                                <>
+                                    {review.requiresUnscheduled && <span>The date is outside this trip. Updating will make the activity unscheduled.</span>}
+                                    {review.blockedReason && <span>{review.blockedReason}</span>}
+                                </>
+                            )
                         )}
-                        {review.blockedReason && <span>{review.blockedReason}</span>}
                     </div>
                     <div className="linked-review-actions">
                         {!review.blockedReason && (

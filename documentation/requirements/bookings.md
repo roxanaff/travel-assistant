@@ -57,10 +57,17 @@ They are agreed requirements; the Status section identifies which parts are impl
 - Relationship actions offer **Link existing activity** before **Add new activity**, and **Link existing booking**
   before **Add new booking**. Retain the existing visibility rules for linking. The new-activity Journey part selector
   uses the shared form-control appearance and wraps safely on narrow screens.
-- A saved booking offers **Review related changes** with a pending-entry count. Open an inline panel in the same card,
+- Saved bookings and activities offer **Review related changes** with a pending-entry count. Open an inline panel in the same card,
   listing each affected activity or expense with its proposed changes and individual Update / Keep as is actions.
   These resolve the same persisted reviews as the destination cards; resolving one place removes the corresponding
   warning in the other. Do not introduce Update all, bulk selection, or automatic propagation when saving a booking.
+- Use a bold pink text disclosure with a chevron, without a filled background or button outline. Review panels use the
+  lighter page-card background, a thin grey outline and dividers between entries, not individual yellow boxes. Review
+  text matches the 0.9rem saved-detail text size.
+  Name the affected entry without repeating "update available". Preserve yellow only for actual cautions within the
+  panel, such as unscheduling or validation restrictions. Incoming change warnings retain their existing appearance.
+- Activity panels offer outgoing updates to their linked booking using the same controls as booking panels. They
+  remain accessible with the main card collapsed and remember their open state separately per trip/page.
 - Booking/activity cost references do not contribute to planned-budget or actual-spending totals. The budget totals
   remain derived from planned costs and expenses respectively; showing a booking cost on more than one activity
   does not create duplicate expenses or budget spending.
@@ -816,8 +823,7 @@ Completed in the activity link-time review chunk:
   The broader frontend run passes 82 tests but still fails collection of the obsolete TripSetup test already recorded
   in the maintenance backlog. No migration is needed for this chunk; live PostgreSQL execution remains unverified.
 
-Remaining: the booking's Review related changes panel,
-the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
+Remaining: the planned-cost-to-expense navigation control and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.
 
@@ -826,6 +832,23 @@ Completed in the relationship-action clarity follow-up:
 - Link existing precedes Add new in booking/activity relationship actions. The new-activity Journey part dropdown
   shares the standard form-control styling and wraps within narrow cards. Editing existing journey roles stays deferred.
 - All 35 affected frontend tests, the 10 booking browser flows, production build and lint pass; independent review is clear.
+
+Completed in the shared related-changes panel chunk:
+
+- Saved booking and activity cards offer bold pink Review related changes text with a pending-entry count and
+  chevron. The shared neutral panel opens independently of the main details, remembers its open state per trip/page,
+  names each destination and separates entries with grey dividers. Actual cautions remain yellow within review rows;
+  ordinary outgoing reviews are not warnings. The panel uses the lighter page-card background and saved-detail text
+  size. Incoming change warnings retain their existing appearance.
+- Individual Update / Keep as is actions reuse the destination warnings and persisted reviews, including validation,
+  stale-change checks, unscheduling and explicit expense actions. There is no bulk update or automatic propagation.
+- Resolving either location removes the same proposal and refreshes the linked records. Accepting matching fields
+  preserves unrelated reverse changes; Keep as is dismisses only the chosen direction. Draft expense/activity flows
+  disable outgoing decisions until they are closed to avoid invalidating an in-progress form.
+- All 58 affected frontend tests, all 11 booking Chromium flows, production build and lint pass. Browser coverage checks
+  collapsed-card access in both pages, per-entry counts, individual decisions, destination resolution, activity-side
+  Update/Keep, persisted panel state and mobile overflow. Independent review is clear. No backend or database changes
+  are needed; final user acceptance and live PostgreSQL verification remain outstanding.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their
 booking/planned-cost-chain behavior.
