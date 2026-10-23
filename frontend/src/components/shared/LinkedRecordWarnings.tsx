@@ -124,6 +124,13 @@ export function LinkedRecordWarnings({ tripId, currency, reviews, onResolved, di
                                 );
                             })}
                             {review.targetKind === "Booking" && review.proposedAmount !== null
+                                && review.proposedTotalCost != null && review.targetTotalCost != null
+                                && review.proposedTotalCost > review.targetTotalCost ? (
+                                <>
+                                    <div>Paid: {formatMoney(review.targetPaid, currency)} → {formatMoney(review.proposedAmount, currency)}</div>
+                                    <div>Total cost: {formatMoney(review.targetTotalCost, currency)} → {formatMoney(review.proposedTotalCost, currency)}</div>
+                                </>
+                            ) : review.targetKind === "Booking" && review.proposedAmount !== null
                                 && review.changes.some((change) => change.field === "Amount"
                                     && Number(change.after) !== review.proposedAmount) && (
                                 <div>Paid after update: {formatMoney(review.proposedAmount, currency)}</div>

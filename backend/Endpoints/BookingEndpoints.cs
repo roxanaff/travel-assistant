@@ -1,6 +1,8 @@
 // Handles reservation requests and their links to activities and the budget.
 // BookingValidation checks input; this file coordinates database changes.
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
@@ -320,6 +322,9 @@ public static class BookingEndpoints
             CreateBookingExpenseRequest request,
             TravelAssistantDbContext database) =>
         {
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
             var validationError = ExpenseValidation.Validate(new CreateExpenseRequest(
                 request.Name,
                 request.Category,
@@ -348,6 +353,13 @@ public static class BookingEndpoints
                 return Results.Conflict("This booking already has a linked expense.");
             }
 
+            if (request.PaymentUpdate is not null)
+            {
+                var paymentError = BookingExpensePayments.Apply(booking, request.Amount, request.PaymentUpdate);
+                if (paymentError is not null) return Results.Conflict(paymentError);
+                await LinkedRecordReviews.TrackAsync(database, booking);
+            }
+
             var expense = new Expense
             {
                 TripId = tripId,
@@ -362,6 +374,7 @@ public static class BookingEndpoints
             try
             {
                 await database.SaveChangesAsync();
+                if (transaction is not null) await transaction.CommitAsync();
             }
             catch (DbUpdateException exception) when (
                 BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception))
@@ -371,13 +384,14 @@ public static class BookingEndpoints
 
             return Results.Created(
                 $"/api/trips/{tripId}/expenses/{expense.Id}",
-                ToExpenseResponse(expense));
+                ToExpenseResponse(expense, booking));
         }).WithName("CreateBookingExpense");
 
         routes.MapPost("/bookings/{id:guid}/expenses/{expenseId:guid}", async (
             Guid tripId,
             Guid id,
             Guid expenseId,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] LinkBookingExpenseRequest? request,
             TravelAssistantDbContext database) =>
         {
             await using var transaction = database.Database.IsRelational()
@@ -405,6 +419,13 @@ public static class BookingEndpoints
             if (expense.BookingId is not null && expense.BookingId != booking.Id)
             {
                 return Results.Conflict("This expense is already linked to another booking.");
+            }
+
+            if (request?.PaymentUpdate is not null)
+            {
+                var paymentError = BookingExpensePayments.Apply(booking, expense.Amount, request.PaymentUpdate);
+                if (paymentError is not null) return Results.Conflict(paymentError);
+                await LinkedRecordReviews.TrackAsync(database, booking, expense.Id);
             }
 
             try
@@ -439,7 +460,7 @@ public static class BookingEndpoints
             await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
             await database.SaveChangesAsync();
             if (transaction is not null) await transaction.CommitAsync();
-            return Results.NoContent();
+            return request?.PaymentUpdate is not null ? Results.Ok(ToResponse(booking)) : Results.NoContent();
         }).WithName("LinkBookingExpense");
 
         routes.MapDelete("/bookings/{id:guid}/expenses/{expenseId:guid}", async (
@@ -530,9 +551,9 @@ public static class BookingEndpoints
     private static IResult? ValidateExpenseEligibility(Booking booking)
     {
         if (booking.TotalCost is null or <= 0
-            || booking.AmountPaid - (booking.AmountRefunded ?? 0) <= 0)
+            || (booking.AmountPaid > 0 && booking.AmountPaid - (booking.AmountRefunded ?? 0) <= 0))
         {
-            return Results.Conflict("Record a positive paid amount before adding or linking an expense.");
+            return Results.Conflict("Expenses need a positive booking cost and cannot be linked after a full refund.");
         }
 
         return null;
@@ -541,7 +562,7 @@ public static class BookingEndpoints
     private static string NormalizeBudgetName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 
-    private static object ToExpenseResponse(Expense expense) => new
+    private static object ToExpenseResponse(Expense expense, Booking booking) => new
     {
         expense.Id,
         expense.TripId,
@@ -551,7 +572,8 @@ public static class BookingEndpoints
         expense.Category,
         expense.Amount,
         expense.ExpenseDate,
-        expense.CreatedAtUtc
+        expense.CreatedAtUtc,
+        Booking = ToResponse(booking),
     };
 
     // Track which booking details changed so linked activities can show a

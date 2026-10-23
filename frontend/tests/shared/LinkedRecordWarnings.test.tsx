@@ -48,6 +48,19 @@ it("shows only changed values and applies the explicit proposed amount immediate
     expect(screen.queryByRole("alertdialog")).toBeNull();
 });
 
+it("makes both the payment and total-cost increase explicit before Update", () => {
+    render(<LinkedRecordWarnings tripId="trip-1" currency="EUR" onResolved={vi.fn()} reviews={[{
+        ...review,
+        proposedAmount: 100,
+        targetPaid: 20,
+        targetTotalCost: 50,
+        proposedTotalCost: 100,
+    }]} />);
+    expect(screen.getByText("Paid: €20 → €100")).toBeTruthy();
+    expect(screen.getByText("Total cost: €50 → €100")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Update", exact: true })).toBeTruthy();
+});
+
 it("keeps records independent and leaves failed decisions actionable for retry", async () => {
     const user = userEvent.setup();
     const refreshed = vi.fn().mockResolvedValue(undefined);

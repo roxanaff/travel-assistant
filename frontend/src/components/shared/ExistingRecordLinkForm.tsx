@@ -1,6 +1,7 @@
 // Shared controls for choosing an existing record to link, with an optional
 // second choice such as a role. The parent performs the API request.
 import "./ExistingRecordLinkForm.css";
+import type { ReactNode } from "react";
 
 export interface ExistingRecordLinkOption {
     value: string;
@@ -22,6 +23,7 @@ interface ExistingRecordLinkFormProps extends ExistingRecordLinkSelect {
     onSubmit: () => void;
     onCancel: () => void;
     secondarySelect?: ExistingRecordLinkSelect;
+    children?: ReactNode;
 }
 
 /** Shared selector and actions for linking existing records across workspace sections. */
@@ -37,6 +39,7 @@ export function ExistingRecordLinkForm({
     onSubmit,
     onCancel,
     secondarySelect,
+    children,
 }: ExistingRecordLinkFormProps) {
     return (
         <div className="existing-record-link-form">
@@ -67,6 +70,7 @@ export function ExistingRecordLinkForm({
                     ))}
                 </select>
             )}
+            {children}
             <div className="existing-record-link-actions">
                 <button
                     className="primary-button"

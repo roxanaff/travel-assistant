@@ -23,6 +23,9 @@ export type LinkedRecordReview = {
     }>;
     updateLabel: string;
     proposedAmount: number | null;
+    targetPaid?: number | null;
+    targetTotalCost?: number | null;
+    proposedTotalCost?: number | null;
     blockedReason: string | null;
 };
 

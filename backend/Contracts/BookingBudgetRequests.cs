@@ -10,5 +10,15 @@ public record CreateBookingExpenseRequest(
     string? Name,
     ExpenseCategory? Category,
     decimal Amount,
-    DateOnly? ExpenseDate
+    DateOnly? ExpenseDate,
+    BookingExpensePaymentUpdate? PaymentUpdate = null
 );
+
+public record BookingExpensePaymentUpdate(
+    decimal ExpectedPaid,
+    decimal ExpectedTotalCost,
+    decimal? ExpectedRefunded,
+    BookingStatus? ExpectedStatus,
+    decimal ExpectedExpenseAmount);
+
+public record LinkBookingExpenseRequest(BookingExpensePaymentUpdate? PaymentUpdate);

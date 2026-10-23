@@ -135,8 +135,10 @@ They are agreed requirements; the Status section identifies which parts are impl
 
 ### Approved financial rules
 
-- Expense creation/linking requires a positive net paid amount. Partially paid bookings are eligible. Prefill the
-  expense amount with Amount paid minus Amount refunded; the user may review and change it before saving.
+- Expense creation/linking requires a positive Total cost and is available while unpaid or partially paid. Fully
+  refunded bookings remain ineligible. Prefill a positive net paid value; unpaid bookings start with a blank amount.
+  An unchecked Update booking payment option previews the resulting Paid and Total cost. Selecting it sets Paid to
+  expense cost plus Refunded, raising Total cost only if needed. Leaving it unchecked keeps both booking values.
 - A booking has at most one expense and an expense has at most one booking. An expense may also belong to a planned
   cost independently. Offer **Link existing expense** from the booking to avoid duplicating spending.
 - Beside a linked expense's **Unlink** action on a booking, offer **Delete**. Use the app's confirmation dialog to name
@@ -145,8 +147,8 @@ They are agreed requirements; the Status section identifies which parts are impl
   show an additional "Expense kept in Expenses" message. Once unlinked, existing create/link actions remain available.
 - A later expense-amount change can offer to update the booking's Amount paid to Expense amount plus Amount refunded.
   Refunds are stored as positive amounts, so this reconstructs the original payment rather than adding spending.
-  Keep Total cost unchanged. If the proposed Amount paid exceeds Total cost, explain the conflict and require editing
-  the booking; do not silently increase its price.
+  Never lower Total cost. If the proposed Paid exceeds Total cost, explicitly offer both increases in the warning;
+  accepting Update applies them together. Neither saving an expense nor linking it silently changes the price.
 - Keep existing planned costs and expenses when migrating old chains. Copy an existing chain's booking link directly
   to its expense, then remove the booking/planned-cost relationship. A plan without an expense remains a plan without
   creating any expense.
@@ -343,13 +345,14 @@ silently overwritten when another record changes.
 
 ### Create financial records from a booking
 
-- **Add to expenses** is available for a positive net paid amount when no expense is linked. It creates only an expense.
+- **Add to expenses** is available for a positive Total cost, including unpaid bookings, when no expense is linked
+  and the booking has not been fully refunded. It creates only an expense, not a planned cost.
 - **Link existing expense** selects an expense from this trip that is not already linked to a booking, including one
   created from a planned cost.
 - Both actions use the established inline related-record form inside the expanded booking card. Expense creation uses
   the same fields as the normal expense form and prefills the booking's name, suggested category, net paid amount,
   and today's date. The user can change all prefilled fields.
-- Blank-cost, Free, unpaid, and fully refunded bookings do not offer expense creation/linking. A related expense is
+- Blank-cost, Free, and fully refunded bookings do not offer expense creation/linking. A related expense is
   still shown and can be unlinked if later payment changes make the booking ineligible.
 - Show the linked expense's name as a navigation control that focuses and briefly highlights the matching expense.
   Unlinking preserves the expense and its independent planned-cost link.
@@ -779,7 +782,20 @@ Completed in the financial highlight consistency follow-up:
   booking/activity soft outer glow and fade timing. Reduced-motion mode retains a static thin edge without a fill.
 - The expense-navigation Chromium flow, production build and lint pass; independent review has no actionable findings.
 
-Remaining: implement the other agreed usability refinements at the top of this document,
+Completed in the expense-payment recording chunk:
+
+- Unpaid positive-cost bookings can create or link one expense. Both inline flows offer an unchecked payment-update
+  choice, previewing Paid and Total cost before saving. Unpaid creation starts with an empty amount instead of zero.
+- Accepted payment updates set Paid from expense cost plus existing refunds, never add a transaction or lower Total
+  cost. Opting out preserves booking values and retains the normal link-time mismatch reviews.
+- An oversized linked expense explicitly proposes both Paid and Total cost increases, on first linking and later
+  expense edits. Accepted changes use the same payment calculation and maintain unrelated relationship reviews.
+- Ownership, uniqueness, normal validation, stale booking/expense value checks and transactions protect writes.
+  Existing planned-cost links survive; no planned cost or duplicate expense is created automatically.
+- All 99 backend tests, 48 affected frontend tests, two Chromium payment/review flows, build and lint pass.
+  Browser checks include create/link from unpaid, preview/opt-in, later price increases, and mobile layout.
+
+Remaining: link-time activity differences, the booking's Review related changes panel,
 the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.

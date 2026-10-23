@@ -80,6 +80,67 @@ test("booking payment summaries and refund pills remain clear on desktop and mob
     await expect(details).toContainText("Refunded€50 · Net cost €30");
 });
 
+test("expenses can record unpaid booking payments and explicitly increase the total", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Expense payment traveller");
+    await page.getByLabel("Email").fill(`expense-payment-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Expense payments", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const first = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Flight payment", startDate: "2027-04-02", totalCost: 50, amountPaid: 0,
+    })).body;
+    const second = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Hotel payment", startDate: "2027-04-02", totalCost: 200, amountPaid: 0,
+    })).body;
+    const plan = (await browserRequest(page, `${tripApi}/planned-costs`, { name: "Hotel budget", amount: 80 })).body;
+    const existing = (await browserRequest(page, `${tripApi}/expenses`, {
+        name: "Hotel deposit", amount: 80, plannedCostId: plan.id,
+    })).body;
+    await page.goto(`/trips/${trip.id}/bookings`);
+    await page.getByRole("button", { name: "Expand Flight payment details" }).click();
+    const firstCard = page.locator(`#booking-${first.id}`);
+    await firstCard.getByRole("button", { name: "Add to expenses" }).click();
+    await page.getByLabel("Amount (EUR)").fill("20");
+    const updatePayment = page.getByRole("checkbox", { name: "Update booking payment" });
+    await expect(updatePayment).not.toBeChecked();
+    await expect(firstCard).toContainText("Paid €0 → €20 · Total cost €50");
+    await updatePayment.check();
+    await page.getByRole("button", { name: "Add expense", exact: true }).click();
+    await expect(firstCard.locator(".booking-card-price")).toHaveText("€20 / €50");
+    const expenses = (await browserRequest(page, `${tripApi}/expenses`)).body;
+    expect(expenses).toHaveLength(2);
+    const created = expenses.find((expense: { bookingId: string }) => expense.bookingId === first.id);
+    await browserRequest(page, `${tripApi}/expenses/${created.id}`, { ...created, amount: 100 }, "PUT");
+    await page.reload();
+    const warning = firstCard.locator(".linked-record-warning");
+    await expect(warning).toContainText("Paid: €20 → €100");
+    await expect(warning).toContainText("Total cost: €50 → €100");
+    await warning.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(firstCard.locator(".booking-card-price")).toHaveText("€100");
+    await expect(warning).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Expand Hotel payment details" }).click();
+    const secondCard = page.locator(`#booking-${second.id}`);
+    await secondCard.getByRole("button", { name: "Link existing expense" }).click();
+    await page.getByLabel("Expense", { exact: true }).selectOption(existing.id);
+    await expect(secondCard).toContainText("Paid €0 → €80 · Total cost €200");
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("expense-payment-offer-mobile.png"), fullPage: true });
+    await updatePayment.check();
+    await page.getByRole("button", { name: "Link expense", exact: true }).click();
+    await expect(secondCard.locator(".booking-card-price")).toHaveText("€80 / €200");
+    const linked = (await browserRequest(page, `${tripApi}/expenses`)).body.find((expense: { id: string }) => expense.id === existing.id);
+    expect(linked.plannedCostId).toBe(plan.id);
+    expect(linked.bookingId).toBe(second.id);
+    expect((await browserRequest(page, `${tripApi}/linked-record-reviews`)).body).toEqual([]);
+});
+
 test("bookings can be marked paid and undone without creating an expense", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Payment action traveller");

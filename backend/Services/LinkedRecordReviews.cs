@@ -242,6 +242,11 @@ public static class LinkedRecordReviews
             ? Project(edge.Source, edge)["Amount"].GetDecimal()
                 + (edge.Target is Booking booking ? booking.AmountRefunded ?? 0 : 0)
             : (decimal?)null,
+        TargetPaid = edge.IsFinancial && edge.Target is Booking paymentTarget ? paymentTarget.AmountPaid : (decimal?)null,
+        TargetTotalCost = edge.IsFinancial && edge.Target is Booking priceTarget ? priceTarget.TotalCost : null,
+        ProposedTotalCost = edge.IsFinancial && edge.Target is Booking totalTarget
+            ? BookingExpensePayments.Project(totalTarget, Project(edge.Source, edge)["Amount"].GetDecimal()).TotalCost
+            : (decimal?)null,
         UpdateLabel = edge.Target is Booking && edge.Source is Expense
             ? "Update amount paid"
             : $"Update {Kind(edge.Target) switch { LinkedRecordKind.PlannedCost => "planned amount", LinkedRecordKind.Expense => "expense amount", LinkedRecordKind.Activity => "activity", _ => "booking" }}",
@@ -268,7 +273,9 @@ public static class LinkedRecordReviews
         {
             if (edge.IsFinancial)
             {
-                booking.AmountPaid = Number(values["Amount"])!.Value + (booking.AmountRefunded ?? 0);
+                var projected = BookingExpensePayments.Project(booking, Number(values["Amount"])!.Value);
+                booking.AmountPaid = projected.Paid;
+                booking.TotalCost = projected.TotalCost;
             }
             else
             {

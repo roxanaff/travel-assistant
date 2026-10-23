@@ -36,7 +36,10 @@ const expensesApi = vi.hoisted(() => ({
     getExpenses: vi.fn(),
 }));
 
-vi.mock("../../../src/api/bookingsApi", () => bookingsApi);
+vi.mock("../../../src/api/bookingsApi", async importOriginal => ({
+    ...await importOriginal<typeof import("../../../src/api/bookingsApi")>(),
+    ...bookingsApi,
+}));
 vi.mock("../../../src/api/itineraryApi", () => itineraryApi);
 vi.mock("../../../src/api/expensesApi", () => expensesApi);
 vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
@@ -247,6 +250,51 @@ describe("booking expense actions", () => {
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         expect(screen.queryByRole("button", { name: "Mark as paid" })).toBeNull();
+    });
+
+    it("lets an unpaid booking create an expense and explicitly record the previewed payment", async () => {
+        const user = userEvent.setup();
+        const unpaid = { ...hotel, totalCost: 50, amountPaid: 0, netCost: 0, financialStatus: "Unpaid" as const };
+        bookingsApi.getBookings.mockResolvedValue([unpaid]);
+        bookingsApi.createBookingExpense.mockResolvedValue({
+            ...existingExpense,
+            amount: 100,
+            bookingId: hotel.id,
+            booking: { ...unpaid, totalCost: 100, amountPaid: 100, netCost: 100, financialStatus: "Paid" },
+        });
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        expect(screen.getByLabelText("Amount (EUR)")).toHaveProperty("value", "");
+        await user.type(screen.getByLabelText("Amount (EUR)"), "100");
+        const choice = screen.getByRole("checkbox", { name: "Update booking payment" });
+        expect(choice).toHaveProperty("checked", false);
+        expect(screen.getByText("Paid €0 → €100 · Total cost €50 → €100")).toBeTruthy();
+        await user.click(choice);
+        await user.click(screen.getByRole("button", { name: "Add expense", exact: true }));
+        await waitFor(() => expect(bookingsApi.createBookingExpense).toHaveBeenCalledWith(trip.id, hotel.id, expect.objectContaining({
+            amount: 100,
+            paymentUpdate: { expectedPaid: 0, expectedTotalCost: 50, expectedRefunded: null, expectedStatus: "Confirmed", expectedExpenseAmount: 100 },
+        })));
+        expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
+    });
+
+    it("offers the same payment choice when linking an existing expense to an unpaid booking", async () => {
+        const user = userEvent.setup();
+        const unpaid = { ...hotel, totalCost: 50, amountPaid: 0, netCost: 0, financialStatus: "Unpaid" as const };
+        bookingsApi.getBookings.mockResolvedValue([unpaid]);
+        expensesApi.getExpenses.mockResolvedValue([existingExpense]);
+        bookingsApi.linkBookingExpense.mockResolvedValue({ ...unpaid, totalCost: 100, amountPaid: 100, netCost: 100, financialStatus: "Paid" });
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Link existing expense" }));
+        await user.selectOptions(screen.getByLabelText("Expense"), existingExpense.id);
+        await user.click(screen.getByRole("checkbox", { name: "Update booking payment" }));
+        await user.click(screen.getByRole("button", { name: "Link expense", exact: true }));
+        await waitFor(() => expect(bookingsApi.linkBookingExpense).toHaveBeenCalledWith(trip.id, hotel.id, existingExpense.id, {
+            expectedPaid: 0, expectedTotalCost: 50, expectedRefunded: null, expectedStatus: "Confirmed", expectedExpenseAmount: 100,
+        }));
+        expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
     });
 
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {

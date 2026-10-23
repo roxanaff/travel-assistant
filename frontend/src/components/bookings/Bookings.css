@@ -435,6 +435,22 @@
     margin-top: 4px;
 }
 
+.booking-expense-payment-offer {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+}
+
+.booking-expense-payment-offer label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.booking-expense-payment-offer input {
+    width: auto;
+}
+
 .booking-budget-form > p {
     margin: 0;
 }

@@ -7,6 +7,14 @@ import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type BookingActivityRole = "General" | "Outbound" | "Return";
 
+export const bookingExpensePaymentUpdate = (booking: Booking, amount: number) => ({
+    expectedPaid: booking.amountPaid,
+    expectedTotalCost: booking.totalCost!,
+    expectedRefunded: booking.amountRefunded,
+    expectedStatus: booking.status,
+    expectedExpenseAmount: amount,
+});
+
 const bookingsUrl = (tripId: string) =>
     `${apiBaseUrl}/api/trips/${tripId}/bookings`;
 
@@ -164,8 +172,10 @@ export async function dismissBookingActivityUpdateReview(
 export async function createBookingExpense(
     tripId: string,
     bookingId: string,
-    request: Omit<ExpenseRequest, "plannedCostId">,
-): Promise<Expense> {
+    request: Omit<ExpenseRequest, "plannedCostId"> & {
+        paymentUpdate?: ReturnType<typeof bookingExpensePaymentUpdate>;
+    },
+): Promise<Expense & { booking?: Booking }> {
     const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/expenses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,12 +189,18 @@ export async function linkBookingExpense(
     tripId: string,
     bookingId: string,
     expenseId: string,
-): Promise<void> {
+    paymentUpdate?: ReturnType<typeof bookingExpensePaymentUpdate>,
+): Promise<Booking | void> {
     const response = await apiFetch(
         `${bookingsUrl(tripId)}/${bookingId}/expenses/${expenseId}`,
-        { method: "POST" },
+        {
+            method: "POST",
+            headers: paymentUpdate ? { "Content-Type": "application/json" } : undefined,
+            body: paymentUpdate ? JSON.stringify({ paymentUpdate }) : undefined,
+        },
     );
     await throwIfApiError(response, "Could not link this expense.");
+    if (response.status !== 204) return response.json();
 }
 
 export async function unlinkBookingExpense(
