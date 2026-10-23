@@ -213,6 +213,10 @@
     justify-items: end;
 }
 
+.booking-statuses .status-pill {
+    white-space: nowrap;
+}
+
 .booking-status-pill {
     grid-row: 1;
 }
@@ -532,17 +536,22 @@
     }
 
     .booking-card-header {
-        grid-template-columns: minmax(0, 1fr) auto 104px;
+        grid-template-columns: minmax(0, 1fr) 104px;
         align-items: start;
         gap: 12px;
     }
 
     .booking-card-price {
+        grid-column: 1 / -1;
         text-align: left;
     }
 
+    .booking-card-price:empty {
+        display: none;
+    }
+
     .booking-statuses {
-        justify-self: end;
+        justify-self: start;
     }
 
     .booking-journey-summary {

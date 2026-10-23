@@ -20,9 +20,7 @@ export type BookingFinancialStatus =
     | "Unpaid"
     | "PartiallyPaid"
     | "Paid"
-    | "NotRefunded"
-    | "PartiallyRefunded"
-    | "FullyRefunded";
+    | "Refunded";
 
 export type BookingActivityLink = {
     id: string;

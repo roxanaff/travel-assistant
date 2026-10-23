@@ -595,14 +595,9 @@ public static class BookingEndpoints
             return "Free";
         }
 
-        if (booking.Status == BookingStatus.Cancelled && booking.AmountPaid > 0)
+        if (booking.AmountRefunded > 0)
         {
-            if (booking.AmountRefunded is null or 0)
-            {
-                return "NotRefunded";
-            }
-
-            return booking.AmountRefunded == booking.AmountPaid ? "FullyRefunded" : "PartiallyRefunded";
+            return "Refunded";
         }
 
         if (booking.AmountPaid == 0)

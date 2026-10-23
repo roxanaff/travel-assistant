@@ -12,6 +12,56 @@ Implementation has resumed with approval of the revised financial relationships 
 The decisions below supersede the earlier booking-to-planned-cost chain. The Status section distinguishes the current
 revision from historical chunks that implemented the previous design.
 
+### Agreed usability refinements
+
+The decisions in this section supersede conflicting wording in the earlier implementation notes below.
+They are agreed requirements; the Status section identifies which parts are implemented.
+
+- Use **Cost** for monetary values in activity, planned-cost, and expense warnings; **Total cost** for a booking's
+  complete price; **Paid** for its recorded payment total; and **Refunded** for money returned. Avoid an unqualified
+  **Amount** in warnings where it hides the meaning of the value.
+- Active positive-cost booking summaries show numbers only: zero/total for unpaid, paid/total for partially paid,
+  and just the total when fully paid. For example, **€0 / €150**, **€80 / €150**, and **€150**. Cancelled bookings leave
+  the summary's money column empty, preserving the card's alignment. Their expanded details retain Total cost,
+  Paid, Refunded, and net cost; no financial history is removed.
+- Cancellation alone does not replace the booking's Unpaid, Partially paid, or Paid status. Any positive refund
+  instead derives the single **Refunded** status, whether it returns part or all of the payment. Remove Not refunded,
+  Partially refunded, and Fully refunded as displayed states. Refund values remain editable and may be any positive
+  amount up to Paid; simplifying the status does not restrict when or how refunds are received. Keep pills on one line.
+- Compact change warnings keep the linked-record name bold on the left, with changed fields underneath. On wider
+  screens, **Update** and **Keep as is** sit to the right, stacked vertically. On narrow screens the actions move below
+  the text, preferably on one row. Do not repeat the amount or destination name in the ordinary Update button.
+  Allow necessary wrapping and multiple changed fields rather than truncating information to meet a fixed row count.
+- Use **activity**, not **itinerary**, when explaining an individual activity's invalid proposed date. When a booking's
+  proposed date falls outside the trip, offer **Make unscheduled**, **Keep as is**, and a secondary **Edit trip dates**
+  link. Keep a short explanation that applying the date change will make the activity unscheduled. This action clears
+  its assigned date/time, preserves its other details except any other explicitly accepted changes, and does not
+  change the booking or trip dates. Keep as is preserves the activity's current valid schedule. Edit trip dates opens
+  the trip-date editor and never automatically extends the trip.
+- Independent edits no longer block an otherwise valid, explicitly accepted update solely because the destination
+  field was edited too. The warning must make the proposed replacement clear without an extra explanatory paragraph.
+  Update applies all and only the fields listed in that warning, resolving the matching fields in both directions.
+  Unrelated fields in the opposite warning remain pending. Keep as is dismisses only the selected direction's warning,
+  leaving the opposite proposal available. Retain stale-revision checks and validation against new conflicting edits.
+- Creating or linking an expense is allowed for an unpaid positive-cost booking. In the same inline create/link flow,
+  offer to record the payment and show the resulting Paid and Total cost before saving. Set the recorded payment total
+  from the expense, accounting for existing refunds; do not add the expense as another payment transaction. Keep the
+  one-expense-per-booking relationship.
+- If an expense implies Paid above Total cost, offer an explicit update of both Paid and Total cost. Raise Total cost
+  only as far as needed; never lower it automatically. This applies both to first linking and to later edits of an
+  already-linked expense. For Total cost €50, Paid €20 and an expense of €100 without refunds, accepting the update
+  sets both Paid and Total cost to €100. The offer must identify both changes rather than silently changing the price.
+- When linking an existing activity, immediately flag differences in shared date/time, duration/end, location and
+  cost values, not just changes made after linking. Use the same Update / Keep as is choices. Differences may be
+  intentional; linking never silently synchronises them. Keep the existing expense link-time mismatch review.
+- A saved booking offers **Review related changes** with a pending-entry count. Open an inline panel in the same card,
+  listing each affected activity or expense with its proposed changes and individual Update / Keep as is actions.
+  These resolve the same persisted reviews as the destination cards; resolving one place removes the corresponding
+  warning in the other. Do not introduce Update all, bulk selection, or automatic propagation when saving a booking.
+- Booking/activity cost references do not contribute to planned-budget or actual-spending totals. The budget totals
+  remain derived from planned costs and expenses respectively; showing a booking cost on more than one activity
+  does not create duplicate expenses or budget spending.
+
 ### Agreed changes
 
 - Remove the booking-to-planned-cost relationship and its create/link actions.
@@ -647,9 +697,20 @@ Completed in the linked-record review/action chunk:
   user acceptance is pending.
   A live PostgreSQL migration has not yet been exercised; restart the API to apply the new review-storage migration.
 
-Remaining: Mark as paid, saved-card date warnings,
-the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view improvements
-and the tab split remain separate work.
+Completed in the payment-display refinement chunk:
+
+- Active positive-cost summaries show paid/total until fully paid, then just the total. Cancelled summaries leave
+  the price column empty; expanded details retain Total cost, Paid, Refunded and net cost, including a zero net cost.
+- Cancellation preserves the ordinary payment state until a positive refund derives the single Refunded state.
+  Partial/full refund values remain editable; no stored financial history or expense totals change. Pills stay on one line.
+- Booking form and saved-detail payment labels use Paid and Refunded. Shared warning wording/layout remains pending.
+- Twenty-eight booking API tests, nineteen booking frontend tests, production build, lint, and a focused Chromium
+  desktop/mobile check pass. Independent review has no actionable findings; user acceptance is pending.
+
+Remaining: implement the other agreed usability refinements at the top of this document, Mark as paid, saved-card date
+warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
+improvements and the tab split remain separate work. The usability discussion is resolved; no further product
+decisions are currently open for that refinement pass.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their
 booking/planned-cost-chain behavior.

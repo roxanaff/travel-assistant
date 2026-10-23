@@ -136,6 +136,52 @@ describe("booking expense actions", () => {
         expensesApi.getExpenses.mockResolvedValue([]);
     });
 
+    it.each([
+        [0, "Unpaid", "€0 / €200"],
+        [150, "PartiallyPaid", "€150 / €200"],
+        [200, "Paid", "€200"],
+    ] as const)("shows the active booking payment summary for %s paid", async (paid, financialStatus, summary) => {
+        bookingsApi.getBookings.mockResolvedValue([{
+            ...hotel,
+            amountPaid: paid,
+            netCost: paid,
+            financialStatus,
+        }]);
+
+        renderBookings();
+
+        const card = (await screen.findByText(hotel.name)).closest("li")!;
+        expect(card.querySelector(".booking-card-price")?.textContent).toBe(summary);
+    });
+
+    it.each([50, 80])("hides cancelled summary money but retains a refund of %s in details", async (refunded) => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([{
+            ...hotel,
+            status: "Cancelled",
+            totalCost: 150,
+            amountPaid: 80,
+            amountRefunded: refunded,
+            netCost: 80 - refunded,
+            financialStatus: "Refunded",
+        }]);
+
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+
+        const card = screen.getByText(hotel.name).closest("li")!;
+        expect(card.querySelector(".booking-card-price")?.textContent).toBe("");
+        expect(card.querySelector(".booking-financial-status-pill")?.textContent).toBe("Refunded");
+        for (const [label, value] of [
+            ["Total cost", "€150"],
+            ["Paid", "€80"],
+            ["Refunded", `€${refunded} · Net cost €${80 - refunded}`],
+        ]) {
+            const detail = within(card).getByText(label, { selector: "strong", exact: true }).parentElement!;
+            expect(detail.textContent).toBe(`${label}${value}`);
+        }
+    });
+
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {
         const user = userEvent.setup();
         bookingsApi.getBookings.mockResolvedValue([{
@@ -144,7 +190,7 @@ describe("booking expense actions", () => {
             amountPaid: 150,
             amountRefunded: 30,
             netCost: 120,
-            financialStatus: "PartiallyRefunded",
+            financialStatus: "Refunded",
         }]);
         bookingsApi.createBookingExpense.mockResolvedValue({
             ...existingExpense,

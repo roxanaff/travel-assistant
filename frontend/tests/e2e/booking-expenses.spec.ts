@@ -20,6 +20,66 @@ async function browserRequest(
     }, { requestUrl: url, requestData: data, requestMethod: method });
 }
 
+test("booking payment summaries and refund pills remain clear on desktop and mobile", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Payment traveller");
+    await page.getByLabel("Email").fill(`payment-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+
+    const tripResponse = await browserRequest(page, `${api}/trips`, {
+        name: "Payment summaries",
+        startDate: "2027-04-02",
+        endDate: "2027-04-05",
+        currency: "EUR",
+    });
+    expect(tripResponse.status).toBe(201);
+    const trip = tripResponse.body;
+    const cards: Array<{ id: string; price: string }> = [];
+    for (const [name, paid, refunded, price] of [
+        ["Unpaid hotel", 0, null, "€0 / €150"],
+        ["Hotel deposit", 80, null, "€80 / €150"],
+        ["Paid hotel", 150, null, "€150"],
+        ["Cancelled hotel", 80, 50, ""],
+    ] as const) {
+        const response = await browserRequest(page, `${api}/trips/${trip.id}/bookings`, {
+            name,
+            status: refunded === null ? "Confirmed" : "Cancelled",
+            startDate: "2027-04-02",
+            totalCost: 150,
+            amountPaid: paid,
+            amountRefunded: refunded,
+        });
+        expect(response.status).toBe(201);
+        cards.push({ id: response.body.id, price });
+    }
+
+    await page.goto(`/trips/${trip.id}/bookings`);
+    for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 844 });
+        for (const card of cards) {
+            const price = page.locator(`#booking-${card.id} .booking-card-price`);
+            await expect(price).toHaveText(card.price);
+            if (card.price) {
+                const text = price.locator("strong");
+                const height = await text.evaluate((element) => element.getBoundingClientRect().height);
+                expect(height).toBeLessThan(35);
+            }
+        }
+        const pill = page.locator(`#booking-${cards[3].id} .booking-financial-status-pill`);
+        await expect(pill).toHaveText("Refunded");
+        await expect(pill).toHaveCSS("white-space", "nowrap");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.screenshot({ path: test.info().outputPath(`payment-summary-${width}.png`), fullPage: true });
+    }
+    await page.getByRole("button", { name: "Expand Cancelled hotel details" }).click();
+    const details = page.locator(`#booking-${cards[3].id} .booking-expanded-details`);
+    await expect(details).toContainText("Total cost€150");
+    await expect(details).toContainText("Paid€80");
+    await expect(details).toContainText("Refunded€50 · Net cost €30");
+});
+
 test("a booking records actual spending directly and navigates to the expense", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Booking traveller");

@@ -109,9 +109,7 @@ const financialLabels: Record<string, string> = {
     Unpaid: "Unpaid",
     PartiallyPaid: "Partially paid",
     Paid: "Paid",
-    NotRefunded: "Not refunded",
-    PartiallyRefunded: "Partially refunded",
-    FullyRefunded: "Fully refunded",
+    Refunded: "Refunded",
 };
 
 const isJourney = (category: BookingForm["category"] | null) =>
@@ -1441,7 +1439,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     </label>
                                     {hasPositiveCost && (
                                         <label>
-                                            <FieldLabel>Amount paid ({trip.currency})</FieldLabel>
+                                            <FieldLabel>Paid ({trip.currency})</FieldLabel>
                                             <input
                                                 data-booking-field="amountPaid"
                                                 aria-invalid={Boolean(formErrors.amountPaid)}
@@ -1469,7 +1467,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     )}
                                     {showRefund && form.isRefunded && (
                                         <label>
-                                            <FieldLabel>Amount refunded ({trip.currency})</FieldLabel>
+                                            <FieldLabel>Refunded ({trip.currency})</FieldLabel>
                                             <input
                                                 data-booking-field="amountRefunded"
                                                 aria-invalid={Boolean(formErrors.amountRefunded)}
@@ -1633,8 +1631,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                         </div>
                     </div>
                     <div className="booking-card-price">
-                        {booking.totalCost !== null && booking.totalCost > 0 && (
-                            <strong>{formatMoney(booking.totalCost, trip.currency)}</strong>
+                        {booking.status !== "Cancelled" && booking.totalCost !== null && booking.totalCost > 0 && (
+                            <strong>
+                                {booking.amountPaid < booking.totalCost
+                                    ? `${formatMoney(booking.amountPaid, trip.currency)} / ${formatMoney(booking.totalCost, trip.currency)}`
+                                    : formatMoney(booking.totalCost, trip.currency)}
+                            </strong>
                         )}
                     </div>
                     <div className="booking-statuses">
@@ -1720,18 +1722,24 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     <span>{categoryLabels[booking.category]}</span>
                                 </p>
                             )}
+                            {booking.status === "Cancelled" && booking.totalCost !== null && booking.totalCost > 0 && (
+                                <p className="aligned-detail-row">
+                                    <strong>Total cost</strong>
+                                    <span>{formatMoney(booking.totalCost, trip.currency)}</span>
+                                </p>
+                            )}
                             {booking.totalCost !== null && booking.totalCost > 0 && (
                                 <p className="aligned-detail-row">
-                                    <strong>Amount paid</strong>
+                                    <strong>Paid</strong>
                                     <span>{formatMoney(booking.amountPaid, trip.currency)}</span>
                                 </p>
                             )}
                             {booking.amountRefunded !== null && (
                                 <p className="aligned-detail-row">
-                                    <strong>Amount refunded</strong>
+                                    <strong>Refunded</strong>
                                     <span>
                                         {formatMoney(booking.amountRefunded, trip.currency)}
-                                        {booking.netCost > 0 ? ` · Net cost ${formatMoney(booking.netCost, trip.currency)}` : ""}
+                                        {` · Net cost ${formatMoney(booking.netCost, trip.currency)}`}
                                     </span>
                                 </p>
                             )}

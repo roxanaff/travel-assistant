@@ -105,7 +105,7 @@ Core fields for every booking:
   - Later: use link / pdf doc for auto-complete
 - Notes
 - Total cost in the trip currency, optional amount paid, and cancellation/refund information
-- Optional links to activities and one planned cost; any related expense is reached through that planned cost
+- Optional links to activities and one expense. Planned costs keep their own independent expense links.
 
 Type-specific fields appear only when relevant, e.g.:
 
@@ -122,10 +122,14 @@ Notes / Decisions:
 
 - Booking status is optional: Requested, Confirmed, or Cancelled. Ideas belong in To-do or the itinerary.
 - Financial status is derived from Total cost, Amount paid, cancellation, and refund values rather than edited directly.
-- Add and link activities and planned costs from either relevant workspace page, with prefilled forms and no silent
-  synchronization afterward. Add an expense through the planned-cost relationship.
-- The first version supports one aggregate amount paid and one expense in the booking's linear financial chain.
-  Multiple payments and payment schedules are deferred.
+- Add and link activities and a direct expense with prefilled forms and explicit related-record review, not silent
+  synchronization. A booking does not create or link a planned cost.
+- The first version supports one aggregate payment total and one expense per booking. Multiple payments and payment
+  schedules are deferred.
+- Agreed usability refinements: compact warnings with individual related-record updates, payment recording during
+  expense creation/linking, link-time mismatch review, number-only active booking summaries, and a single Refunded
+  status with no summary price for cancelled bookings. Detailed rules and implementation status remain in the
+  booking requirements.
 - Detailed first-version behaviour is defined in the [Bookings requirements](requirements/bookings.md).
 
 ## Itinerary extension

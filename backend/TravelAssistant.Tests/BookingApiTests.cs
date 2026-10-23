@@ -44,6 +44,35 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal("2027-04-06", body.RootElement.GetProperty("returnStartDate").GetString());
     }
 
+    [Theory]
+    [InlineData(0, null, "Unpaid")]
+    [InlineData(80, null, "PartiallyPaid")]
+    [InlineData(150, 0, "Paid")]
+    [InlineData(80, 50, "Refunded")]
+    [InlineData(80, 80, "Refunded")]
+    public async Task CancelledBookingPreservesPaymentStateUnlessMoneyWasRefunded(
+        int paid,
+        int? refunded,
+        string expectedStatus)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "roxi@example.com");
+        var tripLocation = await CreateTripAsync(client);
+        var request = CreateBookingRequest(totalCost: 150, amountPaid: paid) with
+        {
+            Status = BookingStatus.Cancelled,
+            AmountRefunded = refunded,
+        };
+
+        var response = await client.PostAsJsonAsync($"{tripLocation}/bookings", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(expectedStatus, body.RootElement.GetProperty("financialStatus").GetString());
+        Assert.Equal(paid, body.RootElement.GetProperty("amountPaid").GetDecimal());
+        Assert.Equal(paid - (refunded ?? 0), body.RootElement.GetProperty("netCost").GetDecimal());
+    }
+
     [Fact]
     public async Task ActivityCanBelongToOnlyOneBooking()
     {
