@@ -113,6 +113,79 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal(JsonValueKind.Null, saved.GetProperty("dismissedOutsideTripWarningKey").ValueKind);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task QuickPaymentUpdatesOnlyPaidAndUndoClearsUnacceptedFinancialReviews(bool hasExpense)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "quick-payment@example.com");
+        var trip = await CreateTripAsync(client);
+        var id = await CreateBookingAsync(client, trip, "Flight");
+        if (hasExpense)
+        {
+            await client.PostAsJsonAsync($"{trip}/bookings/{id}/expenses", new CreateBookingExpenseRequest("Deposit", null, 150, null));
+        }
+        var booking = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        var paid = await ReadJson(await SetPayment(client, trip, booking, 200));
+        Assert.Equal("Paid", paid.GetProperty("financialStatus").GetString());
+        Assert.Equal(200, paid.GetProperty("amountPaid").GetDecimal());
+        Assert.Equal(hasExpense ? 1 : 0, (await GetReviews(client, trip)).Length);
+
+        // A payment-only Undo must preserve edits to unrelated booking fields.
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", CreateBookingRequest(name: "Renamed flight", totalCost: 200, amountPaid: 200));
+        var undone = await ReadJson(await SetPayment(client, trip, paid, 150));
+        Assert.Equal(150, undone.GetProperty("amountPaid").GetDecimal());
+        Assert.Equal("Renamed flight", undone.GetProperty("name").GetString());
+        Assert.Empty(await GetReviews(client, trip));
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        Assert.Equal(hasExpense ? 1 : 0, await database.Expenses.CountAsync());
+        if (hasExpense) Assert.Equal(150, (await database.Expenses.SingleAsync()).Amount);
+    }
+
+    [Fact]
+    public async Task QuickPaymentRejectsStaleUndoIneligibleBookingsAndAnotherAccount()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "guarded-payment@example.com");
+        var trip = await CreateTripAsync(client);
+        var id = await CreateBookingAsync(client, trip, "Flight");
+        var booking = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        var paid = await ReadJson(await SetPayment(client, trip, booking, 200));
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", CreateBookingRequest(totalCost: 220, amountPaid: 200));
+        Assert.Equal(HttpStatusCode.Conflict, (await SetPayment(client, trip, paid, 150)).StatusCode);
+        var current = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.Equal(HttpStatusCode.BadRequest, (await SetPayment(client, trip, current, 221)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SetPayment(client, trip, current, -1)).StatusCode);
+        using var other = CreateClient();
+        await RegisterAsync(other, "Other", "other-payment@example.com");
+        Assert.Equal(HttpStatusCode.NotFound, (await SetPayment(other, trip, current, 220)).StatusCode);
+
+        foreach (var request in new[]
+        {
+            CreateBookingRequest(totalCost: 220, amountPaid: 200) with { Status = BookingStatus.Cancelled },
+            CreateBookingRequest(totalCost: 0),
+            CreateBookingRequest(),
+        })
+        {
+            current = await ReadJson(await client.PutAsJsonAsync($"{trip}/bookings/{id}", request));
+            Assert.Equal(HttpStatusCode.Conflict, (await SetPayment(client, trip, current, 0)).StatusCode);
+        }
+    }
+
+    private static Task<HttpResponseMessage> SetPayment(HttpClient client, Uri trip, JsonElement booking, decimal amount) =>
+        client.PostAsJsonAsync($"{trip}/bookings/{booking.GetProperty("id").GetGuid()}/payment", new
+        {
+            AmountPaid = amount,
+            ExpectedAmountPaid = booking.GetProperty("amountPaid").GetDecimal(),
+            ExpectedTotalCost = booking.GetProperty("totalCost").ValueKind == JsonValueKind.Null
+                ? (decimal?)null : booking.GetProperty("totalCost").GetDecimal(),
+            ExpectedStatus = booking.GetProperty("status").GetString(),
+            ExpectedAmountRefunded = booking.GetProperty("amountRefunded").ValueKind == JsonValueKind.Null
+                ? (decimal?)null : booking.GetProperty("amountRefunded").GetDecimal(),
+        });
+
     [Fact]
     public async Task ActivityCanBelongToOnlyOneBooking()
     {

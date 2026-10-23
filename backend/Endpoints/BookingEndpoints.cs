@@ -10,6 +10,12 @@ using TravelAssistant.Services;
 namespace TravelAssistant.Endpoints;
 
 public sealed record DismissBookingDateWarningRequest(string Key);
+public sealed record SetBookingPaymentRequest(
+    decimal AmountPaid,
+    decimal ExpectedAmountPaid,
+    decimal? ExpectedTotalCost,
+    BookingStatus? ExpectedStatus,
+    decimal? ExpectedAmountRefunded);
 
 /// <summary>Defines the API workflow for trip bookings and their first-version relationships.</summary>
 public static class BookingEndpoints
@@ -115,6 +121,44 @@ public static class BookingEndpoints
             await database.SaveChangesAsync();
             return Results.Ok(ToResponse(booking));
         }).WithName("UpdateBooking");
+
+        routes.MapPost("/bookings/{id:guid}/payment", async (
+            Guid tripId,
+            Guid id,
+            SetBookingPaymentRequest request,
+            TravelAssistantDbContext database) =>
+        {
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
+            var booking = await FindBooking(tripId, id, database);
+            if (booking is null) return Results.NotFound();
+            if (booking.AmountPaid != request.ExpectedAmountPaid || booking.TotalCost != request.ExpectedTotalCost
+                || booking.Status != request.ExpectedStatus || booking.AmountRefunded != request.ExpectedAmountRefunded)
+            {
+                return Results.Conflict("This booking's payment details changed. Refresh before updating them.");
+            }
+            if (booking.Status == BookingStatus.Cancelled || booking.TotalCost is null or <= 0)
+                return Results.Conflict("Use the booking edit form to change this booking's payment details.");
+            var validationError = BookingValidation.Validate(LinkedRecordReviews.ToRequest(booking) with
+            {
+                AmountPaid = request.AmountPaid,
+            });
+            if (validationError is not null) return Results.BadRequest(validationError);
+
+            booking.AmountPaid = request.AmountPaid;
+            await LinkedRecordReviews.TrackAsync(database, booking);
+            try
+            {
+                await database.SaveChangesAsync();
+                if (transaction is not null) await transaction.CommitAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return Results.Conflict("The booking changed while saving. Refresh and try again.");
+            }
+            return Results.Ok(ToResponse(booking));
+        }).WithName("SetBookingPayment");
 
         routes.MapDelete("/bookings/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {

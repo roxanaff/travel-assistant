@@ -7,6 +7,7 @@ type Props = {
     hasAdditionalDetails: boolean;
     isExpanded: boolean;
     detailsId?: string;
+    disabled?: boolean;
     onToggle: () => void;
     onEdit: () => void;
     onDelete: () => void;
@@ -18,6 +19,7 @@ export function ExpandableCardActions({
     hasAdditionalDetails,
     isExpanded,
     detailsId,
+    disabled = false,
     onToggle,
     onEdit,
     onDelete,
@@ -28,6 +30,7 @@ export function ExpandableCardActions({
                 <button
                     className="icon-button"
                     type="button"
+                    disabled={disabled}
                     onClick={onToggle}
                     aria-label={`${isExpanded ? "Collapse" : "Expand"} ${itemName} details`}
                     aria-expanded={isExpanded}
@@ -42,6 +45,7 @@ export function ExpandableCardActions({
                 type="button"
                 onClick={onEdit}
                 aria-label={`Edit ${itemName}`}
+                disabled={disabled}
                 title={`Edit ${itemName}`}
             >
                 <Pencil size={17} />
@@ -51,6 +55,7 @@ export function ExpandableCardActions({
                 type="button"
                 onClick={onDelete}
                 aria-label={`Delete ${itemName}`}
+                disabled={disabled}
                 title={`Delete ${itemName}`}
             >
                 <Trash2 size={17} />

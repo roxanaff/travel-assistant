@@ -411,6 +411,7 @@
     min-width: 0;
 }
 
+.booking-payment-actions,
 .booking-budget-record,
 .booking-budget-actions {
     display: flex;
@@ -423,6 +424,7 @@
     font-weight: 600;
 }
 
+.booking-payment-actions > .text-button,
 .booking-budget-record > .text-button,
 .booking-budget-actions > .text-button {
     padding: 0;

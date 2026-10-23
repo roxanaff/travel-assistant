@@ -12,7 +12,7 @@ Goal: make the app sufficient to plan and run a real trip without needing scatte
 
 Next steps: individual features and extensions
 
-## 1. Pre-trip to-do checklist
+## DONE - Pre-trip to-do checklist
 
 - new workspace page
 - It should mirror the packing page’s successful interaction model:
@@ -65,7 +65,7 @@ Notes / Decisions:
 - Later: Show checklist completion in the dashboard/workspace overview
   - also for packing
 
-## Reservations and bookings
+## DONE - Reservations and bookings
 
 - Add a **Bookings** workspace page.
 - When Bookings is introduced, place it between Itinerary and Budget & expenses:
@@ -151,33 +151,107 @@ Notes / Decisions:
   2. **Move itinerary with the trip:** shift activities by the change in the trip start date, using the current
      automatic-adjustment rules. Activities that cannot fit in a shortened trip become unscheduled.
 
-## Itinerary extension pt.2
-
-- Calendar / day timeline view alongside the existing list view.
-  - Plus short and expanded layouts for it.
-- Visual empty time slots (for calendar view)
-- Manual ordering for untimed items.
-- Link an activity’s expected cost to an expense.
-
-Later: route optimization - needs map data, travel modes, opening hours, and a clear location model.
-
 ## Trip overview / Details
-
-Add **Overview** section or improve Details
 
 - Change "Details" to "Overview"? 
   - Or add an "Overview" section in the details? 
   - Maybe as a second column in wide-screen
+- Should cover most of the information that you would need or want to know at a glance, without putting everything 
+  on one page.
+- Add links to itinerary, bookings, etc. pages?
+- for the other tabs: add list of things that still need doing, e.g. open to-do's and not payed bookings.
+  - should be collapsible
 - To-do progress
   - Later: with some message/warning when tasks approach/reach their deadline and task not completed yet
 - Booking statuses: confirmed / awaiting payment
   - Later: if a link is provided, can the status be updated automatically?
 - Budget: planned, actual, remaining
 - Packing progress
-- Maybe/Not: Unscheduled high-priority activities
-- Near-trip notices, e.g. “Trip starts in 9 days” - or as a constant header. with x-th day of 10 for ongoing trips
+- Later: Near-trip notices, e.g. “Trip starts in 9 days” - or as a constant header.
+  - with x-th day of 10 for ongoing trips
+  - shown on the right, or as another header line
 
-## Later: Past-trip history
+## Password recovery & email provider check
+
+- add checks for emails - do we need to check them? if the mail is wrong, then it is 
+  - (no one likes checkign their email)
+- allow password reset
+- what to do with already existing accounts - tell them all to check their
+- changing username, password, email
+- anything else we would need here?
+- profile pictures
+
+## Shared trips
+
+Goal: allow a group to use the same trip without losing clarity over ownership and money.
+
+Initial shared trips: simplified
+
+- allow sharing details, itinerary & bookings
+  - then all other parts - separate, not shared, but still available for everyone (e.g. i make a trip, share the 
+    details and itinerary. i keep my own budget page. they also have their own budget page)
+- pop-up/something with checkboxes for which bookings to choose (e.g. flights not shared for everyone)
+- different displaying for shared trips & items? or show profile picture/initials of shared people
+  - idea is to mark both the trip cards and and everything between shared and not
+- initially: everyone gets the same rights - add, edit, delete - for everything. later we can think about roles
+- how to store everything in the db and how to model it?
+
+Prerequisites:
+
+- Password recovery by a single-use email link with an expiry
+- Transactional email provider and sending address for account recovery
+- Rate limiting for account-sensitive endpoints - what's that & why?
+- Device and session management, including active-session listing, device revocation, and sign-out everywhere - what's
+  that & why?
+- Audit-friendly data changes, at least for shared financial records - what's that & why?
+
+Build:
+
+- Invitations
+- Collaborator roles: owner, editor, viewer
+- Shared-trip indicators
+- Advanced section permissions
+- Shared itinerary and bookings
+- Personal versus shared packing lists
+- Expense payer and participant selection
+- Split calculations
+- Settlement summary: who owes whom
+
+Collaboration should come after Bookings and Budget links are well-defined. Otherwise the app will need to redesign
+shared ownership repeatedly.
+
+## Profile/Settings page
+
+- Add number of travelers for the trip
+
+- Optional personal preferences
+  - Interests: history, food, nightlife, hiking, museums, beach, architecture, etc.
+  - Pace: relaxed, balanced, busy
+  - Dietary and accessibility needs
+  - Accommodation preferences
+  - Budget style
+- Preferences do not affect the manual workflow. Later they become inputs for suggestions.
+
+### Feedback
+
+- Add a feedback action to the account/profile menu.
+- Let a signed-in user submit a free-text message without leaving the app.
+- Provide a private, reliable way for the app owner to receive and review submissions.
+  - I should get it to my email? or can we log them somewhere?
+- Before implementation, decide the delivery mechanism, abuse protection, privacy notice, and whether submissions
+  include account, trip, browser, or diagnostic context.
+
+## Itinerary extension pt.2
+
+- Calendar / day timeline view alongside the existing list view.
+    - Plus short and expanded layouts for it.
+- Visual empty time slots (for calendar view)
+- Manual ordering for untimed items.
+- Link an activity’s expected cost to an expense.
+
+Later: route optimization - needs map data, travel modes, opening hours, and a clear location model.
+
+## Past-trip history
 
 Separate Past trips from active planning. Give each past trip a simple summary:
 
@@ -187,34 +261,6 @@ Separate Past trips from active planning. Give each past trip a simple summary:
 - Packing and checklist completion are optional, not central
 - Notes and useful lessons for the next trip
 - Analysis for individual trips, but also for overall past trips, e.g. mean over all trips, and other statistics
-
----
-
-# Stage 3 — Make it personal and reusable
-
-Goal: reduce repetitive entry and make the plans fit the user’s real travel style.
-
-## Preference profile - right after stage 2, before shared trips
-
-- Add number of travelers
-  - directly improves budget interpretation and reservations.
-- Later: Optional personal preferences - to the profile
-  - Interests: history, food, nightlife, hiking, museums, beach, architecture, etc.
-  - Pace: relaxed, balanced, busy
-  - Dietary and accessibility needs
-  - Accommodation preferences
-  - Budget style
-
-- Preferences do not affect the manual workflow.
-  - Later: They become inputs for suggestions.
-
-Also around here/now: add stuff required for shared trips:
-
-- Password recovery by a single-use email link with an expiry
-- Transactional email provider and sending address for account recovery
-- Nah: Rate limiting for account-sensitive endpoints
-- Why: Device and session management, including active-session listing, device revocation, and sign-out everywhere
-- What's this: Audit-friendly data changes, at least for shared financial records
 
 ## Trip structure
 
@@ -235,14 +281,6 @@ multi-destination dashboard cards are implemented.
 
 - Add search, filtering, and alternative sorting when lifecycle ordering alone is no longer enough.
 - Show multiple destinations clearly on dashboard cards.
-
-## Feedback
-
-- Add a feedback action to the account/profile menu.
-- Let a signed-in user submit a free-text message without leaving the app.
-- Provide a private, reliable way for the app owner to receive and review submissions.
-- Before implementation, decide the delivery mechanism, abuse protection, privacy notice, and whether submissions
-  include account, trip, browser, or diagnostic context.
 
 ## Packing templates and rules
 
@@ -288,7 +326,7 @@ Add:
 - Refunds / negative expenses - refund as a category that makes negative expenses allowed
 - Planned-cost expected dates
 - Planned-cost grouping and sorting alternatives, including **Ungrouped** alongside category grouping. Record this
-  now and implement after the booking work; remember the traveller's selected grouping.
+  now and implement after the booking work; remember the traveler's selected grouping.
 - Collapsible budget groups
 - Receipt uploads, before OCR
 - Multiple currencies - should be carefully scoped.
@@ -317,11 +355,9 @@ Potential scope:
 - Clear planned-versus-actual history without silently rewriting transactions.
 - Migration of the first-version booking/planned-cost/expense links without duplicating spending.
 
----
+------------------
 
-# Later Features
-
-## Travel intelligence
+# Travel intelligence
 
 Goal: help users decide and plan, while retaining user control.
 
@@ -352,37 +388,6 @@ Key rule:
 Weather-aware packing
 
 - e.g. packing page shows a message to pack rain stuff: umbrella, raincoat, etc.
-
----
-
-## Shared trips - after second stage, and preference profile
-
-Goal: allow a group to use the same trip without losing clarity over ownership and money.
-
-Prerequisites:
-
-- Password recovery by a single-use email link with an expiry
-- Transactional email provider and sending address for account recovery
-- Rate limiting for account-sensitive endpoints
-- Device and session management, including active-session listing, device revocation, and sign-out everywhere
-- Audit-friendly data changes, at least for shared financial records
-
-Build:
-
-- Invitations
-- Collaborator roles: owner, editor, viewer
-- Shared-trip indicators
-- Advanced section permissions
-- Shared itinerary and bookings
-- Personal versus shared packing lists
-- Expense payer and participant selection
-- Split calculations
-- Settlement summary: who owes whom
-
-Collaboration should come after Bookings and Budget links are well-defined. Otherwise the app will need to redesign
-shared ownership repeatedly.
-
----
 
 ## Intelligent Assistant, automation, exports
 

@@ -16,6 +16,10 @@ This file contains the rules that apply throughout feature work. The optional
   between branches. If the base or working tree makes switching ambiguous, ask first.
 - The user stages and commits changes. Do not stage, commit, amend, merge, push, or
   deploy unless the user explicitly changes that agreement.
+- Suggested commit messages must cover all current uncommitted changes, not only
+  the latest edit. Inspect the full working diff before suggesting one.
+  Focus on functionality changes; omit accompanying documentation updates unless
+  documentation is the main change.
 - Split implementation into coherent, reviewable commit-sized chunks, including
   relevant tests. At each completed chunk, report its files, behavior, verification,
   and a suggested commit message. Pause so the user can commit before the next chunk;

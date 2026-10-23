@@ -56,6 +56,22 @@ export async function getBookings(tripId: string): Promise<Booking[]> {
     return response.json();
 }
 
+export async function setBookingPayment(tripId: string, booking: Booking, amountPaid: number): Promise<Booking> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${booking.id}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            amountPaid,
+            expectedAmountPaid: booking.amountPaid,
+            expectedTotalCost: booking.totalCost,
+            expectedStatus: booking.status,
+            expectedAmountRefunded: booking.amountRefunded,
+        }),
+    });
+    await throwIfApiError(response, "Could not update this booking's payment.");
+    return response.json();
+}
+
 export async function createBooking(tripId: string, form: BookingForm): Promise<Booking> {
     const response = await apiFetch(bookingsUrl(tripId), {
         method: "POST",

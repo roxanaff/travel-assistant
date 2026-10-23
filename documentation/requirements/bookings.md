@@ -738,8 +738,41 @@ Completed in the activity-navigation follow-up:
 - Twenty-six booking/itinerary tests, two focused Chromium flows, build and lint pass. The browser regression delays
   booking loading and navigates to a distant activity; expense navigation remains covered. Independent review is clear.
 
-Remaining: implement the other agreed usability refinements at the top of this document, Mark as paid, saved-card date
-warnings, the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
+Completed in the outside-trip activity review chunk:
+
+- A booking's proposed activity date outside the trip offers Make unscheduled, Keep as is, and Edit trip dates,
+  with a short explanation. Make unscheduled clears the activity's date/start time and applies other listed changes;
+  unrelated details and the booking/trip dates remain unchanged. Keep retains the current valid activity schedule.
+- Edit trip dates opens the existing trip edit form once, without extending dates automatically. Cancelling or saving
+  consumes that navigation request so returning to Details does not reopen the form. The link matches the other warning
+  actions in color, weight and decoration, including after visiting it. Validation calls it an activity.
+- Source revisions, destination snapshots, ownership and normal validation still guard updates. The unschedule action
+  rejects a stale decision or an in-trip proposal; accepted schedule fields do not create reciprocal notices.
+- All 90 backend tests, 19 affected frontend tests, two Chromium flows, production build and lint pass. Browser checks
+  cover the trip editor, unchanged dates, mobile actions, preserved activity details and the Unscheduled destination.
+
+Completed in the saved-booking date warning follow-up:
+
+- Saved booking cards show dismissible warnings immediately below their summary, including when collapsed. Warnings
+  name the affected category-specific start/end or outbound/return journey dates. Form validation remains unchanged.
+- Dismissal is stored with the booking and survives visits/reloads; unrelated edits keep it dismissed. Booking or trip
+  date changes make it eligible again. Stale dismissal requests are rejected and another account cannot dismiss it.
+- All 91 backend tests, 39 affected frontend tests, two outside-trip Chromium flows, build and lint pass. Independent
+  review is clear. Restart the API to apply the nullable dismissal-key migration; live PostgreSQL execution is unverified.
+
+Completed in the quick-payment action chunk:
+
+- Active positive-cost bookings that are not fully paid offer Mark as paid beside Paid in expanded details. The action
+  sets Paid to Total cost and provides the shared five-second Undo. Cancelled, Free and unknown-cost bookings do not
+  offer it. Starting another booking edit clears the transient Undo to avoid an out-of-date payment draft.
+- A payment-only endpoint preserves all other booking fields, checks current payment/total/status/refund values,
+  enforces ownership and existing payment validation, and rejects stale actions. Neither action creates or edits an
+  expense. Linked-expense review warnings follow normal change/revert handling.
+- All 94 backend tests, 38 affected frontend tests, two Chromium payment flows, production build and lint pass.
+  Browser checks cover unpaid-to-paid, immediate Undo, no automatic expense and mobile layout. User acceptance pending.
+
+Remaining: implement the other agreed usability refinements at the top of this document,
+the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.
 

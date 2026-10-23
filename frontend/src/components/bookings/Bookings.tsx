@@ -15,6 +15,7 @@ import {
     unlinkBookingActivity,
     unlinkBookingExpense,
     updateBooking,
+    setBookingPayment,
     type BookingActivityRole,
 } from "../../api/bookingsApi";
 import {
@@ -61,6 +62,7 @@ import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { FormDetailsToggle } from "../shared/FormDetailsToggle";
 import { ExpandableCardActions } from "../shared/ExpandableCardActions";
 import { InlineMessage } from "../shared/InlineMessage";
+import { UndoToast } from "../shared/UndoToast";
 import { ExistingRecordLinkForm } from "../shared/ExistingRecordLinkForm";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
@@ -249,6 +251,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     const [formErrors, setFormErrors] = useState<FormErrors>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isPaymentPending, setIsPaymentPending] = useState(false);
+    const paymentPendingRef = useRef(false);
+    const [paymentUndo, setPaymentUndo] = useState<{ booking: Booking; previousPaid: number } | null>(null);
     const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
     const [costInfo, setCostInfo] = useState<string | null>(null);
     const [relationshipError, setRelationshipError] = useState<{ bookingId: string; message: string } | null>(null);
@@ -272,6 +277,35 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     );
     const formRef = useRef<HTMLFormElement>(null);
     const budgetFormRef = useRef<HTMLFormElement>(null);
+
+    useEffect(() => {
+        if (!paymentUndo || isPaymentPending) return;
+        const timer = window.setTimeout(() => setPaymentUndo(null), 5000);
+        return () => window.clearTimeout(timer);
+    }, [isPaymentPending, paymentUndo]);
+
+    const savePayment = async (booking: Booking, amountPaid: number, undo = false) => {
+        if (paymentPendingRef.current) return;
+        paymentPendingRef.current = true;
+        setIsPaymentPending(true);
+        setError(null);
+        try {
+            const updated = await setBookingPayment(trip.id, booking, amountPaid);
+            // Only payment fields changed; preserve local relationship changes made while saving.
+            setBookings(current => current.map(item => item.id === updated.id ? {
+                ...item,
+                amountPaid: updated.amountPaid,
+                financialStatus: updated.financialStatus,
+                netCost: updated.netCost,
+            } : item));
+            setPaymentUndo(undo ? null : { booking: updated, previousPaid: booking.amountPaid });
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not update this booking's payment.");
+        } finally {
+            paymentPendingRef.current = false;
+            setIsPaymentPending(false);
+        }
+    };
 
     useEffect(() => {
         setHasUnsavedForm?.(
@@ -756,7 +790,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     };
 
     const startAdding = () => {
+        if (paymentPendingRef.current) return;
         requestBudgetTransition(() => {
+            setPaymentUndo(null);
             setEditingId(null);
             setForm(createEmptyBookingForm());
             setFormErrors({});
@@ -770,7 +806,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     };
 
     const startEditing = (booking: Booking) => {
+        if (paymentPendingRef.current) return;
         requestBudgetTransition(() => {
+            setPaymentUndo(null);
             setIsAdding(false);
             setEditingId(booking.id);
             setForm(bookingToForm(booking));
@@ -821,6 +859,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         try {
             await deleteBooking(trip.id, booking.id);
             setBookings((current) => current.filter((item) => item.id !== booking.id));
+            setPaymentUndo(current => current?.booking.id === booking.id ? null : current);
             setExpenses((current) => current.map((expense) => (
                 expense.bookingId === booking.id ? { ...expense, bookingId: null } : expense
             )));
@@ -1667,6 +1706,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     </div>
                     <ExpandableCardActions
                         itemName={booking.name}
+                        disabled={isPaymentPending}
                         hasAdditionalDetails={hasAdditionalDetails}
                         isExpanded={expanded}
                         onToggle={() => toggleBooking(booking.id)}
@@ -1696,7 +1736,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     tripId={trip.id}
                     currency={trip.currency}
                     reviews={linkedReviews.reviews.filter((review) => review.targetId === booking.id)}
-                    disabled={isSaving || isBudgetPending || budgetAction !== null}
+                    disabled={isSaving || isBudgetPending || isPaymentPending || budgetAction !== null}
                     onResolved={async () => {
                         const mutationVersion = bookingsMutationVersion.current;
                         const [loadedBookings, loadedActivities, loadedExpenses] = await Promise.all([
@@ -1765,7 +1805,16 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                             {booking.totalCost !== null && booking.totalCost > 0 && (
                                 <p className="aligned-detail-row">
                                     <strong>Paid</strong>
-                                    <span>{formatMoney(booking.amountPaid, trip.currency)}</span>
+                                    <span className="booking-payment-actions">
+                                        {formatMoney(booking.amountPaid, trip.currency)}
+                                        {booking.status !== "Cancelled" && booking.amountPaid < booking.totalCost && (
+                                            <button className="text-button" type="button"
+                                                disabled={isPaymentPending || isSaving || editingId !== null || isAdding || budgetAction !== null}
+                                                onClick={() => void savePayment(booking, booking.totalCost!)}>
+                                                Mark as paid
+                                            </button>
+                                        )}
+                                    </span>
                                 </p>
                             )}
                             {booking.amountRefunded !== null && (
@@ -2052,7 +2101,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                 {allExpanded ? "Collapse all" : "Expand all"}
                             </button>
                         )}
-                        <button className="primary-button" type="button" onClick={startAdding}>
+                        <button className="primary-button" type="button" onClick={startAdding} disabled={isPaymentPending}>
                             Add booking
                         </button>
                     </div>
@@ -2062,6 +2111,11 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             {isLoading && <p className="detail-message">Loading bookings…</p>}
             {error && <InlineMessage variant="error">{error}</InlineMessage>}
             {linkedReviews.error && <InlineMessage variant="error">{linkedReviews.error}</InlineMessage>}
+            {paymentUndo && (
+                <UndoToast message="Booking marked as paid." onUndo={() => {
+                    void savePayment(paymentUndo.booking, paymentUndo.previousPaid, true);
+                }} />
+            )}
             {!isLoading && !error && bookings.length === 0 && !isAdding && <div className="booking-empty-state"><h3>No bookings yet</h3><p>Keep reservation details, confirmations, dates, and costs together.</p><button className="primary-button" type="button" onClick={startAdding}>Add booking</button></div>}
             {activeBookings.length > 0 && <ul className="list-items card-list booking-list">{activeBookings.map(renderBooking)}</ul>}
             {cancelledBookings.length > 0 && <section className="cancelled-bookings"><h3>Cancelled</h3><ul className="list-items card-list booking-list">{cancelledBookings.map(renderBooking)}</ul></section>}

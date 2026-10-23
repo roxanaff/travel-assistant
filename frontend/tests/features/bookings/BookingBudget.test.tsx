@@ -25,6 +25,7 @@ const bookingsApi = vi.hoisted(() => ({
     unlinkBookingActivity: vi.fn(),
     unlinkBookingExpense: vi.fn(),
     updateBooking: vi.fn(),
+    setBookingPayment: vi.fn(),
 }));
 const itineraryApi = vi.hoisted(() => ({
     createItineraryItem: vi.fn(),
@@ -204,6 +205,48 @@ describe("booking expense actions", () => {
         await user.click(dismiss);
         await waitFor(() => expect(screen.queryByText(/Outside trip dates:/)).toBeNull());
         expect(bookingsApi.dismissBookingOutsideTripWarning).toHaveBeenLastCalledWith(trip.id, hotel.id, "dates-1");
+    });
+
+    it("marks a booking as paid and immediately undoes only the payment", async () => {
+        const user = userEvent.setup();
+        const paid = { ...hotel, amountPaid: 200, netCost: 200, financialStatus: "Paid" as const };
+        bookingsApi.setBookingPayment.mockResolvedValueOnce(paid).mockResolvedValueOnce(hotel);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Mark as paid" }));
+        await waitFor(() => expect(bookingsApi.setBookingPayment).toHaveBeenCalledWith(trip.id, hotel, 200));
+        expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "Mark as paid" })).toBeNull();
+        expect(bookingsApi.createBookingExpense).not.toHaveBeenCalled();
+        expect(bookingsApi.updateBooking).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: /Booking marked as paid.*Undo/ }));
+        await waitFor(() => expect(bookingsApi.setBookingPayment).toHaveBeenLastCalledWith(trip.id, paid, 150));
+        expect(await screen.findByRole("button", { name: "Mark as paid" })).toBeTruthy();
+    });
+
+    it("keeps the original payment and retry action when marking paid fails", async () => {
+        const user = userEvent.setup();
+        bookingsApi.setBookingPayment.mockRejectedValueOnce(new Error("Payment details changed. Refresh."));
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Mark as paid" }));
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Payment details changed. Refresh.");
+        expect(screen.getByText("Partially paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Mark as paid" })).toBeTruthy();
+        expect(screen.queryByRole("button", { name: /Booking marked as paid.*Undo/ })).toBeNull();
+    });
+
+    it.each([
+        { ...hotel, status: "Cancelled" as const },
+        { ...hotel, totalCost: 0, amountPaid: 0, financialStatus: "Free" as const },
+        { ...hotel, totalCost: null, amountPaid: 0, financialStatus: null },
+        { ...hotel, amountPaid: 200, financialStatus: "Paid" as const },
+    ])("does not offer Mark as paid for ineligible bookings ($financialStatus, $status)", async booking => {
+        const user = userEvent.setup();
+        bookingsApi.getBookings.mockResolvedValue([booking]);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        expect(screen.queryByRole("button", { name: "Mark as paid" })).toBeNull();
     });
 
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {

@@ -80,6 +80,37 @@ test("booking payment summaries and refund pills remain clear on desktop and mob
     await expect(details).toContainText("Refunded€50 · Net cost €30");
 });
 
+test("bookings can be marked paid and undone without creating an expense", async ({ page }) => {
+    await page.goto("/register");
+    await page.getByLabel("Name").fill("Payment action traveller");
+    await page.getByLabel("Email").fill(`mark-paid-${Date.now()}@example.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: "Your trips" })).toBeVisible();
+    const trip = (await browserRequest(page, `${api}/trips`, {
+        name: "Quick payment", startDate: "2027-04-02", endDate: "2027-04-05", currency: "EUR",
+    })).body;
+    const tripApi = `${api}/trips/${trip.id}`;
+    const booking = (await browserRequest(page, `${tripApi}/bookings`, {
+        name: "Museum reservation", startDate: "2027-04-02", totalCost: 150, amountPaid: 0,
+    })).body;
+    await page.goto(`/trips/${trip.id}/bookings`);
+    await page.getByRole("button", { name: "Expand Museum reservation details" }).click();
+    const card = page.locator(`#booking-${booking.id}`);
+    await expect(card.locator(".booking-card-price")).toHaveText("€0 / €150");
+    await card.getByRole("button", { name: "Mark as paid" }).click();
+    await expect(card.locator(".booking-financial-status-pill")).toHaveText("Paid");
+    await expect(card.locator(".booking-card-price")).toHaveText("€150");
+    await expect(card.getByRole("button", { name: "Mark as paid" })).toHaveCount(0);
+    await page.getByRole("button", { name: /Booking marked as paid.*Undo/ }).click();
+    await expect(card.locator(".booking-card-price")).toHaveText("€0 / €150");
+    await expect(card.getByRole("button", { name: "Mark as paid" })).toBeVisible();
+    expect((await browserRequest(page, `${tripApi}/expenses`)).body).toEqual([]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("mark-paid-mobile.png"), fullPage: true });
+});
+
 test("saved bookings show and persist dismissible outside-trip journey warnings", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Booking date traveller");
