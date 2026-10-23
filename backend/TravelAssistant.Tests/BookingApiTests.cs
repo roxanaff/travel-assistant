@@ -682,7 +682,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(name: "Flight", startDate: new DateOnly(2027, 4, 3), totalCost: 200, amountPaid: 150));
         var oldReview = (await GetReviews(client, trip)).Single();
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(name: "Flight", startDate: new DateOnly(2027, 4, 4), totalCost: 200, amountPaid: 150));
@@ -747,7 +747,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", request));
         var bookingId = booking.GetProperty("id").GetGuid();
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         var changedActivity = new CreateItineraryItemRequest(
             "Airport transfer", new DateOnly(2027, 4, 4), new TimeOnly(11, 0), 60,
             null, null, ItineraryCategory.Other, null, "Rome airport", null, ItineraryPriority.MustDo, null, true);
@@ -802,7 +802,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(startDate: new DateOnly(2027, 4, 3), totalCost: 200, amountPaid: 150));
         Assert.Single(await GetReviews(client, trip));
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(totalCost: 200, amountPaid: 150));
@@ -838,7 +838,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(totalCost: 250, amountPaid: 150));
         await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
             "Airport transfer", new DateOnly(2027, 4, 2), new TimeOnly(10, 0), 60,
@@ -890,7 +890,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", initial));
         var bookingId = booking.GetProperty("id").GetGuid();
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", initial with { EndTime = new TimeOnly(11, 0) });
         await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
             "Airport transfer", new DateOnly(2027, 4, 2), new TimeOnly(10, 0), 90,
@@ -938,7 +938,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/expenses", new CreateBookingExpenseRequest("Deposit", null, 150, null));
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(totalCost: 200, amountPaid: 0));
         await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
@@ -965,7 +965,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(
             startDate: new DateOnly(2027, 4, 6), totalCost: 250, amountPaid: 150));
 
@@ -998,7 +998,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(
             startDate: new DateOnly(2027, 4, 6), totalCost: 200, amountPaid: 150));
         var stale = Assert.Single(await GetReviews(client, trip));
@@ -1024,7 +1024,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
         var activityId = await CreateActivityAsync(client, trip);
-        await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await LinkActivityKeepingInitialDifferences(client, trip, bookingId, activityId);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(totalCost: 250, amountPaid: 150));
         await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
             "Airport transfer", new DateOnly(2027, 4, 2), new TimeOnly(10, 0), 60,
@@ -1059,6 +1059,159 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal(2, (await GetReviews(client, trip)).Length);
         await client.PutAsJsonAsync($"{trip}/expenses/{expenseId}", new CreateExpenseRequest("Deposit", null, 100, null, null));
         Assert.Empty(await GetReviews(client, trip));
+    }
+
+    [Theory]
+    [InlineData(BookingActivityRole.Outbound)]
+    [InlineData(BookingActivityRole.Return)]
+    public async Task LinkingExistingActivityImmediatelyOffersRoleSpecificDifferencesWithoutChangingRecords(BookingActivityRole role)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "link-activity-differences@example.com");
+        var trip = await CreateTripAsync(client);
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", CreateBookingRequest(
+            totalCost: 200, returnStartDate: new DateOnly(2027, 4, 4)) with
+        {
+            EndTime = new TimeOnly(10, 0),
+            ReturnStartTime = new TimeOnly(15, 0),
+            ReturnEndTime = new TimeOnly(17, 0),
+        }));
+        var id = booking.GetProperty("id").GetGuid();
+        var activityId = await CreateActivityAsync(client, trip);
+        var response = await client.PostAsJsonAsync($"{trip}/bookings/{id}/activities/{activityId}", new LinkBookingActivityRequest(role));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var reviews = await GetReviews(client, trip);
+        Assert.Equal(2, reviews.Length);
+        var forward = reviews.Single(item => item.GetProperty("targetKind").GetString() == "Activity");
+        Assert.True(forward.GetProperty("isMismatch").GetBoolean());
+        Assert.Equal(role.ToString(), forward.GetProperty("role").GetString());
+        var fields = forward.GetProperty("changes").EnumerateArray().Select(change => change.GetProperty("field").GetString()).ToArray();
+        Assert.Contains("Time", fields);
+        Assert.Contains("Cost", fields);
+        Assert.Contains("Location", fields);
+        Assert.DoesNotContain("ArrivalLocation", fields);
+        Assert.Equal(role == BookingActivityRole.Return, fields.Contains("Date"));
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var activity = await scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>().ItineraryItems.AsNoTracking().SingleAsync();
+            Assert.Equal(new TimeOnly(10, 0), activity.StartTime);
+            Assert.Null(activity.Cost);
+        }
+        var reverse = reviews.Single(item => item.GetProperty("targetKind").GetString() == "Booking");
+        Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, reverse, "keep")).StatusCode);
+        Assert.Single(await GetReviews(client, trip));
+        Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, forward, "apply")).StatusCode);
+        Assert.Empty(await GetReviews(client, trip));
+        await using var finalScope = factory.Services.CreateAsyncScope();
+        var updated = await finalScope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>().ItineraryItems.AsNoTracking().SingleAsync();
+        Assert.Equal(role == BookingActivityRole.Return ? new TimeOnly(15, 0) : new TimeOnly(9, 0), updated.StartTime);
+        Assert.Equal(role == BookingActivityRole.Return ? 120 : 60, updated.DurationMinutes);
+        Assert.Equal(200, updated.Cost);
+    }
+
+    [Fact]
+    public async Task LinkTimeDifferencesStayCurrentAndMatchingEditsClearOnlyMatchingFields()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "current-activity-mismatch@example.com");
+        var trip = await CreateTripAsync(client);
+        var original = CreateBookingRequest(totalCost: 200) with { EndTime = new TimeOnly(10, 0) };
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", original));
+        var id = booking.GetProperty("id").GetGuid();
+        var activityId = await CreateActivityAsync(client, trip);
+        await client.PostAsJsonAsync($"{trip}/bookings/{id}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", original with { EndTime = new TimeOnly(11, 0) });
+        var forward = (await GetReviews(client, trip)).Single(item => item.GetProperty("targetKind").GetString() == "Activity");
+        Assert.Equal(120, forward.GetProperty("changes").EnumerateArray().Single(change => change.GetProperty("field").GetString() == "Duration").GetProperty("after").GetInt32());
+        await client.PutAsJsonAsync($"{trip}/itinerary-items/{activityId}", new CreateItineraryItemRequest(
+            "Transfer", new DateOnly(2027, 4, 2), new TimeOnly(9, 0), 120,
+            null, null, ItineraryCategory.Other, 150, "Berlin", null, ItineraryPriority.MustDo, null, true));
+        foreach (var review in await GetReviews(client, trip))
+        {
+            var change = Assert.Single(review.GetProperty("changes").EnumerateArray());
+            Assert.Equal("Cost", change.GetProperty("field").GetString());
+        }
+        await client.PutAsJsonAsync($"{trip}/bookings/{id}", original with { EndTime = new TimeOnly(11, 0), TotalCost = 150 });
+        Assert.Empty(await GetReviews(client, trip));
+        var current = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+        Assert.False(current.GetProperty("activityLinks")[0].GetProperty("hasPendingActivityUpdateReview").GetBoolean());
+        Assert.False(current.GetProperty("activityLinks")[0].GetProperty("hasPendingBookingUpdateReview").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(150, 0)]
+    [InlineData(180, 2)]
+    public async Task EditingAfterKeepingOneMismatchOnlyReviewsRemainingDifferences(int cost, int expectedReviews)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "kept-activity-mismatch@example.com");
+        var trip = await CreateTripAsync(client);
+        var original = CreateBookingRequest(totalCost: 200) with { EndTime = new TimeOnly(10, 0) };
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", original));
+        var id = booking.GetProperty("id").GetGuid();
+        var activity = await ReadJson(await client.PostAsJsonAsync($"{trip}/itinerary-items", new CreateItineraryItemRequest(
+            "Transfer", new DateOnly(2027, 4, 2), new TimeOnly(9, 0), 60,
+            null, null, ItineraryCategory.Other, 150, "Berlin", null, ItineraryPriority.MustDo, null, true)));
+        var activityId = activity.GetProperty("id").GetGuid();
+        await client.PostAsJsonAsync($"{trip}/bookings/{id}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        var forward = (await GetReviews(client, trip)).Single(item => item.GetProperty("targetKind").GetString() == "Activity");
+        Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, forward, "keep")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{trip}/bookings/{id}", original with { TotalCost = cost })).StatusCode);
+        Assert.Equal(expectedReviews, (await GetReviews(client, trip)).Length);
+        if (expectedReviews == 0)
+        {
+            var current = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
+            Assert.False(current.GetProperty("activityLinks")[0].GetProperty("hasPendingActivityUpdateReview").GetBoolean());
+            Assert.False(current.GetProperty("activityLinks")[0].GetProperty("hasPendingBookingUpdateReview").GetBoolean());
+        }
+    }
+
+    [Theory]
+    [InlineData(false, "ArrivalLocation")]
+    [InlineData(true, "EndTime")]
+    public async Task LinkTimeMismatchPreservesLaterManualScheduleChanges(bool incompleteSchedule, string expectedField)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "manual-activity-mismatch@example.com");
+        var trip = await CreateTripAsync(client);
+        var original = CreateBookingRequest(totalCost: 200) with
+        {
+            StartTime = incompleteSchedule ? null : new TimeOnly(9, 0),
+            EndTime = new TimeOnly(10, 0)
+        };
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", original));
+        var id = booking.GetProperty("id").GetGuid();
+        var activityId = await CreateActivityAsync(client, trip);
+        await client.PostAsJsonAsync($"{trip}/bookings/{id}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        var changed = incompleteSchedule
+            ? original with { EndTime = new TimeOnly(12, 0) }
+            : original with { EndLocation = "New arrival airport" };
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{trip}/bookings/{id}", changed)).StatusCode);
+        var forward = (await GetReviews(client, trip)).Single(item => item.GetProperty("targetKind").GetString() == "Activity");
+        Assert.Contains(forward.GetProperty("changes").EnumerateArray(), change => change.GetProperty("field").GetString() == expectedField);
+        Assert.False(string.IsNullOrWhiteSpace(forward.GetProperty("blockedReason").GetString()));
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{trip}/bookings/{id}", original)).StatusCode);
+        var reverted = (await GetReviews(client, trip)).Single(item => item.GetProperty("targetKind").GetString() == "Activity");
+        Assert.DoesNotContain(reverted.GetProperty("changes").EnumerateArray(), change => change.GetProperty("field").GetString() == expectedField);
+        Assert.Equal(JsonValueKind.Null, reverted.GetProperty("blockedReason").ValueKind);
+    }
+
+    private static async Task LinkActivityKeepingInitialDifferences(HttpClient client, Uri trip, Guid bookingId, Guid activityId)
+    {
+        var linked = await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/activities/{activityId}", new LinkBookingActivityRequest(BookingActivityRole.Outbound));
+        Assert.Equal(HttpStatusCode.OK, linked.StatusCode);
+        // These existing edit/revert scenarios intentionally start with different records.
+        // Acknowledge link-time differences so each test isolates its later change.
+        foreach (var review in await GetReviews(client, trip))
+        {
+            if (review.GetProperty("isMismatch").GetBoolean()
+                && (review.GetProperty("sourceId").GetGuid() == activityId
+                    || review.GetProperty("targetId").GetGuid() == activityId))
+            {
+                Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, review, "keep")).StatusCode);
+            }
+        }
     }
 
     private static async Task<JsonElement> ReadJson(HttpResponseMessage response)

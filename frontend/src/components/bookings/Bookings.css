@@ -457,6 +457,7 @@
 
 .booking-create-activity-role {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 }
@@ -464,6 +465,7 @@
 .booking-create-activity-role select {
     width: auto;
     min-width: 180px;
+    max-width: 100%;
 }
 
 .booking-detail-grid {

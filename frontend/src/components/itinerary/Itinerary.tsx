@@ -760,6 +760,15 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                     />
                                 ) : creatingBookingForActivityId !== item.id ? (
                                     <div className="itinerary-booking-actions">
+                                        {bookings.length > 0 && (
+                                            <button
+                                                className="text-button"
+                                                type="button"
+                                                onClick={() => startLinkingBooking(item.id)}
+                                            >
+                                                Link existing booking
+                                            </button>
+                                        )}
                                         <button
                                             className="text-button"
                                             type="button"
@@ -768,17 +777,8 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
                                                 setCreatingBookingForActivityId(item.id);
                                             }}
                                         >
-                                            Create booking
+                                            Add new booking
                                         </button>
-                                        {bookings.length > 0 && (
-                                        <button
-                                            className="text-button"
-                                            type="button"
-                                            onClick={() => startLinkingBooking(item.id)}
-                                        >
-                                            Link existing booking
-                                        </button>
-                                        )}
                                     </div>
                                 ) : <span>Creating a booking</span>}
                                 {bookingLinkError?.activityId === item.id && (

@@ -1920,22 +1920,22 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     />
                                 ) : creatingActivityForBookingId !== booking.id && (
                                     <div className="booking-activity-actions">
+                                        {linkableActivities.length > 0 && (
+                                            <button
+                                                className="text-button booking-link-activity-button"
+                                                type="button"
+                                                onClick={() => startLinkingActivity(booking.id)}
+                                            >
+                                                Link existing activity
+                                            </button>
+                                        )}
                                         <button
                                             className="text-button booking-link-activity-button"
                                             type="button"
                                             onClick={() => startCreatingActivity(booking)}
                                         >
-                                            Add activity
+                                            Add new activity
                                         </button>
-                                        {linkableActivities.length > 0 && (
-                                        <button
-                                            className="text-button booking-link-activity-button"
-                                            type="button"
-                                            onClick={() => startLinkingActivity(booking.id)}
-                                        >
-                                            Link existing activity
-                                        </button>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1949,6 +1949,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     <label className="booking-create-activity-role">
                                         <span className="field-label">Journey part</span>
                                         <select
+                                            className="form-control"
                                             value={newActivityRole}
                                             onChange={(event) => changeNewActivityRole(
                                                 booking,

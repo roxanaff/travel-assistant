@@ -42,29 +42,26 @@ public static class LinkedRecordReviews
             if (Id(edge.Target) == excludedTarget) continue;
             var oldValues = Project(before, edge);
             var newValues = Project(source, edge);
-            if (edge.IsFinancial && Equal(newValues["Amount"], Project(edge.Target, edge)["Amount"]))
-            {
-                var sourceId = Id(source);
-                var targetId = Id(edge.Target);
-                var tripId = TripId(source);
-                var resolvedMismatches = await database.LinkedRecordReviews.Where(review =>
-                    review.TripId == tripId && review.IsMismatch
-                    && ((review.SourceId == sourceId && review.TargetId == targetId)
-                        || (review.SourceId == targetId && review.TargetId == sourceId))).ToListAsync();
-                if (resolvedMismatches.Count > 0)
-                {
-                    database.LinkedRecordReviews.RemoveRange(resolvedMismatches);
-                    continue;
-                }
-            }
+            var mismatch = await RefreshMismatchReviews(database, edge, oldValues, newValues);
+            if (mismatch.ForwardHandled) continue;
             var changes = oldValues
                 .Where(pair => source is Booking
                     ? pair.Key != "Duration"
                     : pair.Key is not "EndDate" and not "EndTime")
                 .Where(pair => !Equal(pair.Value, newValues[pair.Key]))
+                .Where(pair => !mismatch.ConvergedFields.Contains(pair.Key))
                 .Select(pair => new LinkedFieldChange(pair.Key, pair.Value, newValues[pair.Key]))
                 .ToList();
-            if (changes.Count > 0) await Record(database, edge, changes);
+            if (changes.Count > 0)
+            {
+                await Record(database, edge, changes);
+            }
+            else if (mismatch.ConvergedFields.Count > 0
+                && !await database.LinkedRecordReviews.AnyAsync(review =>
+                    review.SourceId == Id(edge.Source) && review.TargetId == Id(edge.Target)))
+            {
+                ClearActivityReviewFlags(edge.Activity, Kind(edge.Target));
+            }
         }
     }
 
@@ -79,6 +76,98 @@ public static class LinkedRecordReviews
             var expected = Project(edge.Target, edge)["Amount"];
             await Record(database, edge, [new LinkedFieldChange("Amount", expected, actual)], true);
         }
+    }
+
+    private static readonly string[] ActivityFields =
+        ["Date", "Time", "Duration", "Location", "Cost"];
+
+    public static async Task InitialiseActivityLinkAsync(
+        TravelAssistantDbContext database,
+        Booking booking,
+        ItineraryItem activity)
+    {
+        var edges = new[]
+        {
+            new Edge(booking, activity, activity),
+            new Edge(activity, booking, activity)
+        };
+        foreach (var edge in edges)
+        {
+            var source = Project(edge.Source, edge);
+            var target = Project(edge.Target, edge);
+            var changes = ActivityFields
+                .Where(field => !Equal(source[field], target[field]))
+                .Select(field => new LinkedFieldChange(field, target[field], source[field]))
+                .ToList();
+            if (changes.Count > 0)
+            {
+                await Record(database, edge, changes, true);
+            }
+        }
+    }
+
+    private static async Task<(bool ForwardHandled, HashSet<string> ConvergedFields)> RefreshMismatchReviews(
+        TravelAssistantDbContext database,
+        Edge edge,
+        Dictionary<string, JsonElement> oldValues,
+        Dictionary<string, JsonElement> newValues)
+    {
+        var sourceId = Id(edge.Source);
+        var targetId = Id(edge.Target);
+        var tripId = TripId(edge.Source);
+        var mismatches = await database.LinkedRecordReviews
+            .Where(review => review.TripId == tripId && review.IsMismatch
+                && ((review.SourceId == sourceId && review.TargetId == targetId)
+                    || (review.SourceId == targetId && review.TargetId == sourceId)))
+            .ToListAsync();
+        var targetValues = Project(edge.Target, edge);
+        var changedFields = newValues.Keys
+            .Where(field => edge.IsFinancial || field is not "EndDate" and not "EndTime"
+                || (edge.Source is Booking && newValues["Duration"].ValueKind == JsonValueKind.Null))
+            .Where(field => !Equal(oldValues[field], newValues[field]))
+            .ToArray();
+        foreach (var review in mismatches)
+        {
+            var forward = review.SourceId == sourceId;
+            var source = forward ? newValues : targetValues;
+            var target = forward ? targetValues : newValues;
+            var pending = ReadChanges(review).ToDictionary(change => change.Field);
+            if (forward)
+            {
+                foreach (var field in changedFields)
+                {
+                    pending.TryAdd(field, new LinkedFieldChange(field, oldValues[field], newValues[field]));
+                }
+            }
+            var changes = new List<LinkedFieldChange>();
+            foreach (var change in pending.Values)
+            {
+                // Shared fields compare current linked values. Later manual-only
+                // fields retain edit history so reverting them clears the notice.
+                var baseline = edge.IsFinancial || ActivityFields.Contains(change.Field)
+                    ? target[change.Field]
+                    : change.Before;
+                if (!Equal(source[change.Field], baseline))
+                {
+                    changes.Add(new LinkedFieldChange(change.Field, baseline, source[change.Field]));
+                }
+            }
+            if (changes.Count == 0)
+            {
+                RemoveReview(database, review, edge.Activity);
+            }
+            else
+            {
+                var json = JsonSerializer.Serialize(changes);
+                if (json == review.ChangesJson) continue;
+                review.ChangesJson = json;
+                review.Revision = Guid.NewGuid();
+            }
+        }
+        var convergedFields = mismatches.Count == 0
+            ? []
+            : newValues.Keys.Where(field => Equal(newValues[field], targetValues[field])).ToHashSet();
+        return (mismatches.Any(review => review.SourceId == sourceId), convergedFields);
     }
 
     public static async Task ClearPairAsync(TravelAssistantDbContext database, Guid firstId, Guid secondId)
@@ -149,25 +238,33 @@ public static class LinkedRecordReviews
 
         if (pending.Count == 0)
         {
-            database.LinkedRecordReviews.Remove(review);
-            if (edge.Activity is ItineraryItem activity)
-            {
-                if (edge.Target is Booking)
-                {
-                    activity.HasPendingBookingUpdateReview = false;
-                    activity.PendingBookingChangeFields = null;
-                }
-                else
-                {
-                    activity.HasPendingActivityUpdateReview = false;
-                    activity.PendingActivityChangeFields = null;
-                }
-            }
+            RemoveReview(database, review, edge.Activity);
             return;
         }
         review.ChangesJson = JsonSerializer.Serialize(pending.Values);
         review.TargetSnapshotJson = JsonSerializer.Serialize(baseline);
         review.Revision = Guid.NewGuid();
+    }
+
+    private static void RemoveReview(TravelAssistantDbContext database, LinkedRecordReview review, ItineraryItem? activity)
+    {
+        database.LinkedRecordReviews.Remove(review);
+        ClearActivityReviewFlags(activity, review.TargetKind);
+    }
+
+    private static void ClearActivityReviewFlags(ItineraryItem? activity, LinkedRecordKind targetKind)
+    {
+        if (activity is null) return;
+        if (targetKind == LinkedRecordKind.Booking)
+        {
+            activity.HasPendingBookingUpdateReview = false;
+            activity.PendingBookingChangeFields = null;
+        }
+        else
+        {
+            activity.HasPendingActivityUpdateReview = false;
+            activity.PendingActivityChangeFields = null;
+        }
     }
 
     public static List<LinkedFieldChange> ReadChanges(LinkedRecordReview review) =>

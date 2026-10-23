@@ -243,6 +243,7 @@ public static class BookingEndpoints
             activity.HasPendingActivityUpdateReview = false;
             activity.PendingBookingChangeFields = null;
             activity.PendingActivityChangeFields = null;
+            await LinkedRecordReviews.InitialiseActivityLinkAsync(database, booking, activity);
             await database.SaveChangesAsync();
 
             return Results.Ok(new { activity.Id, activity.BookingId, activity.BookingRole });

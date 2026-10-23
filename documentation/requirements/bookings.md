@@ -54,6 +54,9 @@ They are agreed requirements; the Status section identifies which parts are impl
 - When linking an existing activity, immediately flag differences in shared date/time, duration/end, location and
   cost values, not just changes made after linking. Use the same Update / Keep as is choices. Differences may be
   intentional; linking never silently synchronises them. Keep the existing expense link-time mismatch review.
+- Relationship actions offer **Link existing activity** before **Add new activity**, and **Link existing booking**
+  before **Add new booking**. Retain the existing visibility rules for linking. The new-activity Journey part selector
+  uses the shared form-control appearance and wraps safely on narrow screens.
 - A saved booking offers **Review related changes** with a pending-entry count. Open an inline panel in the same card,
   listing each affected activity or expense with its proposed changes and individual Update / Keep as is actions.
   These resolve the same persisted reviews as the destination cards; resolving one place removes the corresponding
@@ -605,6 +608,10 @@ Show **Add booking** beneath the message.
 
 ## Deferred scope
 
+- Allow changing an existing activity link's Outbound, Return or Other journey part without unlinking it. Consider a
+  **Change journey part** action beside Unlink. Broader relationship editing from activity/booking/expense forms is a
+  later idea, not part of the current implementation.
+
 The first version does not include:
 
 - Ideas or wishlist entries.
@@ -795,10 +802,30 @@ Completed in the expense-payment recording chunk:
 - All 99 backend tests, 48 affected frontend tests, two Chromium payment/review flows, build and lint pass.
   Browser checks include create/link from unpaid, preview/opt-in, later price increases, and mobile layout.
 
-Remaining: link-time activity differences, the booking's Review related changes panel,
+Completed in the activity link-time review chunk:
+
+- Linking an existing activity immediately offers shared date, time, duration, location and cost differences in both
+  directions, using the selected outbound/return journey. Linking alone changes neither record's values or finances.
+- Existing Update / Keep as is controls, outside-trip handling, ownership checks and stale-review protection are reused.
+  Initial comparisons exclude separate arrival metadata that has no unambiguous activity equivalent.
+- Pending differences reflect later edits. Matching fields clear without dropping unrelated differences; keeping one
+  direction does not dismiss the other. Later manual-only changes remain visible and clear when reverted.
+- API regressions cover journey roles, updates, one-direction dismissal, convergence and manual-only edit/revert cases.
+  Browser checks cover immediate notices, no automatic synchronisation, independent dismissal and mobile actions.
+- All 106 backend tests, all 10 booking Chromium flows, production build and lint pass; independent review is clear.
+  The broader frontend run passes 82 tests but still fails collection of the obsolete TripSetup test already recorded
+  in the maintenance backlog. No migration is needed for this chunk; live PostgreSQL execution remains unverified.
+
+Remaining: the booking's Review related changes panel,
 the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.
+
+Completed in the relationship-action clarity follow-up:
+
+- Link existing precedes Add new in booking/activity relationship actions. The new-activity Journey part dropdown
+  shares the standard form-control styling and wraps within narrow cards. Editing existing journey roles stays deferred.
+- All 35 affected frontend tests, the 10 booking browser flows, production build and lint pass; independent review is clear.
 
 The completed chunks below describe the earlier implementation history; the revised rules above supersede their
 booking/planned-cost-chain behavior.
