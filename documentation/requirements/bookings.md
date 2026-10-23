@@ -121,7 +121,8 @@ They are agreed requirements; the Status section identifies which parts are impl
   tabs. Store these browser view choices separately for each trip and page; do not reset them while records load.
 - Keep the **Expense** label and its linked name/amount/Unlink controls on the same row on wider screens, matching
   activity relationship rows. Use rounded corners for destination expense highlighting and compact, aligned link
-  controls. Allow relationship rows to stack and long names to wrap on narrow screens.
+  controls. Expense and planned-cost highlights use the same thin pink edge and soft outer glow as booking/activity
+  highlights, without changing the row background. Allow relationship rows to stack and long names to wrap on narrow screens.
 - Before an expense is linked, show only **Add to expenses** and **Link existing expense**, without an **Expense**
   label. Align these actions and the activity add/link actions with the corresponding linked-record value column.
 - All saved booking details stack on the left in a shared label/value grid, including reservation details, related
@@ -769,7 +770,14 @@ Completed in the quick-payment action chunk:
   enforces ownership and existing payment validation, and rejects stale actions. Neither action creates or edits an
   expense. Linked-expense review warnings follow normal change/revert handling.
 - All 94 backend tests, 38 affected frontend tests, two Chromium payment flows, production build and lint pass.
-  Browser checks cover unpaid-to-paid, immediate Undo, no automatic expense and mobile layout. User acceptance pending.
+  Browser checks cover unpaid-to-paid, immediate Undo, no automatic expense and mobile layout. The user confirmed
+  that Mark as paid works.
+
+Completed in the financial highlight consistency follow-up:
+
+- Expense and planned-cost navigation highlights keep their existing background and use a thin pink edge with the
+  booking/activity soft outer glow and fade timing. Reduced-motion mode retains a static thin edge without a fill.
+- The expense-navigation Chromium flow, production build and lint pass; independent review has no actionable findings.
 
 Remaining: implement the other agreed usability refinements at the top of this document,
 the planned-cost-to-expense navigation control, and further user acceptance checks. Shared group/view

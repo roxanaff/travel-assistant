@@ -305,6 +305,12 @@ test("a booking records actual spending directly and navigates to the expense", 
     const highlightedExpense = page.locator(`#expense-${expenses[0].id}`);
     await expect(highlightedExpense).toHaveClass(/budget-record-highlighted/);
     await expect(highlightedExpense).toHaveCSS("border-radius", "12px");
+    await expect(highlightedExpense).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(highlightedExpense).toHaveCSS("outline-width", "1px");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(highlightedExpense).toHaveCSS("animation-name", "none");
+    await expect(highlightedExpense).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
 
     await page.getByRole("link", { name: "Bookings", exact: true }).click();
     await expect(page.getByRole("button", { name: "Collapse Rome hotel details" })).toBeVisible();
