@@ -5,12 +5,20 @@ description: Discuss a Travel Assistant feature with the user and record agreed 
 
 # Plan a Travel Assistant feature
 
-Read the repository `AGENTS.md`, relevant requirements, roadmap, and related user
-flows. Explore meaningful options with the user, including how each would behave in
-the app. Ask focused questions and allow several rounds of discussion.
+Follow `AGENTS.md`; consult the existing requirements, roadmap and related user
+flows. Resume settled decisions instead of reopening discovery on every extension.
 
-Record decisions in `documentation/requirements/<feature>.md`. Separate agreed
-behavior from open questions and deferred work. Use concrete acceptance criteria
-where they help verify the feature. Summarize the result for the user and wait for
-their instruction to implement. Existing written requirements alone do not grant
-implementation approval.
+Explore behavior, scope, interaction design and meaningful tradeoffs in terms of
+their effect on the traveller. Ask focused questions, allow multiple discussion
+rounds and use concrete examples/mockups when helpful. Include important failure,
+empty-state and linked-record cases rather than only the happy path.
+
+Record the agreed outcome/non-goals and observable acceptance criteria in the
+feature requirements. Summarize remaining product decisions separately. Hand the
+settled behavior to `../plan-architecture/SKILL.md` for technical planning before
+coding; a short local change needs only its lightweight mode. Technical planning
+may proceed during discussion where it helps answer a question, but it must not
+silently decide unresolved product behavior.
+
+End planning with a concise agreement/next-step summary. Apply the authorization
+boundary in `AGENTS.md` before moving into implementation.

@@ -115,6 +115,6 @@ and documentation corrections here.
 - Unsaved form protection — The shared guard now compares controlled form values and resets its baseline for each
   Add/Edit session. Escape and Cancel require confirmation for changed Activity, Planned cost, Expense, Packing,
   To-do and Trip forms; cancelling confirmation preserves edits. Focused unit tests and the five-area Chromium
-  regression pass. User acceptance remains pending. See [audit F14](requirements/app-review-and-improvements.md#f14--dirty-form-snapshot-misses-the-controls-it-is-protecting).
+  regression pass; accepted by the user. See [audit F14](requirements/app-review-and-improvements.md#f14--dirty-form-snapshot-misses-the-controls-it-is-protecting).
 
 Move completed items here when keeping a short record is useful. Otherwise, delete them from the active sections.

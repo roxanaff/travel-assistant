@@ -5,22 +5,44 @@ description: Implement an approved Travel Assistant feature in reviewable commit
 
 # Implement a Travel Assistant feature
 
-Read `AGENTS.md`, the agreed feature requirements, and
-`documentation/development-guide.md`. Check branch and working tree before changes.
-Follow the repository's branch and manual-commit rules.
+Follow `AGENTS.md` for authorization, Git and checkpoint rules. Read the agreed
+requirements/technical plan and the development guide for architecture and checks.
 
-Before coding, locate comparable UI, styles, hooks, API calls, backend endpoints,
-and tests. Reuse suitable code and design patterns. Identify a coherent chunk that
-can be tested and committed on its own.
+## Before each chunk
 
-Implement the chunk with a few high-value tests for its main behavior and important
-edge cases. Run affected checks. Give a separate reviewer subagent the requirements,
-entire uncommitted chunk diff, and relevant existing code. Have it follow the
-`review-feature` procedure without editing files. Evaluate its findings, fix valid
-issues, rerun affected checks, and return the revised diff for another review.
-Continue until the reviewer reports no actionable findings or an unresolved issue
-needs to be disclosed.
+Confirm which acceptance criteria the chunk delivers and the affected consumers.
+Check the technical plan against the live code and existing reusable patterns. If
+there is no appropriate plan/check yet, use `../plan-architecture/SKILL.md` before
+coding. Revisit design only when new evidence changes boundaries, ownership or risk;
+resolve substantial plan findings before implementation. Do not restart product
+planning for routine technical choices.
 
-Then give the user the chunk's behavior, files, checks, review outcome, any remaining
-concerns, and a suggested commit message. Pause for the user to commit before the
-next chunk. Do not claim independent review if a separate reviewer was unavailable.
+If the affected path needs structural cleanup, use `../refactor-code/SKILL.md` to
+bound it. Keep behavior-preserving work separate from behavior changes when
+practical; do not turn a feature extension into unrelated cleanup.
+
+## Implement and verify
+
+Deliver a complete, reviewable slice rather than speculative scaffolding. Remove
+superseded paths within scope, or record the compatibility reason and removal
+condition. Keep relevant documentation consistent with the resulting behavior.
+
+Add a small number of high-value tests for main functionality and important edge
+cases/regressions, preferring existing coverage where it already fits. Avoid tests
+for trivial variations or implementation details. Run the affected checks from the
+development guide; repeat/broaden passing checks only when new edits or evidence
+justify it. Distinguish pre-existing failures and untested paths from verified work.
+
+## Review and handoff
+
+Give an independent reviewer `../review-feature/SKILL.md`, agreed requirements and
+technical decisions, the complete chunk diff (including untracked files), relevant
+existing code and verification results. Assess findings, fix valid issues and rerun
+affected checks. Return the revised complete chunk for review until no actionable
+findings remain, or explain why review cannot converge.
+
+At the `AGENTS.md` commit checkpoint, summarize files, implemented behavior, checks,
+review outcome and limits. Provide a short manual walkthrough and local access
+location, plus a commit message covering the full working diff. Keep requirements
+status concise. User feedback repeats the affected implementation/verification
+steps; scope changes return to product planning.

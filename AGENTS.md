@@ -1,7 +1,9 @@
 # Travel Assistant working agreements
 
-This file contains the rules that apply throughout feature work. The optional
-`.agents/skills/` procedures describe planning, implementation, and review.
+This file owns the repository-wide rules. Task procedures live in `.agents/skills/`;
+architecture facts, conventions and verification commands live in
+`documentation/development-guide.md`. Keep each instruction in one authoritative
+place; reference it elsewhere instead of copying it.
 
 ## Git workflow
 
@@ -36,61 +38,40 @@ This file contains the rules that apply throughout feature work. The optional
 - Preserve unrelated working changes. This workflow does not authorize starting
   other tasks or expanding the requested scope.
 
-## Feature decisions
+## Authorization and scope
 
-- Discuss new features with the user before implementation. Explore behavior, scope,
-  interaction design, and meaningful tradeoffs together; allow as many rounds as needed.
-  Ask focused questions and use concrete examples or mockups when helpful. Explain
-  options in terms of their effect on the traveller, including important edge cases.
-- Record agreed requirements in `documentation/requirements/<feature>.md`, preserving
-  existing content. Separate open questions and deferred ideas from agreed behavior.
-  Include observable acceptance criteria where they clarify completion. Existing
-  requirements are context, not by themselves permission to start implementing.
-- Summarize the agreement and wait for the user's instruction to implement. Silence
-  is not approval.
-- Begin implementation when the user says to proceed. Honor approval already given
-  in the current task; do not ask again for each implementation, test, or review step.
-- Bring unresolved decisions that change user-visible behavior or agreed scope back
-  to the user. Resolve routine technical choices using the existing architecture.
-  Continue independent work while waiting for a product decision.
+- Agree new behavior with the user before implementation. Written requirements,
+  planning approval and silence do not themselves authorize application changes.
+  Honor implementation approval already given; do not ask again for routine design,
+  test or review steps within that scope.
+- Bring unresolved product decisions or meaningful scope/behavior changes back to
+  the user. Resolve routine technical choices within the agreed architecture.
+- Record unrelated improvements in `documentation/maintenance-backlog.md`; do not
+  expand the task to implement them.
 
-## Implementation and verification
+## Workflow
 
-- Follow `documentation/development-guide.md` for architecture and verification commands.
-  Reuse established frontend and backend patterns.
-- Before adding UI controls, CSS, forms, hooks, API helpers, or backend logic, inspect
-  nearby features for an existing implementation with the same purpose. Reuse it when
-  its behavior fits. When a new implementation is needed, keep its appearance and
-  interaction consistent with equivalent parts of the app.
-- After authorization, carry each commit-sized chunk through implementation, tests,
-  independent review, fixes, and relevant documentation updates without separate
-  prompts for each stage. Stop at the commit checkpoints described above.
-- Add a small number of high-value tests alongside feature implementation, focused on
-  main functionality and important edge cases or regressions. Do not aim for full
-  coverage or add tests for every variation, trivial detail, or implementation detail.
-  Prefer existing coverage where it already verifies the behavior.
-- Run checks appropriate to the affected areas. Before handing a chunk to the user,
-  give a separate reviewer subagent the agreed requirements, complete chunk diff, and
-  relevant existing code. Ask it to report concrete findings without editing files.
-  Its review must cover behavior, reuse and UI consistency, correctness, validation,
-  ownership, important tests, and maintainability where relevant.
-- Assess the reviewer's findings, fix valid issues, and rerun affected checks. Return
-  the revised diff to the reviewer. Continue until there are no actionable findings;
-  if review cannot converge, report remaining issues and why. If a separate reviewer
-  is unavailable, disclose that and do not present self-review as independent review.
-- Once checks pass, repeat or broaden them only when new changes or evidence justify it.
-- Record unrelated improvements in `documentation/maintenance-backlog.md` rather than
-  expanding the feature. Update relevant documentation when behavior changes.
-- Use readable multi-line code, consistent indentation, and sensible line breaks.
-- Completing a feature does not itself authorize pushing or deploying it.
+- Use the relevant procedure: `plan-feature` for behavior and requirements,
+  `plan-architecture` for technical design, `implement-feature` for approved changes,
+  `refactor-code` for scoped behavior-preserving cleanup, and `review-feature` for
+  independent chunk review. Skills support these rules, not replace them.
+- Every feature/extension gets an architecture check before coding. Use a brief
+  reuse/impact check for local changes, a recorded technical plan and independent
+  architecture review for substantial changes. Before each implementation chunk,
+  check that the plan still fits; do not repeat the full design without new evidence.
+- Carry authorized chunks through implementation, verification, independent review,
+  fixes and relevant documentation updates before the manual commit checkpoint.
+  Reviewers are separate read-only subagents. Disclose unavailable review or
+  unresolved findings; never present self-review as independent review.
 
-## Hand back for user testing
+## Quality and records
 
-- Summarize implemented behavior, verification results, and remaining limitations.
-  Provide a short walkthrough of what the user should try and where to access the
-  local result.
-- Keep a concise status section in the feature requirements with completed work and
-  remaining decisions or checks, rather than a chronological activity log.
-- Incorporate user feedback and repeat the affected implementation and verification
-  steps, retaining commit checkpoints. Discuss scope changes when needed. Passing
-  tests does not establish user acceptance.
+- Inspect existing implementations before adding another UI/control/style/helper or
+  backend path. Reuse when behavior fits; otherwise preserve equivalent appearance
+  and interaction. Do not introduce abstractions solely to reduce line counts.
+- Use readable multi-line code, consistent indentation and sensible line breaks.
+- Keep behavior, technical decisions and concise completion status in
+  `documentation/requirements/<feature>.md` (or the existing audit for maintenance).
+  Preserve existing content; separate agreements from open questions/deferred ideas.
+- Verification must match the affected area and risk. Passing tests does not establish
+  user acceptance. Report meaningful limits and leave a clear manual test handoff.

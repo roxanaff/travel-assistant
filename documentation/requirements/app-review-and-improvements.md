@@ -16,7 +16,7 @@ This is not a fresh rendered visual/accessibility audit, a performance profile, 
 full test run. Previously reported test/advisory results are identified separately below.
 Subsequent targeted diagnosis: F14 was reproduced in Chromium on 24 October 2026, as recorded under that finding;
 the rest of the audit's unverified risks remain source-level observations.
-Approved follow-up: the focused F14 fix is verified on `feature/unsaved-form-protection`, awaiting user acceptance.
+Approved follow-up: the focused F14 fix is verified on `feature/unsaved-form-protection` and accepted by the user.
 
 The [maintenance backlog](../maintenance-backlog.md) remains the broader issue list. This document supplies evidence,
 dependencies and decisions for this review; cross-reference IDs instead of creating conflicting copies of requirements.
@@ -237,7 +237,7 @@ Confirm whether the current behavior is accepted and update the requirement, or 
 
 ### F14 — Dirty-form snapshot misses the controls it is protecting
 
-**Priority:** P1. **Status:** Fix verified; awaiting user acceptance. **Type:** Confirmed loss of unsaved edits.
+**Priority:** P1. **Status:** Verified and accepted by the user. **Type:** Confirmed loss of unsaved edits.
 
 [`useFormKeyboardInteraction`](../../frontend/src/utils/useFormKeyboardInteraction.ts) determines whether Escape/cancel
 needs confirmation by comparing `new FormData(form)` snapshots. FormData includes named controls, but the inputs/selects
@@ -485,39 +485,19 @@ Target outcome: a style-only change usually has one style owner; a domain-rule c
 adapters; tests still cover its affected consumers. This is not a fixed maximum file count or a demand for one-line code.
 Prefer fewer concepts, clearer state and fewer edit locations over fewer characters.
 
-## Proposed architecture-first change process
+## Adopted architecture-first change process
 
-This is a process proposal for approval, not a new mandatory framework or permission to edit instruction files.
+The user approved the proportional workflow and instruction cleanup. The authoritative repository-wide rules are in
+[`AGENTS.md`](../../AGENTS.md). Task procedures are maintained in the project skills rather than duplicated here:
 
-### Before implementation
+- [Product planning](../../.agents/skills/plan-feature/SKILL.md).
+- [Technical planning and independent architecture review](../../.agents/skills/plan-architecture/SKILL.md).
+- [Implementation, verification and handoff](../../.agents/skills/implement-feature/SKILL.md).
+- [Behavior-preserving refactoring](../../.agents/skills/refactor-code/SKILL.md).
+- [Independent chunk review](../../.agents/skills/review-feature/SKILL.md).
 
-For cross-feature behavior, agree a short change/architecture brief containing:
-
-1. **Outcome and non-goals:** traveller-visible behavior, examples, acceptance checks and what stays unchanged.
-2. **Data ownership/invariants:** canonical versus derived/independent fields, valid states and allowed transitions.
-3. **Boundaries:** UI display components, workflow/state owner, client API contract, server command/policy, persistence.
-   Sketch the request/update flow and identify existing code to reuse before adding a new component/service.
-4. **Impact and alternatives:** expected consumers/files, compatibility needs, one simpler alternative and tradeoffs.
-5. **Failure/concurrency design:** validation, ownership, loading/error/retry, Undo/deletion, stale writes and refresh.
-6. **Migration and removal:** old data/routes/flags and consumers, rollout compatibility, cleanup criteria and rollback.
-7. **Verification/chunks:** meaningful tests, real-provider checks where relevant, independent review and manual checks.
-
-Use proportional effort: a local label/style fix generally needs only a reuse/impact check, not an architecture document.
-A cross-record payment rule or shared-data redesign needs the full brief. Record lasting structural choices and reasons
-in a short decision record; do not try to design the entire future app up front.
-
-### During and after implementation
-
-- Separate behavior-preserving extraction/cleanup from behavior changes when practical. Refactor the affected path
-  before layering another extension onto it if the current structure obstructs the agreed change.
-- Implement one complete vertical slice, not speculative framework scaffolding for every future feature.
-- Revisit the impact plan if unexpected coupling appears; explain why the additional edits are necessary.
-- Remove superseded local implementations in the same approved scope, or record why compatibility requires retention
-  and the condition for later removal. Do not leave two active paths indefinitely without an explicit owner/transition.
-- Review simplicity as well as correctness: could the same behavior use fewer states, branches, duplicated rules or
-  requests? Are safeguards being preserved? Are components/services doing one coherent job?
-- Update the audit IDs/requirements, verify affected consumers, obtain user feedback and stop at the manual commit
-  checkpoint. No branch merge, push or deployment is implied.
+Technical decisions for a feature belong with its requirements; maintenance decisions can stay under the relevant
+finding here. This adopts the process, not any unapproved product redesign or broad refactoring in this audit.
 
 ## Product decisions that must not be disguised as refactoring
 
@@ -530,7 +510,7 @@ in a short decision record; do not try to design the entire future app up front.
 | D05 | Needs decision | Final review-panel appearance and information hierarchy. | Current shared pink disclosure, light-blue review background and per-entry actions are a working version, not final visual acceptance. Decide after D01 and D04. |
 | D06 | Needs decision | Replace the user-facing word Itinerary. | Workspace navigation, headings and creation/link actions; Schedule, Activities and Trip plan discussed. Schedule is a suggestion, not an agreed rename or API-route migration. |
 | D07 | Needs decision | Group collapse/order, category totals/actions, and eventual separate Budget/Expenses tabs with progress indicators. | GroupHeading has title/actions/summary but no collapse state; TripBudget combines both sections. Define saved category order independently per page and distinguish savings, spending and budget denominators. See the updated roadmap's Better budget control section. |
-| D08 | Needs decision | Adopt the proportional architecture-first process above, including change-impact and obsolete-path removal checks. | Agree when a short local impact check is enough and when cross-feature work needs an architecture brief/decision record. Do not modify working agreements automatically. |
+| D08 | Adopted | Proportional architecture planning, scoped refactoring and independent architecture/chunk reviews. | Universal rules stay in AGENTS.md; procedures live in the linked skills. Brief local impact checks suffice for small changes; substantial work gets a recorded technical plan and independent architecture review before coding. |
 
 Working acceptance template for D01: for each flight/hotel/paid-activity example, list the owner of schedule, location,
 total price, payment/refund values and payment date; what happens on creation, link, edit, override, cancellation,
@@ -560,7 +540,7 @@ These are audit classifications, not silent changes to existing backlog entries.
 
 | Step | Work | Gate before implementation |
 | --- | --- | --- |
-| 1 | Complete F14 verification/user acceptance; repair obsolete test coverage; reassess dependency advisories; reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
+| 1 | F14 is accepted. Next: repair obsolete test coverage; reassess dependency advisories; reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
 | 2 | Agree D01 using the concrete examples above. | Explicit decisions on ownership, updates, intentional overrides and existing records. |
 | 3 | Mock up D02–D06, plus common text/control roles. | User chooses the interaction/layout direction, including mobile and keyboard use. |
 | 4 | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified. | Preserve existing behavior with regression checks before applying product changes. |
@@ -572,10 +552,10 @@ verify mobile/keyboard interactions, obtain independent review and user feedback
 
 ## Decisions and completion log
 
-- **Agreed process:** audit first; discuss behavior and visual direction; approve small implementation chunks afterward.
+- **Agreed process:** D08 adopted; workflow rules/procedures linked above. Product redesigns still need agreement.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
-  Verification and independent review passed; user acceptance remains. No broader new
+  Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.
   The original temporary diagnostic files were removed; permanent regression tests accompany the fix.
-- **Next discussion:** agree the architecture-first process and maintenance priorities, then D01 and representative
+- **Next discussion:** agree maintenance priorities, then D01 and representative
   interaction/layout examples. Backend/cleanup proposals and all product redesigns remain open until explicitly approved.
