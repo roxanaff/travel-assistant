@@ -264,7 +264,7 @@ describe("booking expense actions", () => {
         });
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         expect(screen.getByLabelText("Amount (EUR)")).toHaveProperty("value", "");
         await user.type(screen.getByLabelText("Amount (EUR)"), "100");
         const choice = screen.getByRole("checkbox", { name: "Update booking payment" });
@@ -287,6 +287,12 @@ describe("booking expense actions", () => {
         bookingsApi.linkBookingExpense.mockResolvedValue({ ...unpaid, totalCost: 100, amountPaid: 100, netCost: 100, financialStatus: "Paid" });
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        const actions = screen.getByRole("region", { name: "Expenses for Hotel Rome" })
+            .querySelectorAll(".booking-budget-actions button");
+        expect(Array.from(actions, (button) => button.textContent?.trim())).toEqual([
+            "Link existing expense",
+            "Add new expense",
+        ]);
         await user.click(screen.getByRole("button", { name: "Link existing expense" }));
         await user.selectOptions(screen.getByLabelText("Expense"), existingExpense.id);
         await user.click(screen.getByRole("checkbox", { name: "Update booking payment" }));
@@ -318,7 +324,7 @@ describe("booking expense actions", () => {
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         expect(screen.getByRole("region", { name: "Expenses for Hotel Rome" }).querySelector("strong")).toBeNull();
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
         expect(within(budget).getByLabelText("What did you pay for?")).toHaveProperty("value", hotel.name);
@@ -343,7 +349,7 @@ describe("booking expense actions", () => {
         ));
         expect(await within(budget).findByRole("link", { name: hotel.name })).toBeTruthy();
         expect(within(budget).getByText("Expense", { exact: true })).toBeTruthy();
-        expect(within(budget).queryByRole("button", { name: "Add to expenses" })).toBeNull();
+        expect(within(budget).queryByRole("button", { name: "Add new expense" })).toBeNull();
     });
 
     it("links an existing expense with a planned cost and can unlink it without deleting either", async () => {
@@ -399,7 +405,7 @@ describe("booking expense actions", () => {
         await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
         await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
         await waitFor(() => expect(expensesApi.deleteExpense).toHaveBeenCalledWith(trip.id, existingExpense.id));
-        expect(await within(region).findByRole("button", { name: "Add to expenses" })).toBeTruthy();
+        expect(await within(region).findByRole("button", { name: "Add new expense" })).toBeTruthy();
         expect(within(region).queryByRole("link", { name: existingExpense.name })).toBeNull();
         expect(within(region).queryByRole("button", { name: "Link existing expense" })).toBeNull();
         expect(screen.getByText(hotel.name)).toBeTruthy();
@@ -424,7 +430,7 @@ describe("booking expense actions", () => {
         expensesApi.deleteExpense.mockResolvedValueOnce(false);
         await user.click(within(region).getByRole("button", { name: "Delete", exact: true }));
         await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete", exact: true }));
-        expect(await within(region).findByRole("button", { name: "Add to expenses" })).toBeTruthy();
+        expect(await within(region).findByRole("button", { name: "Add new expense" })).toBeTruthy();
         expect(within(region).queryByText("Could not delete this expense.")).toBeNull();
     });
 
@@ -539,7 +545,7 @@ describe("booking expense actions", () => {
         }]);
         act(() => notifyActivityDeleted(trip.id));
         await user.click(screen.getByRole("button", { name: "Unlink", exact: true }));
-        await screen.findByRole("button", { name: "Add to expenses" });
+        await screen.findByRole("button", { name: "Add new expense" });
         await act(async () => finishRefresh([linkedBooking]));
 
         await screen.findByText("A linked activity was deleted. This booking was kept.");
@@ -566,7 +572,7 @@ describe("booking expense actions", () => {
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         await user.click(screen.getByRole("button", { name: "Expand Free museum details" }));
 
-        expect(screen.queryByRole("button", { name: "Add to expenses" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Add new expense" })).toBeNull();
         expect(screen.queryByRole("button", { name: "Link existing expense" })).toBeNull();
     });
 
@@ -575,7 +581,7 @@ describe("booking expense actions", () => {
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
         await user.clear(within(budget).getByLabelText("What did you pay for?"));
         await user.type(within(budget).getByLabelText("What did you pay for?"), "Different plan");
@@ -592,7 +598,7 @@ describe("booking expense actions", () => {
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         const amount = screen.getByLabelText("Amount (EUR)");
         await user.clear(amount);
         await user.type(amount, ".");
@@ -621,7 +627,7 @@ describe("booking expense actions", () => {
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         await user.click(screen.getByRole("button", { name: "Expand Second hotel details" }));
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         await user.clear(screen.getByLabelText("What did you pay for?"));
         await user.type(screen.getByLabelText("What did you pay for?"), "Changed plan");
         await user.click(screen.getByRole("link", { name: "Hotel deposit" }));
@@ -657,7 +663,7 @@ describe("booking expense actions", () => {
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
-        await user.click(screen.getByRole("button", { name: "Add to expenses" }));
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
         await user.clear(screen.getByLabelText("What did you pay for?"));
         await user.type(screen.getByLabelText("What did you pay for?"), "Changed plan");
         await user.click(screen.getByRole("link", { name: "Hotel check-in" }));

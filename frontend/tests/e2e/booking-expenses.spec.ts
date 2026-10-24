@@ -161,7 +161,7 @@ test("expenses can record unpaid booking payments and explicitly increase the to
     await page.goto(`/trips/${trip.id}/bookings`);
     await page.getByRole("button", { name: "Expand Flight payment details" }).click();
     const firstCard = page.locator(`#booking-${first.id}`);
-    await firstCard.getByRole("button", { name: "Add to expenses" }).click();
+    await firstCard.getByRole("button", { name: "Add new expense" }).click();
     await page.getByLabel("Amount (EUR)").fill("20");
     const updatePayment = page.getByRole("checkbox", { name: "Update booking payment" });
     await expect(updatePayment).not.toBeChecked();
@@ -403,9 +403,9 @@ test("a booking records actual spending directly and navigates to the expense", 
     await page.getByRole("button", { name: "Expand Rome hotel details" }).click();
     await expect(page.getByRole("button", { name: "Add to planned costs" })).toHaveCount(0);
     const activityAction = await page.getByRole("button", { name: "Add new activity", exact: true }).boundingBox();
-    const expenseAction = await page.getByRole("button", { name: "Add to expenses", exact: true }).boundingBox();
+    const expenseAction = await page.getByRole("button", { name: "Add new expense", exact: true }).boundingBox();
     expect(expenseAction!.y - (activityAction!.y + activityAction!.height)).toBeLessThan(14);
-    await page.getByRole("button", { name: "Add to expenses" }).click();
+    await page.getByRole("button", { name: "Add new expense" }).click();
     await expect(page.getByLabel("What did you pay for?")).toHaveValue("Rome hotel");
     await expect(page.getByLabel("Amount (EUR)")).toHaveValue("150");
     await page.getByLabel("What did you pay for?").fill("Hotel deposit");
@@ -690,7 +690,7 @@ test("saved booking columns and budget amounts stay aligned", async ({ page }) =
     await expect(expenseSection.getByRole("link", { name: "Flight expense", exact: true })).toBeVisible();
     await expenseSection.getByRole("button", { name: "Delete", exact: true }).click();
     await dialog.getByRole("button", { name: "Delete", exact: true }).click();
-    await expect(expenseSection.getByRole("button", { name: "Add to expenses" })).toBeVisible();
+    await expect(expenseSection.getByRole("button", { name: "Add new expense" })).toBeVisible();
     expect((await browserRequest(page, `${tripApi}/expenses`)).body).toEqual([]);
     const remainingBookings = (await browserRequest(page, `${tripApi}/bookings`)).body;
     expect(remainingBookings).toHaveLength(1);

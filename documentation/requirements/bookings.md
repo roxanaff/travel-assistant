@@ -77,8 +77,8 @@ They are agreed requirements; the Status section identifies which parts are impl
 - Remove the booking-to-planned-cost relationship and its create/link actions.
 - Keep a direct booking-to-expense relationship and the existing planned-cost-to-expense relationship. Creating an
   expense from a booking must not create a planned cost automatically.
-- After a planned cost creates an expense, replace the generic **Added** text with a navigation control naming the
-  actual expense, alongside **Undo**. Selecting it focuses and briefly highlights the matching expense.
+- Planned-cost-to-expense navigation improvements are outside this booking feature and tracked in the maintenance
+  backlog. Keep the existing planned-cost behavior until that separate improvement is implemented.
 - A booking with a positive cost that is not fully paid offers **Mark as paid** outside the edit form. The action sets
   Amount paid to Total cost. It does not by itself create an expense.
 - Show outside-trip-date warnings on saved booking cards as well as in their forms. Card warnings are dismissible
@@ -133,7 +133,7 @@ They are agreed requirements; the Status section identifies which parts are impl
   activity relationship rows. Use rounded corners for destination expense highlighting and compact, aligned link
   controls. Expense and planned-cost highlights use the same thin pink edge and soft outer glow as booking/activity
   highlights, without changing the row background. Allow relationship rows to stack and long names to wrap on narrow screens.
-- Before an expense is linked, show only **Add to expenses** and **Link existing expense**, without an **Expense**
+- Before an expense is linked, show **Link existing expense** first (when available), then **Add new expense**, without an **Expense**
   label. Align these actions and the activity add/link actions with the corresponding linked-record value column.
 - All saved booking details stack on the left in a shared label/value grid, including reservation details, related
   records, and notes. Size the label column from the longest visible label with a compact gap rather than a fixed
@@ -823,9 +823,14 @@ Completed in the activity link-time review chunk:
   The broader frontend run passes 82 tests but still fails collection of the obsolete TripSetup test already recorded
   in the maintenance backlog. No migration is needed for this chunk; live PostgreSQL execution remains unverified.
 
-Remaining: the planned-cost-to-expense navigation control and further user acceptance checks. Shared group/view
+Remaining: final end-to-end verification, live PostgreSQL checks and user acceptance. The planned-cost-to-expense
+navigation control is separate maintenance work, not a booking completion requirement. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.
+
+The later cross-app data-model, automatic-update, creation/editing, naming and visual-density discussion is deferred
+until this feature is finished; see Post-booking review topics in [the maintenance backlog](../maintenance-backlog.md).
+The current related-review appearance is provisional and will be revisited there, not expanded within this feature.
 
 Completed in the relationship-action clarity follow-up:
 

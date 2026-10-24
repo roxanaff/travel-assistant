@@ -2069,14 +2069,6 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     && creatingActivityForBookingId === null
                                     && linkingBookingId === null && (
                                         <div className="booking-budget-actions">
-                                            <button
-                                                className="text-button"
-                                                type="button"
-                                                disabled={isBudgetPending || isPaymentPending}
-                                                onClick={() => openBudgetAction(booking, "create")}
-                                            >
-                                                Add to expenses
-                                            </button>
                                             {unlinkedExpenses.length > 0 && (
                                                 <button
                                                     className="text-button"
@@ -2087,6 +2079,14 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                                     Link existing expense
                                                 </button>
                                             )}
+                                            <button
+                                                className="text-button"
+                                                type="button"
+                                                disabled={isBudgetPending || isPaymentPending}
+                                                onClick={() => openBudgetAction(booking, "create")}
+                                            >
+                                                Add new expense
+                                            </button>
                                         </div>
                                     )}
                                 {budgetAction?.bookingId === booking.id && budgetAction.kind === "create" && (

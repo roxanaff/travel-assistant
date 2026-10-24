@@ -1,0 +1,3 @@
+double click to change status
+redo the whole items for booking, itinerary, expenses - as one object?
+change itinerary name to schedule? or activities? or something else?

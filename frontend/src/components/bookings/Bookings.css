@@ -230,9 +230,8 @@
     grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
     gap: 6px 18px;
     padding: 0;
-    color: inherit;
     text-align: left;
-    color: var(--color-gray-500);
+    color: var(--color-gray-700);
     font-size: 0.87rem;
 }
 

@@ -21,7 +21,7 @@
 
 .detail-section p {
     margin: 0;
-    color: var(--color-gray-500);
+    color: var(--color-gray-700);
 }
 
 .item-actions {
@@ -54,13 +54,13 @@
     gap: 8px;
     padding-top: 10px;
     border-top: 1px solid var(--color-gray-200);
-    color: var(--color-gray-500);
+    color: var(--color-gray-700);
     font-size: 0.9rem;
 }
 
 .expanded-card-details p {
     margin: 0;
-    color: var(--color-gray-500);
+    color: var(--color-gray-700);
 }
 
 .expanded-card-details strong {

@@ -28,6 +28,9 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   decide preference scope and persistence before implementation.
 - [P2] Planned budget — Add **Ungrouped** viewing alongside categories, and remember the selected grouping. Documentation
   only for now; implement after the booking work.
+- [P2] Planned cost to expense — Replace **Added** with a navigation control naming the created expense, alongside
+  **Undo**. Selecting it should scroll to and briefly highlight that expense. This is separate maintenance work,
+  not part of booking-feature completion.
 - [P2] Expenses — Add an inline disclosure for related records, showing the linked planned cost and/or booking with
   navigation controls. A shared expense can have both relationships. Proposed treatment is two clearly labelled rows
   within one disclosure, rather than choosing a single source. Final disclosure layout is still to be decided;
@@ -56,6 +59,37 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   dialogs.
 - [P2] Itinerary — When trip dates change, show a dismissible message asking the user to check scheduled activities.
   Show it again only after a later date change.
+
+## Post-booking review topics
+
+Finish the agreed booking scope before revisiting these topics. These are discussion items, not approval to change
+the current data model, automatic-update rules or layouts. Preserve the existing behavior until decisions are agreed.
+
+- [P2] Linked data — Review whether booking, activity and expense information should share a common model/table or
+  retain separate records with shared values. Explore a single source of truth for genuinely identical fields to
+  reduce repeated updates and review prompts. Distinguish reservation price from paid/refunded money, travel dates
+  from payment dates, and booking schedules from independent activities. Automatic updates, defaults for newly
+  created links, treatment of existing mismatches and intentional overrides remain open decisions.
+- [P2] Related-entry creation — Explore clearer, more visible Add to schedule/activity and Add expense actions from a
+  booking, creating a sensible entry without the full form where safe, with Undo and optional editing. Decide how
+  outbound/return/both are selected and when recording spending still requires an amount/payment choice.
+- [P2] Inline editing — Explore changing status pills and selected names, dates or money values without opening the
+  full form. User suggested double-click; discuss discoverable single-click/tap alternatives, keyboard access,
+  save/cancel behavior and which fields still need a full form. No interaction choice is final yet.
+- [P2] Warning consistency — Review the blue To-do notice after trip dates change; consider the shared yellow caution
+  treatment because it asks the traveller to review retained deadlines. Review notice semantics consistently across tabs.
+- [P2] Text readability — Darken summary and expanded-detail text; reserve lighter grey for secondary hints and
+  placeholders. Agree the shared text hierarchy rather than adjusting individual cards independently. Centralise
+  semantic colours for summary text, detail text and muted hints, and reuse them across booking/activity cards and
+  equivalent entries. Remove scattered feature-specific colour overrides so each text role can be adjusted in one
+  place without changing every grey element globally.
+- [P2] Layout density — Revisit the space taken by cards and nested cards. Explore compact divider-separated rows
+  within a page section, with expanded details and related records not introducing another layer of boxes.
+- [P2] Related-review presentation — Revisit the current pink disclosure and neutral review panel after booking
+  completion. The current appearance is a working version, not the user's final visual acceptance.
+- [P2] Naming — Replace the user-facing word Itinerary with a clearer name. Schedule, Activities and Trip plan were
+  discussed; Schedule is the current suggestion, not an agreed rename. Keep naming consistent in navigation,
+  headings and related-entry actions after a choice is made.
 
 ## Technical and quality improvements
 

@@ -29,7 +29,7 @@
     min-width: 0;
     border: 1px solid var(--color-gray-200);
     border-radius: 9px;
-    background: var(--color-surface);
+    background: var(--color-blue-50);
     font-size: 0.9rem;
 }
 
