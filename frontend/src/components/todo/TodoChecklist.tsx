@@ -184,7 +184,11 @@ export function TodoChecklist({ trip, setTrip, setHasUnsavedForm }: TripWorkspac
         else cancelAdding();
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
-        useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
+        useFormKeyboardInteraction(
+            editingItemId ?? (isAdding ? "add" : null),
+            cancelOpenForm,
+            editingItemId !== null ? editingItem : newItem,
+        );
 
     /** Opens the add form, optionally carrying the category from a grouped-list heading. */
     const startAdding = (category: TodoItem["category"] = null, isCompleted = false) => {

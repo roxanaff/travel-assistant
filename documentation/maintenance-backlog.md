@@ -62,6 +62,10 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 
 ## Post-booking review topics
 
+Evidence, implementation overlap, open decisions and the proposed sequence are tracked in the
+[application review and improvements audit](requirements/app-review-and-improvements.md). That register does not
+authorize implementation; reconcile these backlog items when each decision or change is accepted.
+
 Finish the agreed booking scope before revisiting these topics. These are discussion items, not approval to change
 the current data model, automatic-update rules or layouts. Preserve the existing behavior until decisions are agreed.
 
@@ -107,5 +111,10 @@ Add accessibility refinements, performance work, test-coverage gaps, dependency 
 and documentation corrections here.
 
 ## Done
+
+- Unsaved form protection — The shared guard now compares controlled form values and resets its baseline for each
+  Add/Edit session. Escape and Cancel require confirmation for changed Activity, Planned cost, Expense, Packing,
+  To-do and Trip forms; cancelling confirmation preserves edits. Focused unit tests and the five-area Chromium
+  regression pass. User acceptance remains pending. See [audit F14](requirements/app-review-and-improvements.md#f14--dirty-form-snapshot-misses-the-controls-it-is-protecting).
 
 Move completed items here when keeping a short record is useful. Otherwise, delete them from the active sections.

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -74,6 +74,33 @@ describe("TripForm", () => {
 
         await user.click(screen.getByLabelText("Trip name"));
         await user.keyboard("{Escape}");
+        expect(onCancel).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the discard prompt open after Escape and preserves edits when it is cancelled", async () => {
+        const user = userEvent.setup();
+        const onCancel = vi.fn();
+        render(
+            <TripForm
+                heading="New trip"
+                submitLabel="Save trip"
+                isSaving={false}
+                error={null}
+                onCancel={onCancel}
+                onSubmit={vi.fn()}
+            />,
+        );
+        const input = screen.getByLabelText("Trip name");
+        await user.type(input, "Rome");
+        await user.keyboard("{Escape}");
+        const dialog = screen.getByRole("alertdialog", { name: "Discard unsaved changes?" });
+        expect(onCancel).not.toHaveBeenCalled();
+        await user.click(within(dialog).getByRole("button", { name: "Cancel", exact: true }));
+        expect((input as HTMLInputElement).value).toBe("Rome");
+        expect(screen.queryByRole("alertdialog")).toBeNull();
+
+        await user.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+        await user.click(screen.getByRole("button", { name: "Discard changes" }));
         expect(onCancel).toHaveBeenCalledOnce();
     });
 });

@@ -4,24 +4,37 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 const firstFormControl = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
 
-const formSnapshot = (form: HTMLFormElement) => JSON.stringify(Array.from(new FormData(form).entries()));
-
-/** Focuses a newly opened form and safely cancels it with Escape. */
-export function useFormKeyboardInteraction(isOpen: boolean, onCancel: () => void) {
+/**
+ * Protects controlled form values, including unnamed and temporarily hidden fields.
+ * Use a distinct key for Add and each edited record; null means the form is closed.
+ * Values must be JSON-serializable form state, not derived UI/validation state.
+ */
+export function useFormKeyboardInteraction(
+    formKey: string | null,
+    onCancel: () => void,
+    values: object,
+) {
     const formRef = useRef<HTMLFormElement>(null);
-    const initialSnapshotRef = useRef("");
     const openerRef = useRef<HTMLElement | null>(null);
+    const snapshot = JSON.stringify(values);
+    const [baseline, setBaseline] = useState({ key: formKey, snapshot });
     const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
 
+    // Capture before interaction, not in the deferred focus callback. Ordinary
+    // edits must not replace the baseline; switching form identity must replace it.
+    if (baseline.key !== formKey) {
+        setBaseline({ key: formKey, snapshot });
+        setIsConfirmingDiscard(false);
+    }
+
     useEffect(() => {
-        if (!isOpen) return;
+        if (formKey === null) return;
 
         const frame = window.requestAnimationFrame(() => {
             const form = formRef.current;
             if (!form) return;
 
             openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-            initialSnapshotRef.current = formSnapshot(form);
             const firstControl = form.querySelector<HTMLElement>(firstFormControl);
             firstControl?.focus();
             if (typeof firstControl?.scrollIntoView === "function") {
@@ -30,9 +43,10 @@ export function useFormKeyboardInteraction(isOpen: boolean, onCancel: () => void
         });
 
         return () => window.cancelAnimationFrame(frame);
-    }, [isOpen]);
+    }, [formKey]);
 
     const closeForm = () => {
+        setIsConfirmingDiscard(false);
         onCancel();
         window.requestAnimationFrame(() => {
             if (openerRef.current?.isConnected) openerRef.current.focus();
@@ -40,8 +54,8 @@ export function useFormKeyboardInteraction(isOpen: boolean, onCancel: () => void
     };
 
     const cancelForm = () => {
-        const form = formRef.current;
-        const hasChanges = form !== null && formSnapshot(form) !== initialSnapshotRef.current;
+        if (formKey === null) return;
+        const hasChanges = snapshot !== baseline.snapshot;
 
         if (hasChanges) {
             setIsConfirmingDiscard(true);
@@ -52,7 +66,6 @@ export function useFormKeyboardInteraction(isOpen: boolean, onCancel: () => void
     };
 
     const discardChanges = () => {
-        setIsConfirmingDiscard(false);
         closeForm();
     };
 
@@ -60,6 +73,9 @@ export function useFormKeyboardInteraction(isOpen: boolean, onCancel: () => void
         if (event.key !== "Escape") return;
 
         event.preventDefault();
+        // The dialog's document listener must not dismiss the confirmation opened
+        // by this same Escape event.
+        event.stopPropagation();
         cancelForm();
     };
 

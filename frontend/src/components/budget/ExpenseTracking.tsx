@@ -164,7 +164,11 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
         else cancelAdding();
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
-        useFormKeyboardInteraction(isAdding || editingExpenseId !== null, cancelOpenForm);
+        useFormKeyboardInteraction(
+            editingExpenseId ?? (isAdding ? "add" : null),
+            cancelOpenForm,
+            editingExpenseId !== null ? editingExpense : newExpense,
+        );
 
     const saveNewExpense = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();

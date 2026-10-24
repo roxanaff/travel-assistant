@@ -509,7 +509,11 @@ export function Itinerary({ trip, setHasUnsavedForm }: ItineraryProps) {
         else cancelAdding();
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
-        useFormKeyboardInteraction(isAdding || editingItemId !== null, cancelOpenForm);
+        useFormKeyboardInteraction(
+            editingItemId ?? (isAdding ? "add" : null),
+            cancelOpenForm,
+            editingItemId !== null ? editingItem : newItem,
+        );
 
     /** Shared inline activity form for both adding and editing. */
     const form = (

@@ -34,7 +34,7 @@ export function TripForm({
     const [values, setValues] = useState(initialValues);
     const [validationError, setValidationError] = useState<string | null>(null);
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
-        useFormKeyboardInteraction(true, onCancel);
+        useFormKeyboardInteraction("trip", onCancel, values);
 
     // Keeps form values as strings for HTML controls until the request is submitted.
     /** Updates one field and provides a helpful next-day default when the user first chooses a start date. */

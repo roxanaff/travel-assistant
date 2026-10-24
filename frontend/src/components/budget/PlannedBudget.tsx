@@ -130,7 +130,11 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
         else cancelAdding();
     };
     const { formRef, onFormKeyDown, cancelForm, isConfirmingDiscard, cancelDiscardConfirmation, discardChanges } =
-        useFormKeyboardInteraction(isAdding || editingCostId !== null, cancelOpenForm);
+        useFormKeyboardInteraction(
+            editingCostId ?? (isAdding ? "add" : null),
+            cancelOpenForm,
+            editingCostId !== null ? editingCost : newCost,
+        );
 
     const saveNewCost = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
