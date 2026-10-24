@@ -94,8 +94,7 @@ test-only migration. Verification: all 95 tests in 14 frontend test files pass w
 lint, production build and diff checks pass. No application behavior changed. Independent review found no actionable
 issues. The chunk is ready for the user's commit checkpoint.
 
-Existing backend dependency advisories are a separate maintenance task. They were reported during booking verification;
-this audit did not re-scan advisories. Recheck current versions/advisories and compatible upgrades before changing them.
+Backend dependency advisories are a separate maintenance task; the follow-up assessment is recorded under B09.
 
 ### F02 — Text roles are scattered despite shared palette tokens
 
@@ -418,6 +417,55 @@ Next: define a small repeatable PostgreSQL integration lane for provider-specifi
 linking and transaction behavior. Keep quick unit/SQLite tests too. Never point automated verification at personal or
 production databases, and do not assume all provider differences should disappear from production code.
 
+### B09 — Patch vulnerable cryptography dependencies and verify runtime servicing
+
+**Priority:** P1. **Status:** Verified and independently reviewed. Local installation requests a restart.
+
+Read-only reassessment on 24 October 2026: the test-project vulnerability listing still reports
+`System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml` at 10.0.11 (two and three advisories
+respectively). `dotnet nuget why` traces the test graph through the referenced backend project to
+`Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` -> `Microsoft.AspNetCore.DataProtection` -> Xml -> Pkcs.
+Microsoft lists 10.0.13 as patched: [Pkcs advisory](https://github.com/advisories/GHSA-846f-f764-76mx),
+[Xml advisory](https://github.com/advisories/GHSA-r955-8q5j-3h83). These dependency findings do not establish an
+exploitable request path in this app.
+
+Original assessment limits: some restore/audit requests reported NU1900 feed-access failures. The web-project listing
+reported no vulnerable packages and no standalone dependency paths for these packages, unlike the test graph. Do not
+interpret that as a complete successful audit or proof of a safe runtime. Local `dotnet --list-runtimes` reported .NET
+and ASP.NET Core 10.0.8 at assessment time. The Dockerfile uses floating 10.0 build/runtime tags; deployed image/runtime
+versions were not inspected. Updating package references alone does not update the installed shared runtime or a
+deployed container.
+
+Approved bounded chunk: update the six existing Microsoft ASP.NET Core/EF Core references in the backend and the
+two matching references in its test project to 10.0.13, then restore and inspect the actual resolved graph. Leave
+Npgsql and test-runner versions alone; no new direct cryptography pins or application/schema
+changes by default. Restore found that ASP.NET Core OpenApi 10.0.13 requires Microsoft.OpenApi >= 2.12.2 and < 3.0.0,
+so raise the existing direct reference from 2.7.5 to the minimum 2.12.2 as a required compatibility adjustment,
+not a major-version upgrade. Verify the two cryptography versions and advisories, run Release backend tests and build, and
+check authentication/data-protection behavior through existing coverage. Report unavailable vulnerability data
+explicitly. The user also authorized a local .NET servicing update; inspect the available stable .NET 10 SDK/runtime
+and verify versions after installation. Container rebuilding/deployment is not authorized. No package references or
+runtime installations changed during the original assessment; the approved implementation follows it.
+
+Implementation and verification:
+
+- Updated all eight scoped Microsoft references to 10.0.13 and the required Microsoft.OpenApi reference to 2.12.2.
+  Npgsql and test-runner references are unchanged. No application logic, schema or deployment files changed.
+- Installed Microsoft .NET SDK 10.0.402 using the Microsoft WinGet package; `dotnet --version` selects it.
+  .NET, ASP.NET Core and Windows Desktop runtimes 10.0.13 are installed. Old SDK/runtime versions remain installed;
+  they were not separately uninstalled. The installer requested a Windows restart; none was performed. Existing
+  development processes may need restarting to pick up the serviced runtime.
+- Fresh no-cache restore succeeded. Dependency tracing confirms Xml and Pkcs resolve to 10.0.13. Both project
+  vulnerability listings (including transitive dependencies) reported no vulnerable packages from NuGet, without
+  NU1900 failures in this verification run. This is a point-in-time package audit, not a complete security assessment.
+- All 107 backend tests passed; Release build passed with zero warnings/errors. Added one isolated SQLite test for
+  database-backed Data Protection keys surviving service-provider recreation because existing API tests use an
+  ephemeral provider. Its focused run confirmed .NET runtime 10.0.13. This does not prove production cookie continuity
+  across an upgrade or PostgreSQL-specific behavior.
+- The existing Chromium full-trip smoke test passed, including registration, authenticated operations, sign-out and
+  sign-in, using an isolated in-memory API. Production/local trip data and deployment were not touched.
+- Independent review found no actionable issues. Restart Windows when convenient to finish the local SDK installation.
+
 ## Unused code, obsolete paths and accumulated patches
 
 ### C01 — Concrete cleanup candidates, not deletion approval
@@ -550,7 +598,7 @@ These are audit classifications, not silent changes to existing backlog entries.
 
 | Step | Work | Gate before implementation |
 | --- | --- | --- |
-| 1 | F14 is accepted and F01's full frontend test baseline is restored. Next: reassess dependency advisories; reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
+| 1 | F14 is accepted, F01's frontend baseline is restored and B09 patches are verified (local restart pending). Next: reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
 | 2 | Agree D01 using the concrete examples above. | Explicit decisions on ownership, updates, intentional overrides and existing records. |
 | 3 | Mock up D02–D06, plus common text/control roles. | User chooses the interaction/layout direction, including mobile and keyboard use. |
 | 4 | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified. | Preserve existing behavior with regression checks before applying product changes. |
@@ -563,8 +611,10 @@ verify mobile/keyboard interactions, obtain independent review and user feedback
 ## Decisions and completion log
 
 - **Agreed process:** D08 adopted; workflow rules/procedures linked above. Product redesigns still need agreement.
-- **Current chunk:** F01 test-only migration on the shared implementation branch; full frontend unit suite,
-  lint and production build pass. Independent review found no actionable issues; ready for commit.
+- **F01:** test-only migration committed; full frontend unit suite, lint and production build passed, with no
+  actionable independent review findings.
+- **Current chunk:** B09 package patches and local .NET servicing installed/verified; independent review passed.
+  Local installer requests a Windows restart; deployment remains unchanged.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
   Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.

@@ -101,14 +101,15 @@ the current data model, automatic-update rules or layouts. Preserve the existing
 
 ## Technical and quality improvements
 
-- [P1] Backend dependencies — The backend test run reports NU1902/NU1903 advisories for existing transitive
-  System.Security.Cryptography.Pkcs and System.Security.Cryptography.Xml 10.0.11 packages. Assess and apply compatible
-  patched dependencies in a separate maintenance change.
-
 Add accessibility refinements, performance work, test-coverage gaps, dependency upgrades, error-handling improvements,
 and documentation corrections here.
 
 ## Done
+
+- Backend dependency servicing — Scoped Microsoft references updated to 10.0.13, with required Microsoft.OpenApi
+  compatibility update to 2.12.2. Both package audits are clear; 107 backend tests, Release build and browser smoke
+  pass. Local SDK 10.0.402/runtimes 10.0.13 installed; Windows restart requested, not performed. Old versions remain;
+  deployed containers are unchanged. See [audit B09](requirements/app-review-and-improvements.md#b09--patch-vulnerable-cryptography-dependencies-and-verify-runtime-servicing).
 
 - Frontend test baseline — Migrated obsolete TripSetup coverage to TripDetails, preserving display and edit/save
   checks. All 95 frontend unit tests pass without excluding the old failure; lint and build pass. See
