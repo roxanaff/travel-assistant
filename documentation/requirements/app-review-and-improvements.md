@@ -3,6 +3,8 @@
 ## Status and scope
 
 Initial source audit: **24 October 2026**, on `dev` after the booking merge.
+Implementation branch: `feature/app-review-improvements`, created from `dev`. Reuse this branch for subsequent
+approved review/improvement chunks, retaining the manual commit checkpoints; this does not approve every audit item.
 
 This is the working register for the post-booking review. Findings are recorded, not approved for implementation.
 No application code, styles, database behavior or dependencies were changed during the audit. Agree product decisions
@@ -74,15 +76,23 @@ EF Core already supplies change tracking and a unit of work; a generic repositor
 
 ### F01 — Restore the full frontend test baseline
 
-**Priority:** P1. **Status:** Open. **Type:** Confirmed obsolete test, not a booking regression.
+**Priority:** P1. **Status:** Verified. **Type:** Obsolete test coverage restored.
 
-[`TripSetup.test.tsx`](../../frontend/tests/features/setup/TripSetup.test.tsx) imports
-`src/components/setup/TripSetup`, which no longer exists. The final booking verification passed 86 runnable frontend
-tests but failed collection of this suite; the obsolete import is still present in this audit snapshot.
+Original finding: `tests/features/setup/TripSetup.test.tsx` imported `src/components/setup/TripSetup`, which no longer
+exists. The final booking verification passed 86 runnable frontend tests but failed collection of that suite.
+The tests now live in [`TripDetails.test.tsx`](../../frontend/tests/features/details/TripDetails.test.tsx).
 
-Next: map its useful expectations onto the current [`TripDetails`](../../frontend/src/components/details/TripDetails.tsx)
-and [`TripForm`](../../frontend/src/components/trips/TripForm.tsx) coverage, replacing or removing obsolete tests without
-silently losing important behavior checks. Verify the full frontend suite, not just selected feature files.
+Approved chunk and lightweight technical plan: migrate the two obsolete tests to the current
+[`TripDetails`](../../frontend/src/components/details/TripDetails.tsx), following existing Testing Library/MemoryRouter
+patterns. Preserve the destination/budget-currency display assertions and API edit/save check, using the direct Edit
+trip control rather than the removed actions menu. A small stateful test host represents the workspace's shared trip
+state so the save test verifies the updated destination is rendered, not merely that a callback fired.
+[`TripForm`](../../frontend/src/components/trips/TripForm.tsx) already has separate validation/keyboard coverage; retain
+it without duplication. No application code, API, schema or test-exclusion changes are needed. Run the full frontend
+unit suite, lint and production build, then independent chunk review. Browser/backend checks are not required for this
+test-only migration. Verification: all 95 tests in 14 frontend test files pass with no suite exclusions added;
+lint, production build and diff checks pass. No application behavior changed. Independent review found no actionable
+issues. The chunk is ready for the user's commit checkpoint.
 
 Existing backend dependency advisories are a separate maintenance task. They were reported during booking verification;
 this audit did not re-scan advisories. Recheck current versions/advisories and compatible upgrades before changing them.
@@ -424,7 +434,7 @@ production databases, and do not assume all provider differences should disappea
   app/index references found in the source search. The actual icon in `index.html` is `/favicon.svg`; retain that icon
   and assess the user-provided hero image separately rather than treating it as disposable starter material. An unused
   starter asset is not evidence that an arbitrary image can be deleted.
-- F01's obsolete TripSetup test is a known stale path. Replace its valuable expectations, not merely the failing file.
+- F01's obsolete TripSetup test was migrated to current TripDetails coverage, preserving its valuable expectations.
 
 The compiler/linter already check unused local symbols, but that does not establish unused exports, styles, assets or
 response fields. For each candidate: check imports, routes, dynamic class construction, build/public references, tests
@@ -540,7 +550,7 @@ These are audit classifications, not silent changes to existing backlog entries.
 
 | Step | Work | Gate before implementation |
 | --- | --- | --- |
-| 1 | F14 is accepted. Next: repair obsolete test coverage; reassess dependency advisories; reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
+| 1 | F14 is accepted and F01's full frontend test baseline is restored. Next: reassess dependency advisories; reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
 | 2 | Agree D01 using the concrete examples above. | Explicit decisions on ownership, updates, intentional overrides and existing records. |
 | 3 | Mock up D02–D06, plus common text/control roles. | User chooses the interaction/layout direction, including mobile and keyboard use. |
 | 4 | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified. | Preserve existing behavior with regression checks before applying product changes. |
@@ -553,6 +563,8 @@ verify mobile/keyboard interactions, obtain independent review and user feedback
 ## Decisions and completion log
 
 - **Agreed process:** D08 adopted; workflow rules/procedures linked above. Product redesigns still need agreement.
+- **Current chunk:** F01 test-only migration on the shared implementation branch; full frontend unit suite,
+  lint and production build pass. Independent review found no actionable issues; ready for commit.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
   Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.

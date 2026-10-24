@@ -104,13 +104,15 @@ the current data model, automatic-update rules or layouts. Preserve the existing
 - [P1] Backend dependencies — The backend test run reports NU1902/NU1903 advisories for existing transitive
   System.Security.Cryptography.Pkcs and System.Security.Cryptography.Xml 10.0.11 packages. Assess and apply compatible
   patched dependencies in a separate maintenance change.
-- [P2] Frontend tests — TripSetup.test.tsx imports the removed components/setup/TripSetup component, so the full unit
-  suite fails during collection despite the runnable tests passing. Update or replace that stale setup coverage.
 
 Add accessibility refinements, performance work, test-coverage gaps, dependency upgrades, error-handling improvements,
 and documentation corrections here.
 
 ## Done
+
+- Frontend test baseline — Migrated obsolete TripSetup coverage to TripDetails, preserving display and edit/save
+  checks. All 95 frontend unit tests pass without excluding the old failure; lint and build pass. See
+  [audit F01](requirements/app-review-and-improvements.md#f01--restore-the-full-frontend-test-baseline).
 
 - Unsaved form protection — The shared guard now compares controlled form values and resets its baseline for each
   Add/Edit session. Escape and Cancel require confirmation for changed Activity, Planned cost, Expense, Packing,

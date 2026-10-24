@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TripSetup } from "../../../src/components/setup/TripSetup";
+import { TripDetails } from "../../../src/components/details/TripDetails";
 import type { Trip } from "../../../src/types/trip";
 
 const api = vi.hoisted(() => ({
@@ -25,29 +26,40 @@ const trip: Trip = {
     currency: "EUR",
     note: "Walk everywhere.",
     hasStartedPackingList: false,
+    hasStartedTodoList: false,
+    hasPendingTodoDeadlineReview: false,
     createdAtUtc: "2026-01-01T00:00:00Z",
     status: "Upcoming",
     unscheduledActivityCount: 0,
 };
 
-const renderTripSetup = (setTrip = vi.fn()) =>
-    render(
-        <MemoryRouter>
-            <TripSetup
-                trip={trip}
-                setTrip={setTrip}
-                setHasUnsavedForm={vi.fn()}
-            />
-        </MemoryRouter>,
-    );
+/** Mirrors the workspace's shared state so successful saves update the visible details. */
+function TripDetailsHost() {
+    const [currentTrip, setTrip] = useState<Trip | null>(trip);
+    if (!currentTrip) return null;
 
-describe("TripSetup", () => {
+    return (
+        <TripDetails
+            trip={currentTrip}
+            setTrip={setTrip}
+            setHasUnsavedForm={vi.fn()}
+        />
+    );
+}
+
+const renderTripDetails = () => render(
+    <MemoryRouter>
+        <TripDetailsHost />
+    </MemoryRouter>,
+);
+
+describe("TripDetails", () => {
     afterEach(cleanup);
 
     beforeEach(() => vi.clearAllMocks());
 
     it("shows inline trip details with the budget currency and no separate currency row", () => {
-        renderTripSetup();
+        renderTripDetails();
 
         expect(screen.getByText("Destination").parentElement?.textContent).toContain(
             "Rome",
@@ -60,12 +72,10 @@ describe("TripSetup", () => {
 
     it("opens the edit form and saves the revised trip", async () => {
         const user = userEvent.setup();
-        const setTrip = vi.fn();
         const updatedTrip = { ...trip, destination: "Florence" };
         api.updateTrip.mockResolvedValue(updatedTrip);
-        renderTripSetup(setTrip);
+        renderTripDetails();
 
-        await user.click(screen.getByRole("button", { name: "Trip actions" }));
         await user.click(screen.getByRole("button", { name: "Edit trip" }));
         const destination = screen.getByLabelText("Destination");
         await user.clear(destination);
@@ -76,7 +86,7 @@ describe("TripSetup", () => {
             trip.id,
             expect.objectContaining({ destination: "Florence" }),
         );
-        expect(setTrip).toHaveBeenCalledWith(updatedTrip);
-        expect(screen.getByText("Rome")).toBeTruthy();
+        expect(await screen.findByText("Florence")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     });
 });
