@@ -22,6 +22,11 @@ export type TripWorkspaceContext = {
  */
 export function TripWorkspace() {
     const { id } = useParams();
+    // A different route ID must never reuse the previous trip's data or drafts.
+    return <TripWorkspaceContent key={id} id={id} />;
+}
+
+function TripWorkspaceContent({ id }: { id: string | undefined }) {
     const navigate = useNavigate();
     const [trip, setTrip] = useState<Trip | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -30,6 +35,7 @@ export function TripWorkspace() {
 
     // The workspace is responsible for loading the trip.
     useEffect(() => {
+        let isCurrent = true;
         void (async () => {
             try {
                 if (!id) {
@@ -38,6 +44,7 @@ export function TripWorkspace() {
                 }
 
                 const loadedTrip = await getTrip(id);
+                if (!isCurrent) return;
                 if (loadedTrip === null) {
                     setError("This trip no longer exists.");
                     return;
@@ -45,9 +52,15 @@ export function TripWorkspace() {
 
                 setTrip(loadedTrip);
             } catch {
-                setError("Could not connect to the Travel Assistant API.");
+                if (isCurrent) {
+                    setError("Could not connect to the Travel Assistant API.");
+                }
             }
         })();
+
+        return () => {
+            isCurrent = false;
+        };
     }, [id]);
 
     if (error)

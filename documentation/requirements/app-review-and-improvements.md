@@ -202,17 +202,71 @@ Next: profile actual calls and consider one trip-scoped review owner with select
 existing budget boundary. Retain stale request/revision safeguards and mutation notifications. Do not introduce a
 global cache or state library without evidence that it simplifies the ownership model.
 
-### F10 — Async loading and storage-key transitions deserve targeted regressions
+### F10 — Stale requests and failed-load recovery; protected checklist key transitions
 
-**Priority:** P2. **Status:** Needs reproduction. **Type:** Source-level risks, not reproduced bugs.
+**Priority:** P2. **Status:** Focused fix verified and independently reviewed; awaiting user acceptance. Checklist case remains protected by routing.
 
-[`Workspace.tsx`](../../frontend/src/pages/Workspace.tsx) loads by route ID without an active-request guard or resetting
-the previous error/trip at load start. Expense loading also assigns asynchronous results directly. Booking expense
-loading and the review hook already demonstrate guarded loading patterns. Separately, `useChecklistView` reads storage
-only in its state initializer; if its key changes without remounting, it does not read the new key's preference.
+Original source finding: [`Workspace.tsx`](../../frontend/src/pages/Workspace.tsx) loaded by route ID without an
+active-request guard or resetting the previous error/trip at load start. Expense loading also assigned asynchronous
+results directly. Booking expense loading and the review hook already demonstrated guarded loading patterns.
+Separately, `useChecklistView` reads storage only in its state initializer; if its key changes without remounting,
+it does not read the new key's preference.
 
-Next: test delayed trip A/trip B responses, failed-load recovery, and a checklist storage-key change on the same mounted
-component. Fix demonstrated failures before generalizing data hooks; avoid claiming a new race was observed in the UI.
+#### Targeted diagnosis — 24 October 2026
+
+Six temporary Vitest/jsdom observation probes rendered the real components/hook with mocked API promises and isolated
+browser storage. These assert existing failures, not desired regression behavior. All six observations reproduced:
+
+| Probe | Observed behavior |
+| --- | --- |
+| Workspace: start A, navigate to B, resolve B then A | URL remains `/trips/b`, but the heading changes from Trip B to Trip A after A's late response. |
+| Workspace: A fails, then B succeeds | The old connection error remains and B's successful result is hidden. |
+| Expenses: change trip while the first request is pending | The older response replaces the newer expense list. |
+| Expenses: overlapping refresh requests for the same trip | The older response replaces the newer expense list. |
+| Expenses: failed load followed by a successful refresh | The old error remains and hides the successfully loaded rows. |
+| Checklist hook: change storage key on the same mounted hook | It retains the previous key's view. Unmounting/remounting correctly reads the new key's saved view. |
+
+The Workspace probe uses a memory router with the actual `/trips/:id` route shape; the expense probes rerender the
+mounted component with the new trip/refresh key. Current BudgetPage does not key the expense component per trip.
+PackingPage and TodoPage, however, explicitly key their checklist components by trip ID, so they remount on a trip
+change. The isolated hook result is a reuse hazard, not evidence that current trip navigation mixes checklist views.
+
+Limits: these were deterministic mocked component/hook checks, not a browser/network reproduction or a security
+assessment. No API writes or real trip data were used. No lost saved data, cross-account access, stale mutation
+response behavior, touch/drag problem or failure of all async loaders is established by these probes. The two expense
+probes were refined to vary trip ID and refresh key independently, then rerun successfully as observations.
+Independent source/evidence review found no actionable issues. Temporary diagnostic files were removed after review;
+they are not passing product regression coverage.
+
+Approved bounded fix: protect the Workspace and ExpenseTracking loaders so only the current request/context can set
+data, errors or completion state; represent loading/error recovery for the current trip/request without displaying
+stale trip data. Reuse the existing guarded-loading patterns rather than introduce a generic data framework. Add
+permanent regression tests asserting the correct results for the reproduced cases. Preserve the workspace's shared
+trip setter and existing navigation/form guards. Leave the currently protected checklist hook and broader async
+refactoring out of this fix unless a real consumer needs same-mounted key changes.
+
+No application behavior changed during diagnosis. The user subsequently approved this focused implementation.
+
+Lightweight technical plan: use trip-keyed private content components, following the existing checklist route pattern,
+so a trip change renders fresh loading state rather than old trip data/forms/errors. Preserve the existing shared
+trip setter and same-trip navigation state. Guard each load effect with a cleanup flag, as existing guarded loaders
+do; ExpenseTracking starts each refresh with loading state and no old load error. Only the latest active load may
+write its result, error or completion state. No generic fetch abstraction or checklist change is needed. Permanent
+tests will cover isolated trip/refresh races, pending loads, stale errors, successful recovery and shared trip updates.
+
+Implemented: both loaders ignore superseded requests' successes/errors, and only the active expense load can finish
+its loading state. Changing trip identity resets its content state before rendering another trip; same-trip tab
+navigation retains the workspace's shared trip edits and draft guard. Expense refreshes clear prior load errors and
+show loading until the current request completes. Same-trip draft values, Undo and mutation semantics are retained;
+this does not introduce mutation-version protection or redesign refresh ownership.
+
+Verification: all 106 frontend unit tests in 15 files passed, including 11 permanent loader/contract regressions.
+Lint and production build passed. Two isolated Chromium tests passed: full manual trip/sign-in flow and unsaved
+Add/Edit form protection across five areas. Controlled request ordering is verified by component tests, not by
+network-timed browser tests. No backend code/schema changes or deployment; backend tests were not rerun. Independent
+review requested multiline test formatting, now corrected; final review found no actionable issues. Affected tests,
+lint and build passed again after those corrections. User acceptance remains. The checklist hook and touch/drag
+investigation stay outside this chunk.
 
 ### F11 — One destructive booking path still uses a browser-default confirmation
 
@@ -419,7 +473,7 @@ production databases, and do not assume all provider differences should disappea
 
 ### B09 — Patch vulnerable cryptography dependencies and verify runtime servicing
 
-**Priority:** P1. **Status:** Verified and independently reviewed. Local installation requests a restart.
+**Priority:** P1. **Status:** Verified and independently reviewed; user confirmed restart and committed the chunk.
 
 Read-only reassessment on 24 October 2026: the test-project vulnerability listing still reports
 `System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml` at 10.0.11 (two and three advisories
@@ -453,8 +507,8 @@ Implementation and verification:
   Npgsql and test-runner references are unchanged. No application logic, schema or deployment files changed.
 - Installed Microsoft .NET SDK 10.0.402 using the Microsoft WinGet package; `dotnet --version` selects it.
   .NET, ASP.NET Core and Windows Desktop runtimes 10.0.13 are installed. Old SDK/runtime versions remain installed;
-  they were not separately uninstalled. The installer requested a Windows restart; none was performed. Existing
-  development processes may need restarting to pick up the serviced runtime.
+  they were not separately uninstalled. The installer requested a Windows restart; the user subsequently confirmed
+  restarting and committing the chunk. A follow-up check still selects SDK 10.0.402 and lists runtimes 10.0.13.
 - Fresh no-cache restore succeeded. Dependency tracing confirms Xml and Pkcs resolve to 10.0.13. Both project
   vulnerability listings (including transitive dependencies) reported no vulnerable packages from NuGet, without
   NU1900 failures in this verification run. This is a point-in-time package audit, not a complete security assessment.
@@ -464,7 +518,7 @@ Implementation and verification:
   across an upgrade or PostgreSQL-specific behavior.
 - The existing Chromium full-trip smoke test passed, including registration, authenticated operations, sign-out and
   sign-in, using an isolated in-memory API. Production/local trip data and deployment were not touched.
-- Independent review found no actionable issues. Restart Windows when convenient to finish the local SDK installation.
+- Independent review found no actionable issues. The user confirmed the requested Windows restart afterward.
 
 ## Unused code, obsolete paths and accumulated patches
 
@@ -598,7 +652,7 @@ These are audit classifications, not silent changes to existing backlog entries.
 
 | Step | Work | Gate before implementation |
 | --- | --- | --- |
-| 1 | F14 is accepted, F01's frontend baseline is restored and B09 patches are verified (local restart pending). Next: reproduce F10 and touch issues. | Approve each maintenance chunk; no UI redesign needed. |
+| 1 | F14 is accepted, F01's frontend baseline is restored and B09 is committed/restarted. F10 loader fixes are verified; obtain user acceptance. Touch issues still need reproduction. | Approve each maintenance chunk; no UI redesign needed. |
 | 2 | Agree D01 using the concrete examples above. | Explicit decisions on ownership, updates, intentional overrides and existing records. |
 | 3 | Mock up D02–D06, plus common text/control roles. | User chooses the interaction/layout direction, including mobile and keyboard use. |
 | 4 | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified. | Preserve existing behavior with regression checks before applying product changes. |
@@ -613,8 +667,8 @@ verify mobile/keyboard interactions, obtain independent review and user feedback
 - **Agreed process:** D08 adopted; workflow rules/procedures linked above. Product redesigns still need agreement.
 - **F01:** test-only migration committed; full frontend unit suite, lint and production build passed, with no
   actionable independent review findings.
-- **Current chunk:** B09 package patches and local .NET servicing installed/verified; independent review passed.
-  Local installer requests a Windows restart; deployment remains unchanged.
+- **B09:** package patches and local .NET servicing verified/reviewed; user restarted and committed. Deployment unchanged.
+- **Current chunk:** F10 loader fixes and permanent regressions verified and independently reviewed; user acceptance pending.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
   Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.

@@ -75,7 +75,11 @@ const sortExpenses = (expenses: Expense[]) =>
  * Manages actual expenses, including inline edits, grouping, and a five-second deletion Undo window.
  * It reloads when PlannedBudget converts an estimated cost into an expense.
  */
-export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
+export function ExpenseTracking(props: ExpenseTrackingProps) {
+    return <ExpenseTrackingContent key={props.trip.id} {...props} />;
+}
+
+function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const linkedReviews = useLinkedRecordReviews(trip.id, "Expense", expenses);
     const highlightedExpenseId = useNavigationCardFocus({
@@ -103,17 +107,30 @@ export function ExpenseTracking({ trip, onFormOpenChange, refreshKey }: ExpenseT
     }, [editingExpenseId, isAdding, onFormOpenChange]);
 
     useEffect(() => {
+        let isCurrent = true;
         const loadExpenses = async () => {
+            setIsLoading(true);
+            setError(null);
             try {
-                setExpenses(await getExpenses(trip.id));
+                const loadedExpenses = await getExpenses(trip.id);
+                if (isCurrent) {
+                    setExpenses(loadedExpenses);
+                }
             } catch {
-                setError("Could not load expenses.");
+                if (isCurrent) {
+                    setError("Could not load expenses.");
+                }
             } finally {
-                setIsLoading(false);
+                if (isCurrent) {
+                    setIsLoading(false);
+                }
             }
         };
 
         void loadExpenses();
+        return () => {
+            isCurrent = false;
+        };
     }, [refreshKey, trip.id]);
 
     const updateForm = (field: keyof NewExpenseForm, value: string, editing = false) => {

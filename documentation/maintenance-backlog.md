@@ -106,9 +106,14 @@ and documentation corrections here.
 
 ## Done
 
+- Stale trip/expense loading — Trip-keyed content and current-request guards prevent old results/errors from
+  replacing the current context. Successful loads recover from prior errors. All 106 frontend tests, lint/build,
+  two browser checks passed; user acceptance pending. Checklist routing/hook unchanged. See
+  [audit F10](requirements/app-review-and-improvements.md#f10--stale-requests-and-failed-load-recovery-protected-checklist-key-transitions).
+
 - Backend dependency servicing — Scoped Microsoft references updated to 10.0.13, with required Microsoft.OpenApi
   compatibility update to 2.12.2. Both package audits are clear; 107 backend tests, Release build and browser smoke
-  pass. Local SDK 10.0.402/runtimes 10.0.13 installed; Windows restart requested, not performed. Old versions remain;
+  pass. Local SDK 10.0.402/runtimes 10.0.13 installed; user confirmed the Windows restart. Old versions remain;
   deployed containers are unchanged. See [audit B09](requirements/app-review-and-improvements.md#b09--patch-vulnerable-cryptography-dependencies-and-verify-runtime-servicing).
 
 - Frontend test baseline — Migrated obsolete TripSetup coverage to TripDetails, preserving display and edit/save
