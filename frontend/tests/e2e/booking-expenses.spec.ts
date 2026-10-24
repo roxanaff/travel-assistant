@@ -742,10 +742,20 @@ test("booking panels review each destination without leaving the card", async ({
     await expect(panel.locator(".inline-message-warning")).toHaveCount(0);
     await expect(panel.locator(".linked-record-review").nth(1)).toHaveCSS("border-top-width", "1px");
     await expect(panel.locator(".related-review-toggle")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-    await expect(panel.locator(".related-review-toggle")).toHaveCSS("color", "rgb(145, 39, 106)");
+    const themeColors = await page.evaluate(() => {
+        const swatch = document.createElement("span");
+        document.body.append(swatch);
+        swatch.style.color = "var(--color-pink-500)";
+        const pink = getComputedStyle(swatch).color;
+        swatch.style.color = "var(--color-blue-50)";
+        const reviewBackground = getComputedStyle(swatch).color;
+        swatch.remove();
+        return { pink, reviewBackground };
+    });
+    await expect(panel.locator(".related-review-toggle")).toHaveCSS("color", themeColors.pink);
     await expect(panel.locator(".related-review-toggle")).toHaveCSS("font-weight", "700");
     await expect(panel.locator(".related-review-list")).toHaveCSS("font-size", "14.4px");
-    await expect(panel.locator(".related-review-list")).toHaveCSS("background-color", "rgb(255, 253, 248)");
+    await expect(panel.locator(".related-review-list")).toHaveCSS("background-color", themeColors.reviewBackground);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("related-review-panel-mobile.png"), fullPage: true });
     await expenseNotice.getByRole("button", { name: "Keep as is", exact: true }).click();

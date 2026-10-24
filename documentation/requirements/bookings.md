@@ -631,7 +631,34 @@ The first version does not include:
 
 ## Status
 
-Implementation is in progress under the approved revision above.
+### Final verification — 24 October 2026
+
+The agreed booking implementation is complete and independently reviewed, with no actionable booking blockers found.
+Final user acceptance remains open; the deferred visual/data-model improvements are not completion requirements.
+
+- All 106 backend tests pass. The frontend suite passes 86 runnable tests; collection of the obsolete TripSetup test
+  still fails and is recorded separately in the maintenance backlog. Existing dependency advisories remain there too.
+- Production build and lint pass. All 11 booking Chromium scenarios and the complete-trip smoke test pass against a
+  disposable PostgreSQL 17 database, exercising actual migrations, persisted reviews and transactional mutations.
+- A separate PostgreSQL upgrade fixture starts before the direct-expense migration. Upgrading preserves all three
+  planned costs and three expenses, their amounts and independent links, and booking payment history; only the actual
+  old-chain expense receives the direct booking link. Booking deletion preserves its expense and planned-cost link.
+  Running migrations again is a no-op. Existing local and deployed databases were not used or changed.
+- Final test-only fixes follow the current theme tokens rather than fixed colour values and use the current expense
+  field label in the complete-trip smoke test. No booking behavior or database-schema changes were needed.
+
+User acceptance checklist:
+
+- Create/edit an ordinary and return-trip booking, including a saved outside-trip warning and dismissal.
+- Try Mark as paid / Undo, an unpaid booking's expense creation/linking, and a cancellation with a refund.
+- Change linked date/cost/payment values, resolve individual reviews from both pages, and check navigation/highlights.
+- Check unlink/delete confirmations and the retained related records, including collapsed and phone-sized views.
+
+After user acceptance, the feature can be closed. The user controls committing and merging; verification does not
+authorize deployment.
+
+The historical chunk summaries below describe the completed implementation. The final verification status above
+supersedes their earlier pending-check notes.
 
 Completed in the direct-expense chunk:
 
@@ -823,7 +850,7 @@ Completed in the activity link-time review chunk:
   The broader frontend run passes 82 tests but still fails collection of the obsolete TripSetup test already recorded
   in the maintenance backlog. No migration is needed for this chunk; live PostgreSQL execution remains unverified.
 
-Remaining: final end-to-end verification, live PostgreSQL checks and user acceptance. The planned-cost-to-expense
+Remaining: final user acceptance only; end-to-end and live PostgreSQL verification are complete. The planned-cost-to-expense
 navigation control is separate maintenance work, not a booking completion requirement. Shared group/view
 improvements and the tab split remain separate work. The usability discussion is resolved; no further product
 decisions are currently open for that refinement pass.

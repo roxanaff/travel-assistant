@@ -28,7 +28,7 @@ test("a new account can plan a complete manual trip", async ({ page }) => {
 
     await page.getByRole("link", { name: "Budget & expenses" }).click();
     await page.getByRole("button", { name: "Add expense" }).click();
-    await page.getByLabel("Name").fill("Metro pass");
+    await page.getByLabel("What did you pay for?").fill("Metro pass");
     await page.getByLabel(/Amount/).fill("10");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Metro pass")).toBeVisible();

@@ -73,6 +73,10 @@ the current data model, automatic-update rules or layouts. Preserve the existing
 - [P2] Related-entry creation — Explore clearer, more visible Add to schedule/activity and Add expense actions from a
   booking, creating a sensible entry without the full form where safe, with Undo and optional editing. Decide how
   outbound/return/both are selected and when recording spending still requires an amount/payment choice.
+- [P2] Related-entry actions — Replace the four separate activity/expense create/link controls with one **Add link**
+  disclosure on the right of the expanded booking view. It opens four choices: new activity, existing activity,
+  new expense and existing expense. Consider existing eligibility rules and narrow-screen placement when designing
+  the menu. Deferred improvement only; keep the current controls until implementation is approved.
 - [P2] Inline editing — Explore changing status pills and selected names, dates or money values without opening the
   full form. User suggested double-click; discuss discoverable single-click/tap alternatives, keyboard access,
   save/cancel behavior and which fields still need a full form. No interaction choice is final yet.
