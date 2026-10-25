@@ -21,3 +21,5 @@
 **/dist/
 frontend/playwright-report/
 frontend/test-results/
+
+phone_dev.txt

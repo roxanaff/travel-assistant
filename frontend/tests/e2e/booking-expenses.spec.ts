@@ -1,24 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { browserRequest } from "./helpers/browserRequest";
 
 const api = `http://127.0.0.1:${process.env.PLAYWRIGHT_API_PORT ?? "5263"}/api`;
-
-// Use browser fetch so test setup follows the same cookie policy as the application.
-async function browserRequest(
-    page: Page,
-    url: string,
-    data?: Record<string, unknown>,
-    method = data ? "POST" : "GET",
-) {
-    return page.evaluate(async ({ requestUrl, requestData, requestMethod }) => {
-        const response = await fetch(requestUrl, {
-            method: requestMethod,
-            credentials: "include",
-            headers: requestData ? { "Content-Type": "application/json" } : undefined,
-            body: requestData ? JSON.stringify(requestData) : undefined,
-        });
-        return { status: response.status, body: response.status === 204 ? null : await response.json() };
-    }, { requestUrl: url, requestData: data, requestMethod: method });
-}
 
 test("booking payment summaries and refund pills remain clear on desktop and mobile", async ({ page }) => {
     await page.goto("/register");

@@ -50,9 +50,8 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 - [P2] Budget — After changing a planned cost that has a linked expense, show a one-time dismissible note offering to
   adjust the expense amount. Closing the note deliberately keeps actual spending unchanged; show it again after a later
   planned-cost amount change.
-- [P2] Packing — Move surrounding rows live while an item is dragged.
-- [P1] Packing — Allow touch drag-and-drop to place an item in its intended position without moving sideways to avoid
-  the original drop target.
+- [P2] Packing — Move surrounding rows live while an item is dragged. F15 confirms both shared checklists currently
+  retain the original row positions until release; coordinate any preview change through the shared implementation.
 - [P3] Packing — Consider making the Group by control apply to the whole page, rather than separately to the To pack and
   Packed sections.
 - [P2] Shared UI — Replace browser-default destructive-action confirmations with accessible, app-styled confirmation
@@ -106,9 +105,13 @@ and documentation corrections here.
 
 ## Done
 
+- Packing/To-do touch dragging — Shared handle gestures no longer require sideways movement, and pointer cancellation
+  clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; physical-phone acceptance
+  pending. Live row movement is a separate proposed chunk. See [audit F15](requirements/app-review-and-improvements.md#f15--checklist-touch-dragging-cancels-and-cancelled-gestures-can-save).
+
 - Stale trip/expense loading — Trip-keyed content and current-request guards prevent old results/errors from
   replacing the current context. Successful loads recover from prior errors. All 106 frontend tests, lint/build,
-  two browser checks passed; user acceptance pending. Checklist routing/hook unchanged. See
+  two browser checks passed; user accepted and committed. Checklist routing/hook unchanged. See
   [audit F10](requirements/app-review-and-improvements.md#f10--stale-requests-and-failed-load-recovery-protected-checklist-key-transitions).
 
 - Backend dependency servicing — Scoped Microsoft references updated to 10.0.13, with required Microsoft.OpenApi

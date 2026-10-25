@@ -57,7 +57,8 @@
     place-items: center;
     color: var(--color-gray-500);
     cursor: grab;
-    touch-action: pan-y;
+    /* Own gestures only on the handle; the rest of the row still scrolls normally. */
+    touch-action: none;
     user-select: none;
 }
 

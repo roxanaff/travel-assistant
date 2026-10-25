@@ -172,22 +172,26 @@ export function useChecklistDragReorder<Item extends ReorderableItem>(
             setDropTarget(nextDropTarget);
         };
 
-        const finishDrag = (event: globalThis.PointerEvent) => {
-            if (drag?.pointerId === event.pointerId && dropTargetRef.current) {
-                onMove(drag.sectionItems, drag.item.id, dropTargetRef.current);
-            }
+        const cancelDrag = (event: globalThis.PointerEvent) => {
             if (drag?.pointerId === event.pointerId || pendingPointerRef.current?.pointerId === event.pointerId) {
                 clearPointerDrag();
             }
         };
 
+        const finishDrag = (event: globalThis.PointerEvent) => {
+            if (drag?.pointerId === event.pointerId && dropTargetRef.current) {
+                onMove(drag.sectionItems, drag.item.id, dropTargetRef.current);
+            }
+            cancelDrag(event);
+        };
+
         window.addEventListener("pointermove", updateDrag);
         window.addEventListener("pointerup", finishDrag);
-        window.addEventListener("pointercancel", finishDrag);
+        window.addEventListener("pointercancel", cancelDrag);
         return () => {
             window.removeEventListener("pointermove", updateDrag);
             window.removeEventListener("pointerup", finishDrag);
-            window.removeEventListener("pointercancel", finishDrag);
+            window.removeEventListener("pointercancel", cancelDrag);
         };
     }, [beginPointerDrag, clearPointerDrag, drag, findDropTarget, onMove]);
 

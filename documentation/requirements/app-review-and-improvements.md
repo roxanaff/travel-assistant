@@ -5,6 +5,8 @@
 Initial source audit: **24 October 2026**, on `dev` after the booking merge.
 Implementation branch: `feature/app-review-improvements`, created from `dev`. Reuse this branch for subsequent
 approved review/improvement chunks, retaining the manual commit checkpoints; this does not approve every audit item.
+Follow the [explicit next-chunk queue](#explicit-next-chunk-queue) for execution order and approval gates, not finding
+number order or the maintenance backlog. Any change of queue order must be made explicit to the user.
 
 This is the working register for the post-booking review. Findings are recorded, not approved for implementation.
 No application code, styles, database behavior or dependencies were changed during the audit. Agree product decisions
@@ -204,7 +206,7 @@ global cache or state library without evidence that it simplifies the ownership 
 
 ### F10 — Stale requests and failed-load recovery; protected checklist key transitions
 
-**Priority:** P2. **Status:** Focused fix verified and independently reviewed; awaiting user acceptance. Checklist case remains protected by routing.
+**Priority:** P2. **Status:** Focused fix verified, independently reviewed and accepted by the user. Checklist case remains protected by routing.
 
 Original source finding: [`Workspace.tsx`](../../frontend/src/pages/Workspace.tsx) loaded by route ID without an
 active-request guard or resetting the previous error/trip at load start. Expense loading also assigned asynchronous
@@ -265,7 +267,7 @@ Lint and production build passed. Two isolated Chromium tests passed: full manua
 Add/Edit form protection across five areas. Controlled request ordering is verified by component tests, not by
 network-timed browser tests. No backend code/schema changes or deployment; backend tests were not rerun. Independent
 review requested multiline test formatting, now corrected; final review found no actionable issues. Affected tests,
-lint and build passed again after those corrections. User acceptance remains. The checklist hook and touch/drag
+lint and build passed again after those corrections. The user accepted and committed the fix. The checklist hook and touch/drag
 investigation stay outside this chunk.
 
 ### F11 — One destructive booking path still uses a browser-default confirmation
@@ -355,6 +357,75 @@ TripSetup test noted in F01 was excluded, not repaired in this chunk. Chromium p
 Escape/Cancel cases across the five areas, plus unchanged Add controls and cancel/discard confirmation behavior.
 Lint and production build passed. These runs used isolated test data; no production or personal data was changed.
 Independent review of the complete chunk, including documentation, reported no actionable findings.
+
+### F15 — Checklist touch dragging cancels, and cancelled gestures can save
+
+**Priority:** P1 for touch/cancellation correctness; P2 for live-row feedback. **Status:** Q01 verified; physical-phone acceptance pending. Q02 live-row movement remains separate.
+
+Six temporary Chromium observation cases used fresh accounts/trips with 20 rows each and an isolated in-memory API.
+Desktop viewport was 1280 x 844; touch emulation used 390 x 844 with CDP touch input (not synthetic DOM pointer events).
+Each drag moved Item 01 toward the lower half of Item 03. Event traces, first-four-row positions, screenshots and
+reorder response/API reads were observed. These are diagnostic cases, not passing regressions for correct behavior.
+
+| Case | Observed behavior |
+| --- | --- |
+| Packing, mouse drag downward | Preview/target remain; release saves order 02, 03, 01, 04... |
+| Packing, long press then straight downward touch drag | Preview appears, then native pointercancel occurs after two vertical moves. Preview disappears and order stays unchanged. |
+| Packing, move sideways 70px before downward touch drag | Preview/target remain; release saves order 02, 03, 01, 04... |
+| Packing, sideways-first drag then explicit touch cancellation | Final event is pointercancel, not pointerup, yet a reorder PUT succeeds and saves order 02, 03, 01, 04... |
+| To-do, mouse drag downward | Preview/target remain; release saves order 02, 03, 01, 04... |
+| To-do, long press then straight downward touch drag | Same native pointercancel/vanishing-preview behavior; order stays unchanged. |
+
+During the active mouse/sideways-first drags, the first four rows retained exactly their original positions; only a
+floating preview and insertion line moved. Surrounding rows do not currently preview the proposed order. The final
+six-case run waited for reorder responses before reading persisted order; an initial immediate API read was not used
+to infer a To-do persistence failure. A focused cancellation rerun confirmed pointercancel and the unwanted saved order.
+
+Original source evidence: [`ChecklistLayout.css`](../../frontend/src/components/shared/ChecklistLayout.css) set
+`touch-action: pan-y` on the dedicated drag handle. [`useChecklistDragReorder`](../../frontend/src/utils/useChecklistDragReorder.ts)
+registered the same finish handler for pointerup and pointercancel, and called the save callback from that handler.
+Both checklists share these paths. Rendering retains the original rows until the drop callback commits a new order.
+This explains the observed gesture/cancellation behavior; it is not a claim of separate backend reorder bugs.
+
+Proposed bounded approach: make the dedicated handle own drag gestures while preserving ordinary page scrolling
+outside the handle; cancellation clears the drag without saving. For the separate live-feedback improvement, project
+the proposed section order while dragging and save only on a valid release, keeping existing section/category limits
+and save-failure recovery. Reuse the shared hook/layout and pure section-reorder helper, not separate Packing/To-do
+implementations. Keep cancellation correctness distinct from optional preview/layout changes when slicing the work.
+
+Limits: Chromium touch emulation is not physical Android/iOS verification. Group boundaries, packed/completed moves,
+edge auto-scroll, pen/multi-touch, cancellation in To-do, save failures and keyboard reordering were not exercised.
+The running user Debug API was left untouched after an executable-lock failure; probes used the previously verified
+Release build with Testing/in-memory configuration. PLAYWRIGHT_API_PORT=5277 and PLAYWRIGHT_FRONTEND_PORT=5187 were
+explicitly set for the temporary config and its inherited API/frontend origins. No application source or
+user/production data changed. Independent source/evidence review supports the diagnosis and shared fix areas. The
+temporary probe/config files were removed after review. The user subsequently approved Q01, as recorded below.
+
+Approved first chunk (Q01 below): change only the shared handle gesture ownership and cancel/finish distinction.
+The dedicated drag handle becomes drag-only (`touch-action: none` from pointerdown); ordinary page scrolling remains
+available outside the handle. Keep the existing 200ms touch hold and mouse threshold. A matching pointercancel clears
+pending/active drag state without calling the save callback; unrelated pointer events do not end the drag. Normal
+pointerup still saves a valid target. Leave row projection/layout, section limits and API persistence unchanged.
+Use focused hook regressions plus real Chromium mouse/touch input and API reads for both checklists, including
+scrolling outside the handle. Physical-phone acceptance remains necessary. No new drag library or abstraction.
+
+Q01 implementation and verification:
+
+- Shared handle CSS now claims its gestures; pointercancel uses cleanup only, while pointerup retains the valid-drop
+  save path. Other pointer IDs do not cancel the active drag. The hold delay, mouse threshold, drop geometry, API and
+  row preview layout are unchanged. Normal scrolling works outside the dedicated handle.
+- Three permanent hook tests cover cancellation before the hold, matching/unrelated active cancellation, and a valid
+  release saving once. The active-cancel regression failed on the old code before the fix, then passed.
+- Four permanent Chromium checks cover both Packing and To-do: straight vertical touch drop, cancellation without a
+  reorder request, persisted order after release, swiping row content to scroll, and mouse control drags.
+- Reused the existing browser-fetch test helper by extracting it unchanged from booking tests. All 11 booking browser
+  cases passed after this test-only extraction; the four new drag cases also passed (15 browser tests total).
+- All 109 frontend unit tests in 16 files, lint, production build and diff checks passed. The temporary Release-API
+  verification config used ports 5277/5187 and isolated in-memory data, then was removed. The user's Debug API and
+  personal/deployed data were untouched. Backend/schema/deployment code did not change; backend tests were not rerun.
+- Independent review of the full chunk, including documentation, found no actionable issues. Try the handle on a
+  physical phone: hold briefly, drag straight up/down and release, then swipe on row content to scroll. Automated
+  touch emulation does not establish physical Android/iOS acceptance. Q02 preview movement is not implemented.
 
 ## Backend findings
 
@@ -560,19 +631,19 @@ explicit domain policies can reduce scattered conditions; more generic abstracti
 
 ### C03 — Additional complexity checks for every proposed cleanup
 
-| Situation | What to look for | Guardrail |
-| --- | --- | --- |
-| Derived data stored/copied repeatedly | Payment totals, schedule/duration aliases, mirrored warning flags | Decide ownership and migration first; retain independently meaningful values. |
-| Too many booleans/invalid combinations | Add/edit/link/create/payment/review states in a feature | Model actual allowed transitions explicitly; do not build a generic state-machine framework without need. |
-| Mixed concerns | UI wording in API proposals; mapping inside review logic; HTTP inside business policy | Give each rule a clear owner and keep adapters thin where useful. |
-| Unnecessary indirection | Wrappers that only rename a call; abstractions with one consumer and many options | Keep a simple function if it makes the call site clearer; one consumer alone is not a reason to delete a boundary. |
-| Over-generalization | Universal CRUD, form, list or checklist components full of feature flags | Share stable common behavior, keep intentional differences local. |
-| Expensive repeated work | All-trip reloads, query-per-review graph loading, duplicate projections | Measure first; optimize the costly path without losing consistency. |
-| Async/transaction ambiguity | Multiple writers, stale responses, unclear commit/rollback ownership | Preserve cancellation/version guards and atomic cross-record writes. |
-| Stringly typed contracts | Magic field names, comma-separated flags, UI parsing server prose | Prefer explicit schemas/enums/codes where they improve change safety. |
-| Inconsistent edge-case policy | Null/unknown versus zero/free, timezone/date boundaries, money precision, deletion outcomes | Record invariants and test representative boundaries, not every implementation detail. |
-| Hard-to-test dependencies | Business decisions require tracked EF entities or a browser render | Isolate pure decisions where useful; test adapters against the real boundary too. |
-| Historical documentation/tests | Requirements describe superseded behavior or tests assert removed screens | Reconcile against accepted behavior; do not change behavior just to satisfy obsolete tests. |
+| Situation                              | What to look for                                                                            | Guardrail                                                                                                          |
+|----------------------------------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Derived data stored/copied repeatedly  | Payment totals, schedule/duration aliases, mirrored warning flags                           | Decide ownership and migration first; retain independently meaningful values.                                      |
+| Too many booleans/invalid combinations | Add/edit/link/create/payment/review states in a feature                                     | Model actual allowed transitions explicitly; do not build a generic state-machine framework without need.          |
+| Mixed concerns                         | UI wording in API proposals; mapping inside review logic; HTTP inside business policy       | Give each rule a clear owner and keep adapters thin where useful.                                                  |
+| Unnecessary indirection                | Wrappers that only rename a call; abstractions with one consumer and many options           | Keep a simple function if it makes the call site clearer; one consumer alone is not a reason to delete a boundary. |
+| Over-generalization                    | Universal CRUD, form, list or checklist components full of feature flags                    | Share stable common behavior, keep intentional differences local.                                                  |
+| Expensive repeated work                | All-trip reloads, query-per-review graph loading, duplicate projections                     | Measure first; optimize the costly path without losing consistency.                                                |
+| Async/transaction ambiguity            | Multiple writers, stale responses, unclear commit/rollback ownership                        | Preserve cancellation/version guards and atomic cross-record writes.                                               |
+| Stringly typed contracts               | Magic field names, comma-separated flags, UI parsing server prose                           | Prefer explicit schemas/enums/codes where they improve change safety.                                              |
+| Inconsistent edge-case policy          | Null/unknown versus zero/free, timezone/date boundaries, money precision, deletion outcomes | Record invariants and test representative boundaries, not every implementation detail.                             |
+| Hard-to-test dependencies              | Business decisions require tracked EF entities or a browser render                          | Isolate pure decisions where useful; test adapters against the real boundary too.                                  |
+| Historical documentation/tests         | Requirements describe superseded behavior or tests assert removed screens                   | Reconcile against accepted behavior; do not change behavior just to satisfy obsolete tests.                        |
 
 These are review questions, not assertions that every listed problem currently exists in every module. Security,
 privacy, accessibility and recovery/error handling are part of the review: removing protective code is not simplification.
@@ -613,16 +684,16 @@ finding here. This adopts the process, not any unapproved product redesign or br
 
 ## Product decisions that must not be disguised as refactoring
 
-| ID | Status | Decision to make | Evidence/context |
-| --- | --- | --- | --- |
+| ID  | Status         | Decision to make                                                                                                                                                                     | Evidence/context                                                                                                                                                                                                                                                                                                                  |
+|-----|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | D01 | Needs decision | Keep distinct booking/activity/expense records, share fields, or change the model? Which values inherit automatically, and how do intentional differences and existing links behave? | Current separate models in `backend/Models`; booking/activity mapping in `utils/bookingActivityLinks.ts` and `utils/itineraryForm.ts`; explicit reviews in `backend/Services/LinkedRecordReviews.cs`. Reservation total, paid/refunded money and expense date are not interchangeable. One booking can cover multiple activities. |
-| D02 | Needs decision | Quicker creation without a full form; one right-side Add link menu with new/existing activity/expense choices; changing existing journey part without unlinking. | Current Bookings workflow and the user's recorded proposal. Decide eligibility, outbound/return/both, missing payment inputs, Undo and mobile placement. |
-| D03 | Needs decision | Which fields can be edited inline, using what interaction and save/cancel rules? | User proposed status pills and double-click; consider discoverable single-click/tap and keyboard alternatives. Full-form editing remains useful for multiple changes. |
-| D04 | Needs decision | Compact divider-separated rows versus cards; how expanded details, forms and reviews fit without nested boxes. | `layout.css` distinguishes compact rows and card lists; SectionCard, FormSurface and RelatedRecordReviews add further surfaces. Nesting is observable; its preferred replacement needs mockups, not a blanket removal of every border. |
-| D05 | Needs decision | Final review-panel appearance and information hierarchy. | Current shared pink disclosure, light-blue review background and per-entry actions are a working version, not final visual acceptance. Decide after D01 and D04. |
-| D06 | Needs decision | Replace the user-facing word Itinerary. | Workspace navigation, headings and creation/link actions; Schedule, Activities and Trip plan discussed. Schedule is a suggestion, not an agreed rename or API-route migration. |
-| D07 | Needs decision | Group collapse/order, category totals/actions, and eventual separate Budget/Expenses tabs with progress indicators. | GroupHeading has title/actions/summary but no collapse state; TripBudget combines both sections. Define saved category order independently per page and distinguish savings, spending and budget denominators. See the updated roadmap's Better budget control section. |
-| D08 | Adopted | Proportional architecture planning, scoped refactoring and independent architecture/chunk reviews. | Universal rules stay in AGENTS.md; procedures live in the linked skills. Brief local impact checks suffice for small changes; substantial work gets a recorded technical plan and independent architecture review before coding. |
+| D02 | Needs decision | Quicker creation without a full form; one right-side Add link menu with new/existing activity/expense choices; changing existing journey part without unlinking.                     | Current Bookings workflow and the user's recorded proposal. Decide eligibility, outbound/return/both, missing payment inputs, Undo and mobile placement.                                                                                                                                                                          |
+| D03 | Needs decision | Which fields can be edited inline, using what interaction and save/cancel rules?                                                                                                     | User proposed status pills and double-click; consider discoverable single-click/tap and keyboard alternatives. Full-form editing remains useful for multiple changes.                                                                                                                                                             |
+| D04 | Needs decision | Compact divider-separated rows versus cards; how expanded details, forms and reviews fit without nested boxes.                                                                       | `layout.css` distinguishes compact rows and card lists; SectionCard, FormSurface and RelatedRecordReviews add further surfaces. Nesting is observable; its preferred replacement needs mockups, not a blanket removal of every border.                                                                                            |
+| D05 | Needs decision | Final review-panel appearance and information hierarchy.                                                                                                                             | Current shared pink disclosure, light-blue review background and per-entry actions are a working version, not final visual acceptance. Decide after D01 and D04.                                                                                                                                                                  |
+| D06 | Needs decision | Replace the user-facing word Itinerary.                                                                                                                                              | Workspace navigation, headings and creation/link actions; Schedule, Activities and Trip plan discussed. Schedule is a suggestion, not an agreed rename or API-route migration.                                                                                                                                                    |
+| D07 | Needs decision | Group collapse/order, category totals/actions, and eventual separate Budget/Expenses tabs with progress indicators.                                                                  | GroupHeading has title/actions/summary but no collapse state; TripBudget combines both sections. Define saved category order independently per page and distinguish savings, spending and budget denominators. See the updated roadmap's Better budget control section.                                                           |
+| D08 | Adopted        | Proportional architecture planning, scoped refactoring and independent architecture/chunk reviews.                                                                                   | Universal rules stay in AGENTS.md; procedures live in the linked skills. Brief local impact checks suffice for small changes; substantial work gets a recorded technical plan and independent architecture review before coding.                                                                                                  |
 
 Working acceptance template for D01: for each flight/hotel/paid-activity example, list the owner of schedule, location,
 total price, payment/refund values and payment date; what happens on creation, link, edit, override, cancellation,
@@ -632,35 +703,65 @@ unlink and deletion; and how existing records migrate without losing intentional
 
 These are audit classifications, not silent changes to existing backlog entries.
 
-| Backlog topic | Current evidence | Follow-up |
-| --- | --- | --- |
-| Saved booking/activity detail alignment | Shared `ExpandedCardDetails`, aligned-detail grid and equivalent relationship value columns already exist. | Mark the original implementation item verified/done after visual confirmation; retain any new density redesign under D04. |
-| Planned cost changes offer expense updates | Both planned costs and expenses use persisted LinkedRecordWarnings, including Update/Keep. | Reconcile the older one-time-note wording with the implemented review mechanism rather than adding another prompt. |
-| Expense category date ordering | Category path does not call the existing sorter. | Still open: F08. |
-| Remembered views | Checklist grouping and card/panel expansion persist; expense grouping does not. | Partially implemented: F07, not an app-wide absence of persistence. |
-| Planned budget Ungrouped | PlannedBudget renders category sections without a grouping control. | Still open; implement after D07/defaults are agreed. |
-| Planned cost to expense navigation | PlannedBudget still renders Added and Undo, not a named expense link. | Still open, separate from bookings. |
-| Expense related-record disclosure | Expense data carries both IDs and deletion handles both, but saved rows do not expose the proposed backlinks disclosure. | Still open; design both-source display without losing either relationship. |
-| Group collapse/custom category order/heading totals | GroupHeading is shared; ordering/collapse controls and alignment decisions remain. | Still open: D07. |
-| Packing drag/touch issues | Shared drag hook exists and includes delayed touch start; this does not establish that target placement/live row movement is correct. | Reproduce on touch and pointer devices before choosing a fix. Preserve shared To-do behavior. |
-| Global confirmations | Shared accessible dialog already exists; booking removal still has one native path. | Partially implemented: F11. |
-| Activity reminder after trip-date changes | Activity linked-record reviews exist, but Itinerary does not render the general trip-date-change reminder described in the backlog. | Still open; distinguish it from a linked booking's schedule warning and agree persistence/dismissal behavior. |
-| Darker text | Booking summary and expanded detail colors were changed; other metadata roles remain separate. | Partially implemented: F02/F04, not a request to undo the current palette. |
-| Separate Budget/Expenses and savings/spending progress | Future direction is documented; current TripBudget still mounts both. | Needs product requirements: D07, not a pure refactor. |
+| Backlog topic                                          | Current evidence                                                                                                                      | Follow-up                                                                                                                 |
+|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Saved booking/activity detail alignment                | Shared `ExpandedCardDetails`, aligned-detail grid and equivalent relationship value columns already exist.                            | Mark the original implementation item verified/done after visual confirmation; retain any new density redesign under D04. |
+| Planned cost changes offer expense updates             | Both planned costs and expenses use persisted LinkedRecordWarnings, including Update/Keep.                                            | Reconcile the older one-time-note wording with the implemented review mechanism rather than adding another prompt.        |
+| Expense category date ordering                         | Category path does not call the existing sorter.                                                                                      | Still open: F08.                                                                                                          |
+| Remembered views                                       | Checklist grouping and card/panel expansion persist; expense grouping does not.                                                       | Partially implemented: F07, not an app-wide absence of persistence.                                                       |
+| Planned budget Ungrouped                               | PlannedBudget renders category sections without a grouping control.                                                                   | Still open; implement after D07/defaults are agreed.                                                                      |
+| Planned cost to expense navigation                     | PlannedBudget still renders Added and Undo, not a named expense link.                                                                 | Still open, separate from bookings.                                                                                       |
+| Expense related-record disclosure                      | Expense data carries both IDs and deletion handles both, but saved rows do not expose the proposed backlinks disclosure.              | Still open; design both-source display without losing either relationship.                                                |
+| Group collapse/custom category order/heading totals    | GroupHeading is shared; ordering/collapse controls and alignment decisions remain.                                                    | Still open: D07.                                                                                                          |
+| Packing drag/touch issues                              | F15 reproduces straight-touch cancellation in Packing/To-do, saved cancellation in Packing, and absent live row movement in Chromium. | Approve a scoped shared fix; physical-phone verification remains necessary.                                               |
+| Global confirmations                                   | Shared accessible dialog already exists; booking removal still has one native path.                                                   | Partially implemented: F11.                                                                                               |
+| Activity reminder after trip-date changes              | Activity linked-record reviews exist, but Itinerary does not render the general trip-date-change reminder described in the backlog.   | Still open; distinguish it from a linked booking's schedule warning and agree persistence/dismissal behavior.             |
+| Darker text                                            | Booking summary and expanded detail colors were changed; other metadata roles remain separate.                                        | Partially implemented: F02/F04, not a request to undo the current palette.                                                |
+| Separate Budget/Expenses and savings/spending progress | Future direction is documented; current TripBudget still mounts both.                                                                 | Needs product requirements: D07, not a pure refactor.                                                                     |
 
 ## Proposed review/implementation sequence
 
-| Step | Work | Gate before implementation |
-| --- | --- | --- |
-| 1 | F14 is accepted, F01's frontend baseline is restored and B09 is committed/restarted. F10 loader fixes are verified; obtain user acceptance. Touch issues still need reproduction. | Approve each maintenance chunk; no UI redesign needed. |
-| 2 | Agree D01 using the concrete examples above. | Explicit decisions on ownership, updates, intentional overrides and existing records. |
-| 3 | Mock up D02–D06, plus common text/control roles. | User chooses the interaction/layout direction, including mobile and keyboard use. |
-| 4 | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified. | Preserve existing behavior with regression checks before applying product changes. |
-| 5 | Implement approved relationship and compact-layout improvements in small vertical slices. | Reuse shared components across booking/activity rather than implementing each twice. |
-| 6 | Deliver grouping/navigation/budget/packing improvements separately, following D07. | Defined persistence/sorting rules and touch verification; no automatic scope expansion. |
+| Step | Work                                                                                                                                              | Gate before implementation                                                              |
+|------|---------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| 1    | Stability baseline is restored. Q01 touch/cancellation fixes are verified; obtain physical-phone acceptance/commit. Q02 live preview is separate. | Follow the explicit queue below; approve each later chunk.                              |
+| 2    | Agree D01 using the concrete examples above.                                                                                                      | Explicit decisions on ownership, updates, intentional overrides and existing records.   |
+| 3    | Mock up D02–D06, plus common text/control roles.                                                                                                  | User chooses the interaction/layout direction, including mobile and keyboard use.       |
+| 4    | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified.              | Preserve existing behavior with regression checks before applying product changes.      |
+| 5    | Implement approved relationship and compact-layout improvements in small vertical slices.                                                         | Reuse shared components across booking/activity rather than implementing each twice.    |
+| 6    | Deliver grouping/navigation/budget/packing improvements separately, following D07.                                                                | Defined persistence/sorting rules and touch verification; no automatic scope expansion. |
 
 For every chunk: identify affected consumers, keep tests focused on meaningful behavior, check refresh/Undo/error paths,
 verify mobile/keyboard interactions, obtain independent review and user feedback, and pause at the manual commit checkpoint.
+
+### Explicit next-chunk queue
+
+This queue, not finding-number order or the maintenance backlog, selects the next work. Findings and backlog entries
+remain evidence/context. Only Q01 is currently authorized for implementation. Adding later chunks here is planning,
+not permission to redesign or refactor them. After each commit checkpoint, state the next queued item and its gate;
+ask before changing order or pulling in another backlog item. All approved chunks use `feature/app-review-improvements`.
+
+| Queue         | Deliverable                                                                                                                     | Findings                                | Gate/status                                                                                                                                                                                                         |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Q01 — Current | Shared touch-drag reliability and cancellation that never saves; preserve current preview layout.                               | F15 correctness                         | Implemented/automatically verified; awaiting user phone check/commit.                                                                                                                                               |
+| Q02           | Transient live row movement/placeholder while dragging, with persistence only on release.                                       | F15 feedback                            | Separate proposed chunk; confirm behavior/scope after Q01, then technical plan and tests for grouped/state sections.                                                                                                |
+| Q03           | Decide ownership, intentional differences and automatic-update rules for booking/activity/expense data using concrete examples. | D01; informs B02/B03/F09                | Discussion/requirements only, then a technical plan and independent architecture review. No data-model change approved.                                                                                             |
+| Q04           | Agree representative compact layout, shared text/control roles, review panel, quick linking/editing and naming.                 | D02–D06/F12/F13                         | Discussion/mockups; reconcile booking deletion semantics too. Agree individual changes rather than approve a wholesale UI rewrite.                                                                                  |
+| Q05           | Remove one verified group of unused exports/assets/obsolete paths, preserving compatibility and useful tests.                   | C01                                     | Approve concrete targets after reference checks. One small cleanup commit, not deletion of every candidate.                                                                                                         |
+| Q06a          | Consolidate shared text roles/styles while preserving the agreed visual hierarchy.                                              | F02/F04                                 | Q04 visual decisions and scoped technical plan; verify affected screens.                                                                                                                                            |
+| Q06b          | Consolidate equivalent form-control variants and remove replaced CSS ownership.                                                 | F03/F04                                 | Separate from Q06a; keep deliberate feature variants and form behavior.                                                                                                                                             |
+| Q07a          | Give related-review fetching/refresh a clear owner and remove equivalent duplicate requests.                                    | F09                                     | Q03 rules, request measurements and architecture review before code.                                                                                                                                                |
+| Q07b          | Share equivalent deferred deletion/Undo lifecycle without changing retention/error behavior.                                    | F06                                     | Bounded behavior-preserving plan, representative lifecycle tests and review.                                                                                                                                        |
+| Q07c          | Split one oversized feature coordinator along actual workflow boundaries.                                                       | F05/C02/C03                             | Choose a specific feature and evidence after prior decisions; one extraction at a time, not a frontend rewrite.                                                                                                     |
+| Q08a          | Untangle neutral mapping/validation ownership from endpoints and review/payment logic.                                          | B01/B03                                 | Q03 invariants; approved technical plan and independent architecture review.                                                                                                                                        |
+| Q08b          | Define legacy-to-current review-state transition and pure review proposals; measure repeated graph queries before optimizing.   | B02/B04                                 | Compatibility/removal decisions, baseline measurements and migration/regression plan. Split lifecycle and query/proposal changes into separate commits.                                                             |
+| Q08c          | Remove proven redundant existence queries, then share only equivalent checklist validation/reordering.                          | B05/B06                                 | Separate query and checklist commits; retain ownership predicates and feature-specific side effects.                                                                                                                |
+| Q08d          | Replace error-message parsing with explicit validation contracts where justified.                                               | B07                                     | Agree backward compatibility and coordinate frontend/backend changes in a tested slice.                                                                                                                             |
+| Q09           | Add a small repeatable disposable PostgreSQL verification lane.                                                                 | B08                                     | Approve infrastructure scope; retain quick SQLite/in-memory tests and never target personal/deployed data. Can move earlier if a migration needs it, with an explicit queue update.                                 |
+| Q10           | Deliver the agreed smaller usability improvements one at a time.                                                                | F07/F08/F11/F12; D07; remaining backlog | Pick and approve each chunk: date sorting, remembered grouping, planned Ungrouped, related links, confirmations/notices, group controls. Budget/Expenses split and progress indicators need their own requirements. |
+
+Later rows are work packages, not promises that a whole architectural redesign fits one commit. Refine them into
+commit-sized slices once their prerequisites are settled. Safe independent cleanup may be moved earlier only with an
+explicit queue change. No unrelated maintenance is automatically selected while working through this plan.
 
 ## Decisions and completion log
 
@@ -668,7 +769,9 @@ verify mobile/keyboard interactions, obtain independent review and user feedback
 - **F01:** test-only migration committed; full frontend unit suite, lint and production build passed, with no
   actionable independent review findings.
 - **B09:** package patches and local .NET servicing verified/reviewed; user restarted and committed. Deployment unchanged.
-- **Current chunk:** F10 loader fixes and permanent regressions verified and independently reviewed; user acceptance pending.
+- **F10:** loader fixes and permanent regressions verified/reviewed; user accepted and committed.
+- **Current chunk:** Q01/F15 touch/cancellation fix verified and independently reviewed; user phone acceptance pending.
+  Q02 live-row feedback and subsequent work remain gated by the queue.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
   Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.
