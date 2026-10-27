@@ -1,55 +1,295 @@
-# Application review, architecture and improvements
+# App review and improvements
 
-## Status and scope
+Last planning update: **27 October 2026**.
+Branch for approved work: `feature/app-review-improvements`.
 
-Initial source audit: **24 October 2026**, on `dev` after the booking merge.
-Implementation branch: `feature/app-review-improvements`, created from `dev`. Reuse this branch for subsequent
-approved review/improvement chunks, retaining the manual commit checkpoints; this does not approve every audit item.
-Follow the [explicit next-chunk queue](#explicit-next-chunk-queue) for execution order and approval gates, not finding
-number order or the maintenance backlog. Any change of queue order must be made explicit to the user.
+This is the detailed plan for finishing the review that started after Bookings.
+The [roadmap](../roadmap.md) gives the bigger product order. The
+[maintenance backlog](../maintenance-backlog.md) holds individual issues and later ideas.
 
-This is the working register for the post-booking review. Findings are recorded, not approved for implementation.
-No application code, styles, database behavior or dependencies were changed during the audit. Agree product decisions
-before implementation; use separate, reviewable chunks rather than a frontend rewrite.
+**Start here:** the next sections explain our decisions and work order in plain language.
+The [technical reference](#technical-reference) keeps the original findings, code links,
+test results and limits. Its F/B/C identifiers are unchanged.
 
-Scope: frontend workspace navigation and Details, Itinerary, Bookings, Budget/Expenses, To-do and Packing; shared
-controls, styles and state helpers; supporting dashboard/account patterns and test readiness. Backend scope includes
-route/application-service boundaries, validation/contracts, review/payment logic, ownership/query patterns, database
-constraints/migrations and test-provider coverage. Sources were inspected directly, not merely inferred from UI behavior.
-This is not a fresh rendered visual/accessibility audit, a performance profile, a dependency security scan or a new
-full test run. Previously reported test/advisory results are identified separately below.
-Subsequent targeted diagnosis: F14 was reproduced in Chromium on 24 October 2026, as recorded under that finding;
-the rest of the audit's unverified risks remain source-level observations.
-Approved follow-up: the focused F14 fix is verified on `feature/unsaved-form-protection` and accepted by the user.
+These are agreed requirements and a planning direction, not permission to implement
+every item. No application, database or UI changes are part of this documentation update.
+The existing app keeps its current behavior until each replacement is implemented.
 
-The [maintenance backlog](../maintenance-backlog.md) remains the broader issue list. This document supplies evidence,
-dependencies and decisions for this review; cross-reference IDs instead of creating conflicting copies of requirements.
+## Work order
 
-### How to maintain this register
+1. **Organise the documents.** Keep one roadmap, record the decisions below and retain the audit evidence.
+2. **Design shared data.** Work out the records, ownership, schedules, finances, permissions,
+   linking and removal rules. Independently review the technical plan before coding.
+3. **Build the agreed relationships.** Shared values, direct activity/budget/expense links,
+   duplicate prevention, booking categories and activity roles, and outside-trip dates.
+4. **Finish useful code cleanup.** Review frontend and backend findings, remove verified unused
+   code, simplify repeated or patched workflows, and share equivalent styles and controls.
+   Reassess findings about the old review system instead of improving code we will replace.
+5. **Improve the existing interface.** Remove outer page cards first; keep item boxes initially.
+   Improve mobile navigation and existing-list usability. Keep Budget & Expenses together here.
+6. **Finish the review and checks.** Verify affected workflows, database behavior, mobile and
+   keyboard use, loading/errors, deletion and recovery. Resolve or explicitly defer every finding.
 
-- Keep finding IDs stable. Statuses: **Open**, **Needs reproduction**, **Needs decision**, **Approved**, **In progress**,
-  **Verified**, **Deferred**. Approval of this audit is not approval of every proposed extraction or design.
-- When agreeing a decision, record the chosen behavior and acceptance checks under its ID before coding.
-- When implementing, record the branch/chunk and verification next to the ID; update the corresponding backlog item.
-- Do not close a user-reported visual/touch issue just because source review or unit tests pass.
+Steps 3–5 are work groups, not single commits or a rule that all backend work must precede UI work.
+The technical plan will arrange their dependencies into small, reviewable chunks.
 
-## Summary
+**After this review:** the first proposed major feature is the separate Budget and Expenses
+redesign, with its own brainstorming and useful content for both pages. The user may postpone
+it until after shared trips. It is not a prerequisite for sharing. Account/profile preparation
+and a small first shared-trip release follow the roadmap; their exact scope still needs discussion.
+Shared trips do not jump ahead of the current review/improvements.
 
-The frontend already has a substantial shared foundation. The main issues are uneven adoption, duplicated lifecycle
-coordination and very large feature components, not an absence of reusable components.
-The backend likewise already has shared ownership, validation and payment helpers, but accumulated compatibility state,
-mapping responsibilities and review-query behavior deserve a deliberate redesign review before further extensions.
+### Explicit next-chunk queue
 
-Suggested planning order:
+This replaces the old rigid queue with the work order above. Keep the identifiers below for
+tracing earlier discussions; a queue number does not mean code is approved.
 
-1. Establish a trustworthy verification baseline and reproduce the identified state risks.
-2. Decide shared-data/automatic-update behavior using flight, hotel and paid-activity examples (**D01**).
-3. Agree interaction and visual direction (**D02–D07**) using representative desktop/mobile examples.
-4. Approve an architecture/change-impact brief and small implementation chunks. Extract only the shared foundations needed.
-5. Refactor behavior-preservingly, then apply agreed improvements, with focused regression checks and user review.
+| Earlier ID | What it means now | Before implementation |
+| --- | --- | --- |
+| Q01 | Touch dragging/cancellation: done, accepted and committed. | No new work. |
+| Q02 | Live row movement: deferred and optional. | Reopen only if the user asks; not needed to finish this review. |
+| Q03 | Shared-data behavior agreed below; technical design is next after this document check. | Define schema/API, invariants, migration/reset scope and slices; independent architecture review. |
+| Q04 | UI decisions partly agreed; remaining interaction choices need examples. | Confirm each change, mobile/keyboard behavior and deletion wording; no wholesale UI rewrite. |
+| Q05 | Remove one proven-unused group at a time (C01). | Check references, compatibility, assets and tests; approve concrete targets. |
+| Q06a | Give shared text roles one style owner (F02/F04). | Agree visual hierarchy; preserve palette experiments and verify consumers. |
+| Q06b | Share equivalent form-control styling (F03/F04). | Keep intentional variants, focus/error states and form behavior. |
+| Q07a | Simplify fetching/refresh ownership where still needed (F09). | Reassess after Q03; measure requests before choosing a cache or shared owner. |
+| Q07b | Share equivalent deletion/Undo handling (F06). | Keep distinct confirmation, retention, ordering, failure and unmount behavior. |
+| Q07c | Split one oversized workflow at a time (F05/C02/C03). | Choose real responsibility boundaries; preserve behavior and test them. |
+| Q08a | Clarify mapping/validation ownership (B01/B03). | Follow the reviewed shared-data design; avoid a generic service framework. |
+| Q08b | Replace or simplify old review state and proposal/query paths (B02/B04). | Decide what survives Q03; retain safeguards during transition; measure query cost. Split lifecycle and query changes. |
+| Q08c | Remove proven duplicate queries; share equivalent checklist logic (B05/B06). | Separate commits; retain ownership checks and feature-specific effects. |
+| Q08d | Improve field-error/API contracts (B07). | Coordinate client/server compatibility and regression checks. |
+| Q09 | Repeatable disposable PostgreSQL checks (B08). | Agree infrastructure scope; keep fast tests; move earlier if schema work needs it. Never use personal/deployed databases. |
+| Q10 | Existing-list sorting, preferences, links, dialogs/notices and group controls. | Define each behavior and persistence rule. The Budget/Expenses redesign is now outside this review. |
 
-The test baseline can be repaired independently while product decisions are discussed. Do not start a broad shared
-data layer, replace every card, introduce a new state library or build a universal form/list component by default.
+Do not silently pull unrelated backlog work into a chunk. Every audit finding should end as
+fixed, replaced by the new design, or explicitly deferred—not automatically implemented.
+
+## Decided: shared data and relationships — D01
+
+### Structure and standalone entries
+
+Use a **small shared core with optional parts**, rather than one large record containing every
+possible field or copied values that need repeated Update/Keep reviews.
+
+The core identifies the underlying item and its trip; a common name is the current direction.
+Activity, booking, planned-cost and expense details remain separate. Shared schedules and financial
+facts have one owner and are stored once. Exact tables, keys, constraints and API shapes are not
+designed yet; these responsibilities do not require one table for every small group of fields.
+
+Payment date belongs to the expense and stays independent of the event/journey date; it does not
+follow schedule edits. Booking, activity and budget/expense
+categories also have different meanings; reservation notes and personal planning notes need not
+be shared. A common identity does not make every field common.
+
+Any part can exist on its own. Examples: a free walk as an activity, a food allowance as a
+planned cost, coffee as an expense, or a hotel reservation without an activity. Financial information
+can exist without a planned-cost entry. Having a cost does not automatically include an item in Budget.
+
+For a single event such as a concert, booking and activity use the same schedule/location and
+total cost. A linked planned cost follows the confirmed total. Edit a genuinely shared value once
+and its other views update automatically. Remove obsolete synchronization reviews when their
+replacement is ready; do not remove unrelated validation, conflict or access safeguards.
+
+### Activities and money
+
+- An activity can have an expected cost without a booking or planned-cost entry.
+- Offer **Add to budget** and **Add expense**. Use **Add expense**, not Record payment.
+- Once the expense exists, open/edit that expense rather than offer to create another.
+- No separate payment system or required Paid/Refunded fields in the ordinary activity form.
+  Reuse the financial workflow; exact action placement and payment-form presentation need design.
+- Including an item in Budget and Expenses are independent choices. Paying does not remove its
+  planned cost. Standalone planned costs and standalone expenses remain supported.
+- A linked planned cost follows the confirmed total. Do not retain the original estimate as a
+  separate historical value; an original-budget comparison feature is not requested.
+- The activity/booking total is distinct from payment. Spending totals count the expense once,
+  not every place displaying the same price.
+
+### Payments and refunds
+
+Keep one aggregate recorded payment total and one expense per underlying purchase for now.
+Multiple transactions/payment schedules are not part of this redesign.
+
+**Net spending = Paid − Refunded.** Net spending is calculated, never directly edited.
+For example, Paid €80 and Refunded €20 means €60 shown as spending. A normal standalone expense
+can record Paid €20 with no refund without requiring a booking or budget entry.
+
+Creating or linking an expense sets the recorded payment total, not another transaction.
+Creation from booking, activity or planned cost must reach the same existing expense and prevent
+duplicates, including concurrent requests. Recording/linking an expense for an unpaid item is allowed.
+
+Retain the existing refund/status and cancelled-summary behavior unless explicitly changed:
+positive refunds use one Refunded status; cancelled bookings omit summary money; active summaries
+show paid/total or only total when fully paid. Refunds cannot exceed paid.
+If the payment requires raising a confirmed total, offer the explicit increase to paid and total;
+do not silently lower total. Exact form/validation details belong in the technical plan.
+
+### Booking categories and activities
+
+Agreed categories: **Accommodation, Transport, Rental, Activities, Dining, Passes, Other**.
+Keep Not specified as the empty choice. An optional transport mode is a proposal, not a decision.
+
+| Booking | Activity relationship | Shared information |
+| --- | --- | --- |
+| Activities or Dining: concert, museum admission, single tour, restaurant | One activity for the event. A continuous tour can have several stops and still be one activity. | The event schedule, location and total cost. |
+| Transport | Outbound and optional return activities. One expense for the whole reservation. | Each journey's schedule and departure/arrival locations. |
+| Accommodation | Optional check-in and checkout activities: either, both or neither. | Reservation start/end date-time respectively, and accommodation location. The whole stay remains on the booking. |
+| Rental | Pickup and return activities. | The corresponding start/end schedule and locations. |
+| Passes | Multiple covered activities. | Coverage only; activities retain independent schedules and locations. The pass keeps its validity and overall finances. |
+
+Do not assign an artificial split of a reservation's total to its activities.
+Omit activity prices for covered visits and reservation parts; keep access to the overall cost via
+the booking link. A single-event activity still displays its shared event price.
+Do not replace hidden prices with long labels such as Covered by pass or Cost in booking.
+Explicitly free remains distinct from unknown or covered cost.
+
+A pass category with multiple links supersedes the earlier notes-only limitation.
+Separately charged extras remain separate items; allocating costs is not in scope.
+A multi-day tour's exact schedule representation still needs a concrete design example.
+
+### Linking, unlinking and deleting
+
+When linking existing entries with conflicting values, show the **actual alternatives** for each
+field, with their source for context, and radio choices. Example: €20 — Activity / €25 — Planned cost.
+Validate and apply the selected combination together. Cancel linking leaves entries independent.
+Continuing to keep different copies is not a shared-value link.
+
+Deleting one part removes its own details; the other parts and their values remain.
+Only delete shared records when nothing needs them, and remove an empty core when no parts remain.
+
+Unlinking separates identities and copies the required current facts into independent shared-data
+records. For example, two references to one schedule become references to two schedules with
+initially equal dates. Do not erase dates because individual parts have no date columns.
+
+The user says local booking links can be reset and preserving that particular data is low priority.
+This is not permission to erase deployed/account data or unrelated planned-cost/expense links.
+Agree the concrete reset/migration scope before a destructive operation.
+
+### Allow dates outside the trip
+
+Both activities and bookings may keep dates outside the trip. Show a dismissible warning, including
+on a collapsed entry. Scheduled entries remain visible on their real dates; do not make them
+unscheduled. Unscheduled means no date selected. Do not introduce category-specific exceptions.
+
+The warning proposes the precise expansion as a question, for example:
+
+> **Outside trip dates**
+>
+> Update the trip start from 10 Oct to 9 Oct?
+>
+> **Update trip dates** · **Edit activity dates** · **Keep as is**
+
+Use Edit booking dates for bookings. If both boundaries change, ask:
+“Update the trip dates from 10–15 Oct to 9–17 Oct?”
+
+Update trip dates expands only the necessary boundary/boundaries to include the item, immediately;
+it never shrinks the other boundary. Edit dates opens the item's form and focuses the relevant date
+field. Keep as is preserves dates and hides this warning; check again after relevant date changes.
+No automatic Move inside trip action: the app cannot guess a correct new flight or event date.
+
+The detailed design must define the applicable schedule/validity range for a pass and how trip-date
+editing interacts with any existing automatic activity shifting. It must not silently shift fixed
+activities or reintroduce the superseded automatic-unscheduling rule.
+
+### Prepare for shared trips without building sharing now
+
+Sharing permissions must be separate from shared data references. A visible activity can expose
+its shared schedule, but not private confirmation numbers, payments or other hidden parts.
+Separate tables alone do not enforce this; APIs must check access and avoid leaking hidden links,
+names, counts or values.
+
+Plan for individual activity/booking/planned-cost/expense visibility, plus eventual page-wide
+choices. The user's intended activity list is shared; selected bookings and potentially expenses
+can be shared, while personal entries stay private. Initial financial-sharing scope is still open.
+
+It is accepted that editing an accessible shared fact can update a private booking using that fact.
+A confirmation explaining the effects may be considered when sharing is implemented.
+This does not grant permission to edit private-only fields.
+
+Default sharing choices, bulk selection, invitation/role policy, record ownership and permission to
+change shared trip dates need a dedicated plan. Proposed defaults were examples, not agreements.
+
+## Decided: UI direction and work process — D02–D08
+
+| ID | Decided | Still open |
+| --- | --- | --- |
+| D02 | Add expense wording; show related links from Budget and Expenses as well as booking/activity. | Faster creation, one right-side Add link menu with four new/existing choices, journey-role editing without unlinking, input requirements and Undo. |
+| D03 | Full forms remain available. | Which fields support inline editing; discoverable tap/click and keyboard access, save/cancel. Double-click was a suggestion only. |
+| D04 | Remove outer page cards first. Retain individual item boxes initially, then assess mobile/desktop. | Replacement mobile tab navigation; whether later to use divider-separated item rows. Do not remove every border at once. |
+| D05 | Existing review appearance was not finally accepted. | What review UI remains after shared-data redesign, and its final appearance. |
+| D06 | A clearer replacement for Itinerary is wanted. | Actual name; Schedule, Activities and Trip plan are suggestions, not an agreed rename or route change. |
+| D07 | Future separate Budget/Expenses pages need their own brainstorming, trackers/statistics and design—not an empty tab split. Existing lists need grouping/order/persistence work. | Detailed heading controls and preference scope; savings/spending goals and indicators belong to the later feature. |
+| D08 | Architecture-first planning and independent reviews are adopted. | No blanket approval of abstractions or every cleanup candidate. |
+
+Budget and Expenses start with the same category order, then retain independent custom orders.
+Planned budget needs an Ungrouped option. Remember grouping, expansion and ordering where agreed.
+Keep current item layouts initially; expandable Budget/Expense details should expose all related
+entries, not add another nested financial card. Amounts, labels and actions need consistent alignment.
+
+## Still to work out before coding
+
+- Exact core/schedule/financial records and uniqueness constraints, including event versus journey/validity.
+- Ownership of names, categories, notes, event end/duration and prices on reservation parts.
+- Concrete examples for standalone activity/expense, round trip, hotel, Rental, pass and multi-day tour.
+- Cancellation's effect on activities and budget entries. Deletion and unlinking are decided above,
+  but cancellation must not erase money already paid/refunded.
+- Linking incompatible relationship types, merging existing identities and concurrent/stale edits.
+- Compatibility/reset scope, constraints, API responses, privacy boundaries and atomic writes.
+- Which old review/notice paths disappear, which remain, and how they transition safely.
+- Remaining quick-action, inline-editing, naming, mobile-navigation and confirmation choices.
+- Account/profile and first shared-trip scope, separately from this review's implementation.
+
+After the design, specify observable acceptance examples and small code/test/documentation chunks.
+Independent architecture review precedes substantial implementation. Each completed chunk gets
+independent review, verification, a manual check handoff and the user's commit pause.
+
+## Done
+
+| Work | Completion |
+| --- | --- |
+| F14 — Unsaved forms | Shared controlled-state guard, regression checks and independent review; user accepted and committed. |
+| F01 — Frontend test baseline | Obsolete TripSetup tests migrated to TripDetails; full suite restored and committed. |
+| B09 — Dependency/runtime servicing | Scoped package updates and local .NET update checked/reviewed; user restarted and committed. Deployment unchanged. |
+| F10 — Stale loading | Current-request protection, regression checks and review; user accepted and committed. |
+| Q01/F15 — Touch drag cancellation | Shared fix and regression checks; user accepted and committed. |
+| D08 — Working process | Skills and repository rules adopted; small planning checks or full architecture review according to risk. |
+
+These are historical completion results, not claims of a new full test/security run today.
+Detailed counts, source evidence and test limits remain below.
+
+## Later or optional
+
+- Q02 live row movement: deferred on 25 October 2026; reopen only at the user's request.
+- App-wide **Ctrl+Z / Ctrl+Y** Undo/Redo: requested for future planning, not this round.
+  Keep native text undo inside inputs; cross-record actions must undo together and redo safely.
+- Budget/Expenses redesign, savings goals, progress and statistics: first proposed major feature
+  after review, postponable until after shared trips; not a simple navigation split.
+- Calendar, advanced scheduling, route optimisation, transaction ledger/multiple currencies,
+  receipts, splitting, templates, extensive preferences, external data and AI: follow the roadmap.
+- Feedback/profile/account scope is not automatically added to the current review.
+
+## Technical reference
+
+The original audit started on **24 October 2026**, on dev after the Bookings merge.
+It covered frontend navigation, Details, Itinerary, Bookings, Budget/Expenses, To-do, Packing,
+dashboard/account patterns, shared controls/styles/state, and test readiness. Backend coverage
+included endpoints/services, validation/contracts, payment/review logic, ownership/queries,
+database constraints/migrations and provider-specific tests.
+
+This was direct source inspection, not a full rendered accessibility audit, performance profile,
+complete security assessment or fresh full-suite run. Targeted F10/F14/F15 diagnosis and subsequent
+checks have their own limits below. F14 was originally implemented on
+`feature/unsaved-form-protection`; subsequent approved work uses the branch at the top.
+
+**Read findings as evidence of the existing implementation.** Old candidate solutions—especially
+manual synchronization reviews and Make unscheduled—are not new requirements. The agreed sections
+above supersede them where they conflict. Retain their evidence and safety checks while designing
+replacements.
+
+Finding IDs remain stable. For each, record whether it is fixed, replaced or deferred, and
+update the backlog when implemented. A source review or unit test is not user visual/touch acceptance.
+Retain existing shared foundations where useful rather than introducing a new framework by default.
 
 ## Existing shared foundations to retain
 
@@ -360,7 +600,7 @@ Independent review of the complete chunk, including documentation, reported no a
 
 ### F15 — Checklist touch dragging cancels, and cancelled gestures can save
 
-**Priority:** P1 for touch/cancellation correctness; P2 for live-row feedback. **Status:** Q01 verified; physical-phone acceptance pending. Q02 live-row movement remains separate.
+**Priority:** P1 for touch/cancellation correctness; live-row feedback is optional. **Status:** Q01 verified, accepted by the user and committed. Q02 deferred at the user's request.
 
 Six temporary Chromium observation cases used fresh accounts/trips with 20 rows each and an isolated in-memory API.
 Desktop viewport was 1280 x 844; touch emulation used 390 x 844 with CDP touch input (not synthetic DOM pointer events).
@@ -407,7 +647,7 @@ available outside the handle. Keep the existing 200ms touch hold and mouse thres
 pending/active drag state without calling the save callback; unrelated pointer events do not end the drag. Normal
 pointerup still saves a valid target. Leave row projection/layout, section limits and API persistence unchanged.
 Use focused hook regressions plus real Chromium mouse/touch input and API reads for both checklists, including
-scrolling outside the handle. Physical-phone acceptance remains necessary. No new drag library or abstraction.
+scrolling outside the handle. Physical-device behavior is not established by emulation alone. No new drag library or abstraction.
 
 Q01 implementation and verification:
 
@@ -425,7 +665,9 @@ Q01 implementation and verification:
   personal/deployed data were untouched. Backend/schema/deployment code did not change; backend tests were not rerun.
 - Independent review of the full chunk, including documentation, found no actionable issues. Try the handle on a
   physical phone: hold briefly, drag straight up/down and release, then swipe on row content to scroll. Automated
-  touch emulation does not establish physical Android/iOS acceptance. Q02 preview movement is not implemented.
+  touch emulation does not establish physical Android/iOS verification. The user subsequently confirmed the fix works
+  and committed it. On 25 October 2026, the user deferred Q02 as low-value and optional; it is not required to finish
+  this review and must not be picked up automatically. Revisit only if the user chooses to implement it later.
 
 ## Backend findings
 
@@ -682,26 +924,10 @@ The user approved the proportional workflow and instruction cleanup. The authori
 Technical decisions for a feature belong with its requirements; maintenance decisions can stay under the relevant
 finding here. This adopts the process, not any unapproved product redesign or broad refactoring in this audit.
 
-## Product decisions that must not be disguised as refactoring
-
-| ID  | Status         | Decision to make                                                                                                                                                                     | Evidence/context                                                                                                                                                                                                                                                                                                                  |
-|-----|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| D01 | Needs decision | Keep distinct booking/activity/expense records, share fields, or change the model? Which values inherit automatically, and how do intentional differences and existing links behave? | Current separate models in `backend/Models`; booking/activity mapping in `utils/bookingActivityLinks.ts` and `utils/itineraryForm.ts`; explicit reviews in `backend/Services/LinkedRecordReviews.cs`. Reservation total, paid/refunded money and expense date are not interchangeable. One booking can cover multiple activities. |
-| D02 | Needs decision | Quicker creation without a full form; one right-side Add link menu with new/existing activity/expense choices; changing existing journey part without unlinking.                     | Current Bookings workflow and the user's recorded proposal. Decide eligibility, outbound/return/both, missing payment inputs, Undo and mobile placement.                                                                                                                                                                          |
-| D03 | Needs decision | Which fields can be edited inline, using what interaction and save/cancel rules?                                                                                                     | User proposed status pills and double-click; consider discoverable single-click/tap and keyboard alternatives. Full-form editing remains useful for multiple changes.                                                                                                                                                             |
-| D04 | Needs decision | Compact divider-separated rows versus cards; how expanded details, forms and reviews fit without nested boxes.                                                                       | `layout.css` distinguishes compact rows and card lists; SectionCard, FormSurface and RelatedRecordReviews add further surfaces. Nesting is observable; its preferred replacement needs mockups, not a blanket removal of every border.                                                                                            |
-| D05 | Needs decision | Final review-panel appearance and information hierarchy.                                                                                                                             | Current shared pink disclosure, light-blue review background and per-entry actions are a working version, not final visual acceptance. Decide after D01 and D04.                                                                                                                                                                  |
-| D06 | Needs decision | Replace the user-facing word Itinerary.                                                                                                                                              | Workspace navigation, headings and creation/link actions; Schedule, Activities and Trip plan discussed. Schedule is a suggestion, not an agreed rename or API-route migration.                                                                                                                                                    |
-| D07 | Needs decision | Group collapse/order, category totals/actions, and eventual separate Budget/Expenses tabs with progress indicators.                                                                  | GroupHeading has title/actions/summary but no collapse state; TripBudget combines both sections. Define saved category order independently per page and distinguish savings, spending and budget denominators. See the updated roadmap's Better budget control section.                                                           |
-| D08 | Adopted        | Proportional architecture planning, scoped refactoring and independent architecture/chunk reviews.                                                                                   | Universal rules stay in AGENTS.md; procedures live in the linked skills. Brief local impact checks suffice for small changes; substantial work gets a recorded technical plan and independent architecture review before coding.                                                                                                  |
-
-Working acceptance template for D01: for each flight/hotel/paid-activity example, list the owner of schedule, location,
-total price, payment/refund values and payment date; what happens on creation, link, edit, override, cancellation,
-unlink and deletion; and how existing records migrate without losing intentional differences or double-counting money.
-
 ## Backlog reconciliation
 
-These are audit classifications, not silent changes to existing backlog entries.
+These comparisons describe the audit-time implementation. Use the agreed decisions above for future behavior;
+older one-time-note or unscheduling proposals are not requirements for the redesign.
 
 | Backlog topic                                          | Current evidence                                                                                                                      | Follow-up                                                                                                                 |
 |--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
@@ -713,55 +939,11 @@ These are audit classifications, not silent changes to existing backlog entries.
 | Planned cost to expense navigation                     | PlannedBudget still renders Added and Undo, not a named expense link.                                                                 | Still open, separate from bookings.                                                                                       |
 | Expense related-record disclosure                      | Expense data carries both IDs and deletion handles both, but saved rows do not expose the proposed backlinks disclosure.              | Still open; design both-source display without losing either relationship.                                                |
 | Group collapse/custom category order/heading totals    | GroupHeading is shared; ordering/collapse controls and alignment decisions remain.                                                    | Still open: D07.                                                                                                          |
-| Packing drag/touch issues                              | F15 reproduces straight-touch cancellation in Packing/To-do, saved cancellation in Packing, and absent live row movement in Chromium. | Approve a scoped shared fix; physical-phone verification remains necessary.                                               |
+| Packing drag/touch issues | Q01 shared touch/cancellation fix is verified, user-accepted and committed. | Q02 live row feedback is deferred/optional; reopen only at the user's request. |
 | Global confirmations                                   | Shared accessible dialog already exists; booking removal still has one native path.                                                   | Partially implemented: F11.                                                                                               |
 | Activity reminder after trip-date changes              | Activity linked-record reviews exist, but Itinerary does not render the general trip-date-change reminder described in the backlog.   | Still open; distinguish it from a linked booking's schedule warning and agree persistence/dismissal behavior.             |
 | Darker text                                            | Booking summary and expanded detail colors were changed; other metadata roles remain separate.                                        | Partially implemented: F02/F04, not a request to undo the current palette.                                                |
 | Separate Budget/Expenses and savings/spending progress | Future direction is documented; current TripBudget still mounts both.                                                                 | Needs product requirements: D07, not a pure refactor.                                                                     |
-
-## Proposed review/implementation sequence
-
-| Step | Work                                                                                                                                              | Gate before implementation                                                              |
-|------|---------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| 1    | Stability baseline is restored. Q01 touch/cancellation fixes are verified; obtain physical-phone acceptance/commit. Q02 live preview is separate. | Follow the explicit queue below; approve each later chunk.                              |
-| 2    | Agree D01 using the concrete examples above.                                                                                                      | Explicit decisions on ownership, updates, intentional overrides and existing records.   |
-| 3    | Mock up D02–D06, plus common text/control roles.                                                                                                  | User chooses the interaction/layout direction, including mobile and keyboard use.       |
-| 4    | Extract required tokens/control variants and focused feature sections; consolidate equivalent Undo/refresh behavior where justified.              | Preserve existing behavior with regression checks before applying product changes.      |
-| 5    | Implement approved relationship and compact-layout improvements in small vertical slices.                                                         | Reuse shared components across booking/activity rather than implementing each twice.    |
-| 6    | Deliver grouping/navigation/budget/packing improvements separately, following D07.                                                                | Defined persistence/sorting rules and touch verification; no automatic scope expansion. |
-
-For every chunk: identify affected consumers, keep tests focused on meaningful behavior, check refresh/Undo/error paths,
-verify mobile/keyboard interactions, obtain independent review and user feedback, and pause at the manual commit checkpoint.
-
-### Explicit next-chunk queue
-
-This queue, not finding-number order or the maintenance backlog, selects the next work. Findings and backlog entries
-remain evidence/context. Only Q01 is currently authorized for implementation. Adding later chunks here is planning,
-not permission to redesign or refactor them. After each commit checkpoint, state the next queued item and its gate;
-ask before changing order or pulling in another backlog item. All approved chunks use `feature/app-review-improvements`.
-
-| Queue         | Deliverable                                                                                                                     | Findings                                | Gate/status                                                                                                                                                                                                         |
-|---------------|---------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Q01 — Current | Shared touch-drag reliability and cancellation that never saves; preserve current preview layout.                               | F15 correctness                         | Implemented/automatically verified; awaiting user phone check/commit.                                                                                                                                               |
-| Q02           | Transient live row movement/placeholder while dragging, with persistence only on release.                                       | F15 feedback                            | Separate proposed chunk; confirm behavior/scope after Q01, then technical plan and tests for grouped/state sections.                                                                                                |
-| Q03           | Decide ownership, intentional differences and automatic-update rules for booking/activity/expense data using concrete examples. | D01; informs B02/B03/F09                | Discussion/requirements only, then a technical plan and independent architecture review. No data-model change approved.                                                                                             |
-| Q04           | Agree representative compact layout, shared text/control roles, review panel, quick linking/editing and naming.                 | D02–D06/F12/F13                         | Discussion/mockups; reconcile booking deletion semantics too. Agree individual changes rather than approve a wholesale UI rewrite.                                                                                  |
-| Q05           | Remove one verified group of unused exports/assets/obsolete paths, preserving compatibility and useful tests.                   | C01                                     | Approve concrete targets after reference checks. One small cleanup commit, not deletion of every candidate.                                                                                                         |
-| Q06a          | Consolidate shared text roles/styles while preserving the agreed visual hierarchy.                                              | F02/F04                                 | Q04 visual decisions and scoped technical plan; verify affected screens.                                                                                                                                            |
-| Q06b          | Consolidate equivalent form-control variants and remove replaced CSS ownership.                                                 | F03/F04                                 | Separate from Q06a; keep deliberate feature variants and form behavior.                                                                                                                                             |
-| Q07a          | Give related-review fetching/refresh a clear owner and remove equivalent duplicate requests.                                    | F09                                     | Q03 rules, request measurements and architecture review before code.                                                                                                                                                |
-| Q07b          | Share equivalent deferred deletion/Undo lifecycle without changing retention/error behavior.                                    | F06                                     | Bounded behavior-preserving plan, representative lifecycle tests and review.                                                                                                                                        |
-| Q07c          | Split one oversized feature coordinator along actual workflow boundaries.                                                       | F05/C02/C03                             | Choose a specific feature and evidence after prior decisions; one extraction at a time, not a frontend rewrite.                                                                                                     |
-| Q08a          | Untangle neutral mapping/validation ownership from endpoints and review/payment logic.                                          | B01/B03                                 | Q03 invariants; approved technical plan and independent architecture review.                                                                                                                                        |
-| Q08b          | Define legacy-to-current review-state transition and pure review proposals; measure repeated graph queries before optimizing.   | B02/B04                                 | Compatibility/removal decisions, baseline measurements and migration/regression plan. Split lifecycle and query/proposal changes into separate commits.                                                             |
-| Q08c          | Remove proven redundant existence queries, then share only equivalent checklist validation/reordering.                          | B05/B06                                 | Separate query and checklist commits; retain ownership predicates and feature-specific side effects.                                                                                                                |
-| Q08d          | Replace error-message parsing with explicit validation contracts where justified.                                               | B07                                     | Agree backward compatibility and coordinate frontend/backend changes in a tested slice.                                                                                                                             |
-| Q09           | Add a small repeatable disposable PostgreSQL verification lane.                                                                 | B08                                     | Approve infrastructure scope; retain quick SQLite/in-memory tests and never target personal/deployed data. Can move earlier if a migration needs it, with an explicit queue update.                                 |
-| Q10           | Deliver the agreed smaller usability improvements one at a time.                                                                | F07/F08/F11/F12; D07; remaining backlog | Pick and approve each chunk: date sorting, remembered grouping, planned Ungrouped, related links, confirmations/notices, group controls. Budget/Expenses split and progress indicators need their own requirements. |
-
-Later rows are work packages, not promises that a whole architectural redesign fits one commit. Refine them into
-commit-sized slices once their prerequisites are settled. Safe independent cleanup may be moved earlier only with an
-explicit queue change. No unrelated maintenance is automatically selected while working through this plan.
 
 ## Decisions and completion log
 
@@ -770,11 +952,12 @@ explicit queue change. No unrelated maintenance is automatically selected while 
   actionable independent review findings.
 - **B09:** package patches and local .NET servicing verified/reviewed; user restarted and committed. Deployment unchanged.
 - **F10:** loader fixes and permanent regressions verified/reviewed; user accepted and committed.
-- **Current chunk:** Q01/F15 touch/cancellation fix verified and independently reviewed; user phone acceptance pending.
-  Q02 live-row feedback and subsequent work remain gated by the queue.
+- **Q01/F15:** touch/cancellation fix verified and independently reviewed; user accepted and committed.
+- **Q02:** deferred/optional at the user's request; do not automatically reopen live-row feedback.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
   Verification and independent review passed; user accepted the fix. No broader new
   runtime/security/performance verification is implied.
   The original temporary diagnostic files were removed; permanent regression tests accompany the fix.
-- **Next discussion:** agree maintenance priorities, then D01 and representative
-  interaction/layout examples. Backend/cleanup proposals and all product redesigns remain open until explicitly approved.
+- **27 October planning update:** Q03 behavior and the overall order are agreed above. Exact architecture,
+  implementation slices and remaining UI decisions are still open. Budget/Expenses redesign follows this review
+  and may be postponed until after shared trips. This update changes documentation only.

@@ -34,6 +34,12 @@ features move to their own completed feature documentation when appropriate.
 
 The [product roadmap](roadmap.md) records the future product direction and open decisions. It is a guide rather than a
 fixed delivery schedule: features are prepared, implemented, and released independently as they are completed.
+There is one roadmap, incorporating the earlier updated draft.
+
+The [app review and improvements plan](requirements/app-review-and-improvements.md) is the current detailed work plan:
+readable agreed decisions, open questions, work order, completed work, and the original technical audit evidence.
+The current review comes before new major features; the Budget/Expenses redesign is the first proposed feature
+thereafter and can be postponed until after shared trips.
 
 The [maintenance backlog](maintenance-backlog.md) records open bugs, small usability improvements, and technical quality
 work that is not part of a specific feature's requirements.

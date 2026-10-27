@@ -47,17 +47,21 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 - [P2] Budget group headings — Align category totals with item amounts and reserve a consistent action area aligned
   with item edit/delete controls. Design compact group expand/collapse and category move-up/move-down controls in that
   area. Final control order, add-item placement, and whether move controls use a separate reorder mode remain open.
-- [P2] Budget — After changing a planned cost that has a linked expense, show a one-time dismissible note offering to
-  adjust the expense amount. Closing the note deliberately keeps actual spending unchanged; show it again after a later
-  planned-cost amount change.
-- [P2] Packing — Move surrounding rows live while an item is dragged. F15 confirms both shared checklists currently
-  retain the original row positions until release; coordinate any preview change through the shared implementation.
+- [P2] Linked financial values — The former one-time planned-cost/expense update-note proposal is superseded by
+  the agreed shared-data design. Expected/confirmed total and Paid/Refunded retain different meanings; use the
+  [review plan](requirements/app-review-and-improvements.md#decided-shared-data-and-relationships--d01), not an
+  extra synchronization prompt. Implementation remains part of the approved-chunk workflow.
+- [P3 — Deferred/optional] Packing/To-do — Live row movement while dragging was skipped by the user on 25 October
+  2026 because it adds little value. Keep the current preview; this is not required for review completion. Reopen only
+  if the user requests it. Any later implementation should use the shared path (audit F15/Q02).
 - [P3] Packing — Consider making the Group by control apply to the whole page, rather than separately to the To pack and
   Packed sections.
 - [P2] Shared UI — Replace browser-default destructive-action confirmations with accessible, app-styled confirmation
   dialogs.
-- [P2] Itinerary — When trip dates change, show a dismissible message asking the user to check scheduled activities.
-  Show it again only after a later date change.
+- [P2] Outside-trip dates — Bookings and activities retain real scheduled dates outside the trip, with the agreed
+  Update trip dates / Edit item dates / Keep as is warning. Preserve dated activity visibility. The exact question,
+  boundary-expansion and focus behavior are owned by the
+  [review plan](requirements/app-review-and-improvements.md#allow-dates-outside-the-trip).
 
 ## Post-booking review topics
 
@@ -65,14 +69,14 @@ Evidence, implementation overlap, open decisions and the proposed sequence are t
 [application review and improvements audit](requirements/app-review-and-improvements.md). That register does not
 authorize implementation; reconcile these backlog items when each decision or change is accepted.
 
-Finish the agreed booking scope before revisiting these topics. These are discussion items, not approval to change
-the current data model, automatic-update rules or layouts. Preserve the existing behavior until decisions are agreed.
+The first booking release is complete. Decisions from the follow-up discussion are now recorded in the review plan;
+use that plan for current scope/order. Entries here are pointers, not a second set of conflicting requirements.
+Agreed requirements do not themselves authorize every implementation chunk.
 
-- [P2] Linked data — Review whether booking, activity and expense information should share a common model/table or
-  retain separate records with shared values. Explore a single source of truth for genuinely identical fields to
-  reduce repeated updates and review prompts. Distinguish reservation price from paid/refunded money, travel dates
-  from payment dates, and booking schedules from independent activities. Automatic updates, defaults for newly
-  created links, treatment of existing mismatches and intentional overrides remain open decisions.
+- [P2] Linked data — Small shared core with optional activity/booking/budget/expense parts is the agreed direction.
+  Shared values are stored once, standalone entries remain possible, and duplicate expenses are prevented. Exact
+  tables, APIs, permissions and migration/reset steps still need technical planning and independent review. See
+  [D01](requirements/app-review-and-improvements.md#decided-shared-data-and-relationships--d01).
 - [P2] Related-entry creation — Explore clearer, more visible Add to schedule/activity and Add expense actions from a
   booking, creating a sensible entry without the full form where safe, with Undo and optional editing. Decide how
   outbound/return/both are selected and when recording spending still requires an amount/payment choice.
@@ -90,13 +94,17 @@ the current data model, automatic-update rules or layouts. Preserve the existing
   semantic colours for summary text, detail text and muted hints, and reuse them across booking/activity cards and
   equivalent entries. Remove scattered feature-specific colour overrides so each text role can be adjusted in one
   place without changing every grey element globally.
-- [P2] Layout density — Revisit the space taken by cards and nested cards. Explore compact divider-separated rows
-  within a page section, with expanded details and related records not introducing another layer of boxes.
+- [P2] Layout density — Remove outer page cards first and retain individual item boxes initially. Review the result
+  on mobile/desktop before considering divider-separated item rows. Improve mobile page navigation; its replacement
+  still needs design. Avoid adding nested financial boxes for related-entry details.
 - [P2] Related-review presentation — Revisit the current pink disclosure and neutral review panel after booking
   completion. The current appearance is a working version, not the user's final visual acceptance.
 - [P2] Naming — Replace the user-facing word Itinerary with a clearer name. Schedule, Activities and Trip plan were
   discussed; Schedule is the current suggestion, not an agreed rename. Keep naming consistent in navigation,
   headings and related-entry actions after a choice is made.
+
+- [P3] App-wide Undo/Redo — Future Ctrl+Z / Ctrl+Y for supported actions. Preserve native text undo inside inputs;
+  changes to linked records must reverse together and redo safely. Not part of the current review scope.
 
 ## Technical and quality improvements
 
@@ -106,8 +114,8 @@ and documentation corrections here.
 ## Done
 
 - Packing/To-do touch dragging — Shared handle gestures no longer require sideways movement, and pointer cancellation
-  clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; physical-phone acceptance
-  pending. Live row movement is a separate proposed chunk. See [audit F15](requirements/app-review-and-improvements.md#f15--checklist-touch-dragging-cancels-and-cancelled-gestures-can-save).
+  clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; user accepted and committed.
+  Live row movement is deferred/optional. See [audit F15](requirements/app-review-and-improvements.md#f15--checklist-touch-dragging-cancels-and-cancelled-gestures-can-save).
 
 - Stale trip/expense loading — Trip-keyed content and current-request guards prevent old results/errors from
   replacing the current context. Successful loads recover from prior errors. All 106 frontend tests, lint/build,

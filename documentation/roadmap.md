@@ -1,403 +1,299 @@
-# Product Roadmap
-
-Stage 1 is a strong manual, single-user trip workspace: account ownership, trip lifecycle dashboard, itinerary,
-planned-versus-actual spend, and packing. The next step is to make planning more complete before adding external data,
-AI, or collaboration.
-
-Non-feature-specific bugs, small usability improvements, and technical quality work are tracked in the
-[maintenance backlog](maintenance-backlog.md). Promote an item into a feature's requirements only when it is required to
-deliver that feature.
-
-Goal: make the app sufficient to plan and run a real trip without needing scattered notes, emails, and spreadsheets.
-
----
-
-# Stage 2 — Complete the planning workflow
-
-Goal: make the app sufficient to plan and run a real trip without needing scattered notes, emails, and spreadsheets.
-
-## 1. Pre-trip to-do checklist
-
-- new workspace page
-- It should mirror the packing page’s successful interaction model:
-  - two states, grouped/ungrouped display, default-or-empty starting, editable items, manual ordering, undo after delete
-- Uses categories to make a list easier to scan
-  - Later: enable progress summaries per category
-- Records things that must be done before or during the trip.
-  - clear differentiation between tasks to do before vs. during
-  - has an optional deadline by when the task needs to be started/completed - e.g. check-in 24h before flight
-
-Default list:
-
-- Travel & transport
-  - Book outbound travel;
-  - Book return travel;
-  - Check check-in requirements;
-  - Plan airport/station transfer
-- Accommodation
-  - Book accommodation;
-  - Pay for accommodation
-  - Save accommodation address and check-in details
-- Documents & Money
-  - Check passport/ID validity;
-  - Check visa/entry requirements;
-  - Arrange travel insurance;
-  - Inform bank / prepare payment method;
-  - _something like: get saved money up to target budget_
-- Bookings & Activities
-  - Reserve priority activities;
-  - Buy required tickets;
-- Health
-  - Check medication needs
-- Connectivity
-  - Arrange roaming/eSIM;
-  - Download offline maps
-- Before leaving
-  - Share itinerary/contact details;
-  - Check weather forecast;
-  - Complete packing
-
-Notes / Decisions:
-
-- Items may have an optional due date
-  - but first release avoids reminders.
-  - there is **ALWAYS**, for any kind of reminder - an app-wide button to turn them off
-- Later: Optionally link items to reservations:
-  - e.g.: “Book hotel” marked complete automatically when an accommodation reservation is added.
-- Use "Done / To do", rather than “Packed / To pack.”
-- Later: Allow **custom categories** after the basic version
-- Later: Show checklist completion in the dashboard/workspace overview
-  - also for packing
-
-## Reservations and bookings
-
-- Add a **Bookings** workspace page.
-- When Bookings is introduced, place it between Itinerary and Budget & expenses:
-
-  `Details · Itinerary · Bookings · Budget & expenses · To-do · Packing`
-  - maybe think of a new way to access the pages, e.g. group them? sub-pages?
-- supported booking types:
-  - Accommodation
-  - Flight
-  - Train / bus / ferry
-  - Local transport
-  - Car hire
-  - Museum / attraction
-  - Tour / activity
-  - Concert / event
-  - Restaurant
-  - Other
-- Do not model each type as a separate database entity.
-  - Use one `Reservation` / `Booking` record with a type and type-specific optional fields.
-  - This keeps the interface consistent and avoids building six forms before you know which fields matter.
-
-Core fields for every booking:
-
-- Name
-- Type
-- Booking status
-- Provider
-- Confirmation/reference number
-- Start and end date/time, as applicable
-- Location
-- Link
-  - Later: allow upload of pdf
-  - Later: use link / pdf doc for auto-complete
-- Notes
-- Total cost in the trip currency, optional amount paid, and cancellation/refund information
-- Optional links to activities and one expense. Planned costs keep their own independent expense links.
-
-Type-specific fields appear only when relevant, e.g.:
-
-| Booking type        | Extra fields or labels                                            |
-| ------------------- | ----------------------------------------------------------------- |
-| Accommodation       | Check-in/out and address; guest count later                       |
-| Flight/transport    | Departure/arrival location and time; optional return journey      |
-| Local transport     | Valid from/until for tickets, passes, or subscriptions            |
-| Event/activity      | Start/end time; attendee count later                              |
-| Restaurant          | Start/end time; party size later                                  |
-| Car hire            | Pick-up/drop-off location and time                                |
-
-Notes / Decisions:
-
-- Booking status is optional: Requested, Confirmed, or Cancelled. Ideas belong in To-do or the itinerary.
-- Financial status is derived from Total cost, Amount paid, cancellation, and refund values rather than edited directly.
-- Add and link activities and a direct expense with prefilled forms and explicit related-record review, not silent
-  synchronization. A booking does not create or link a planned cost.
-- The first version supports one aggregate payment total and one expense per booking. Multiple payments and payment
-  schedules are deferred.
-- Agreed usability refinements: compact warnings with individual related-record updates, payment recording during
-  expense creation/linking, link-time mismatch review, number-only active booking summaries, and a single Refunded
-  status with no summary price for cancelled bookings. Detailed rules and implementation status remain in the
-  booking requirements.
-- Detailed first-version behaviour is defined in the [Bookings requirements](requirements/bookings.md).
-
-## Itinerary extension
-
-Build:
-
-- Later: Calendar / day timeline view alongside the existing list view.
-- Later: Visual empty time slots.
-- Overlap detection.
-- Manual ordering for untimed items.
-- Drag and drop in or between days: 
-  - in calendar view allow users to move an item
-    - up/down in a day or
-    - between days
-  - in normal view: 
-    - only between days
-    - keep time the same
-- Arrival/departure times (if available) displayed in daily headers.
-- Scheduling rules and hints for arrival and departure days, so activities do not clash with travel.
-- Link a booking to an activity.
-- Link an activity’s expected cost to an expense.
-- No: Opening-hours hints when an activity has opening hours but no selected start time.
-- Later: Short and expanded layouts appropriate for calendar use.
-- Trip-date change review for scheduled activities. When the trip dates change, ask the traveler which result they
-  want before changing the itinerary:
-  1. **Keep activities on their dates:** leave activities still within the revised trip range exactly where they are;
-     make only activities outside the range unscheduled. This suits a fixed event such as a concert, even when travel
-     plans change.
-  2. **Move itinerary with the trip:** shift activities by the change in the trip start date, using the current
-     automatic-adjustment rules. Activities that cannot fit in a shortened trip become unscheduled.
-
-Note: how to best link related planned costs, expenses, activities, and bookings?
-
-- keep planned cost separate
-- expenses related over booking? so itinerary <-> booking <-> expense (i.e. expand the current booking-expense 
-  relation to cover itinerary as well)
-
-Later: route optimization - needs map data, travel modes, opening hours, and a clear location model.
-
-## Trip overview / Details
-
-Add **Overview** section or improve Details
-
-- Change "Details" to "Overview"? 
-  - Or add an "Overview" section in the details? 
-  - Maybe as a second column in wide-screen
-- To-do progress
-  - Later: with some message/warning when tasks approach/reach their deadline and task not completed yet
-- Booking statuses: confirmed / awaiting payment
-  - Later: if a link is provided, can the status be updated automatically?
-- Budget: planned, actual, remaining
-- Packing progress
-- Maybe/Not: Unscheduled high-priority activities
-- Near-trip notices, e.g. “Trip starts in 9 days” - or as a constant header. with x-th day of 10 for ongoing trips
-
-## Later: Past-trip history
-
-Separate Past trips from active planning. Give each past trip a simple summary:
-
-- Total planned versus actual spend
-- Spend by category
-- Total activities / completed bookings
-- Packing and checklist completion are optional, not central
-- Notes and useful lessons for the next trip
-- Analysis for individual trips, but also for overall past trips, e.g. mean over all trips, and other statistics
-
----
-
-# Stage 3 — Make it personal and reusable
-
-Goal: reduce repetitive entry and make the plans fit the user’s real travel style.
-
-## Preference profile - right after stage 2, before shared trips
-
-- Add number of travelers
-  - directly improves budget interpretation and reservations.
-- Later: Optional personal preferences - to the profile
-  - Interests: history, food, nightlife, hiking, museums, beach, architecture, etc.
-  - Pace: relaxed, balanced, busy
-  - Dietary and accessibility needs
-  - Accommodation preferences
-  - Budget style
-
-- Preferences do not affect the manual workflow.
-  - Later: They become inputs for suggestions.
-
-Also around here/now: add stuff required for shared trips:
-
-- Password recovery by a single-use email link with an expiry
-- Transactional email provider and sending address for account recovery
-- Nah: Rate limiting for account-sensitive endpoints
-- Why: Device and session management, including active-session listing, device revocation, and sign-out everywhere
-- What's this: Audit-friendly data changes, at least for shared financial records
-
-## Trip structure
-
-- Support multiple destinations, structured by country and city/area.
-- Let each destination have its own dates and notes.
-- Refine the trip-type list as real usage shows which types are useful.
-
-This is a significant data-model decision. It should be settled before destination search, maps, weather, and
-multi-destination dashboard cards are implemented.
-
-## Itinerary personalisation
-
-- Support custom activity categories.
-- Provide category-specific activity forms where appropriate; for example, hiking, beach time, and city walks should not
-  collect opening hours.
-
-## Dashboard management
-
-- Add search, filtering, and alternative sorting when lifecycle ordering alone is no longer enough.
-- Show multiple destinations clearly on dashboard cards.
-
-## Feedback
-
-- Add a feedback action to the account/profile menu.
-- Let a signed-in user submit a free-text message without leaving the app.
-- Provide a private, reliable way for the app owner to receive and review submissions.
-- Before implementation, decide the delivery mechanism, abuse protection, privacy notice, and whether submissions
-  include account, trip, browser, or diagnostic context.
-
-## Packing templates and rules
-
-Build on the existing default list:
-
-- User-defined reusable packing templates
-  - can be added to the profile: add, edit, delete, (later: share) options
-  - then button to use template
-  - default list is then the default template - can't be deleted
-- User-defined reusable to-do checklist templates, managed with the profile personalisation features.
-- Add default items from set of items in all templates
-  - button to add individual items from existing templates
-- Option to add default items / templates later, even after choosing “Start empty”
-- Duplicate prevention by normalised item name
-- Suggestions based on trip type, duration, laundry access, and planned activities
-- Custom categories and free-text category names when Other is selected.
-
-## Better budget control
-
-### Separate Budget and Expenses pages (future direction)
-
-- Split the current combined Budget & expenses workspace tab into **Budget** and **Expenses**. This is future planned
-  work, not part of the current booking implementation.
-- Budget owns planned costs and can grow to include savings progress toward the trip's funding target, with an amount
-  saved, remaining amount, and progress indicator. Savings, planned costs, and actual spending remain distinct concepts.
-- Expenses owns actual spending and can grow to include progress/remaining amounts overall and per category.
-- Before implementation, define the savings target, how saved amounts are maintained, the denominator for overall and
-  category spending indicators, behavior when a target is absent or exceeded, and navigation between linked records
-  on the separate pages. A category's share of total spending is different from spending against a category budget.
-- Preserve current planned-cost and expense item layouts. Group collapse, category ordering, aligned heading totals,
-  and remembered view settings are separate shared usability work tracked in the maintenance backlog.
-- Budget and Expenses use the same initial category order, then remember independently customized orders. A change
-  on one page does not change the other page's order.
-
-### Other improvements
-
-Add:
-
-- Per-day and per-traveller totals
-- Savings progress, separate from spending and planned costs
-- When savings progress is implemented, optionally add a relevant task to the trip's to-do checklist. It is not part of
-  the initial default checklist.
-- Refunds / negative expenses - refund as a category that makes negative expenses allowed
-- Planned-cost expected dates
-- Planned-cost grouping and sorting alternatives, including **Ungrouped** alongside category grouping. Record this
-  now and implement after the booking work; remember the traveller's selected grouping.
-- Collapsible budget groups
-- Receipt uploads, before OCR
-- Multiple currencies - should be carefully scoped.
-  - First: manually entered exchange rates saved per transaction;
-  - no recalculation of historical trips from a live rate.
-
-## Unified transaction model
-
-Revisit booking, planned-cost, expense, payment, and refund relationships as a separate feature after the first
-Bookings release has been used in real trips. The first version deliberately keeps one linear financial chain and one
-aggregate payment amount.
-
-Potential scope:
-
-- Multiple payments for one booking, such as a deposit and final balance.
-- Multiple expenses and refunds connected to one booking.
-- Explicit transaction dates and payment methods.
-- Partial refunds and non-refundable fees represented as transactions.
-- Allocating shared booking costs across several activities or travellers.
-- Clear planned-versus-actual history without silently rewriting transactions.
-- Migration of the first-version booking/planned-cost/expense links without duplicating spending.
-
----
-
-# Later Features
-
-## Travel intelligence
-
-Goal: help users decide and plan, while retaining user control.
-
-This stage introduces external data, so each integration must have
-
-- clear sourcing,
-- failure states,
-- caching, and
-- editable manual fallback.
-
-Build in this order:
-
-1. Destination search/validation
-2. Weather forecast - near travel dates, including a per-day itinerary forecast that refreshes as the forecast changes
-3. Opening hours, entry prices, closed days, and booking requirements
-4. Activity and event discovery, including category suggestions based on trip type
-5. Map-provider imports, booking and ticket-purchase links, and travel-time estimates
-6. Automatic exchange-rate lookup, with documented sources, rate dates, caching, and an editable saved rate
-7. Receipt OCR after receipt uploads are established in Stage 3
-8. Notifications - for booking, departure, budget, and checklist deadlines
-   - Provide an account-wide setting to turn off all reminders and notifications.
-
-Key rule:
-
-- imported data is a suggestion, not a source of truth.
-  - Opening hours change, events sell out, map data can be wrong, and forecasts are temporary.
-
-Weather-aware packing
-
-- e.g. packing page shows a message to pack rain stuff: umbrella, raincoat, etc.
-
----
-
-## Shared trips - after second stage, and preference profile
-
-Goal: allow a group to use the same trip without losing clarity over ownership and money.
-
-Prerequisites:
-
-- Password recovery by a single-use email link with an expiry
-- Transactional email provider and sending address for account recovery
-- Rate limiting for account-sensitive endpoints
-- Device and session management, including active-session listing, device revocation, and sign-out everywhere
-- Audit-friendly data changes, at least for shared financial records
-
-Build:
-
-- Invitations
-- Collaborator roles: owner, editor, viewer
-- Shared-trip indicators
-- Advanced section permissions
-- Shared itinerary and bookings
-- Personal versus shared packing lists
-- Expense payer and participant selection
-- Split calculations
-- Settlement summary: who owes whom
-
-Collaboration should come after Bookings and Budget links are well-defined. Otherwise the app will need to redesign
-shared ownership repeatedly.
-
----
-
-## Intelligent Assistant, automation, exports
-
-Goal: turn accumulated structured trip data into useful guidance.
-
-Potential capabilities:
-
-- Suggested activities that fit itinerary gaps and preferences
-- “Your museum visit conflicts with closing time” warnings
-- Suggested packing items from forecast and plans
-- Budget estimates based on destination, dates, travellers, and selected activities
-- Conversational planning assistant
-- Exportable itinerary, booking, and expense reports
-
-The assistant should propose changes with clear sources, assumptions, prices, and an explicit “Add to trip” action. It
-should never quietly alter an itinerary, bookings, or budget.
+# Product roadmap
+
+Last organised: **27 October 2026**.
+
+This is the single roadmap. It combines the earlier roadmap and the user's updated notes.
+It describes direction and order, not permission to implement every idea or a fixed delivery date.
+Detailed current decisions and audit evidence live in the
+[app review and improvements plan](requirements/app-review-and-improvements.md).
+Individual bugs and smaller ideas live in the [maintenance backlog](maintenance-backlog.md).
+
+Goal: plan and run a real trip without scattered notes, emails and spreadsheets.
+
+## Current order
+
+| Order | Work | Boundary |
+| --- | --- | --- |
+| 1 | Organise planning documents. | One roadmap; readable decisions/work order; preserve technical findings. |
+| 2 | Design the shared-data structure. | Core with optional activity/booking/budget/expense parts; independent architecture review before code. |
+| 3 | Build the agreed relationships. | Shared facts, finances, duplicate prevention, categories/activity roles, outside-trip dates and related links. |
+| 4 | Finish relevant frontend/backend cleanup. | Simplify repeated/patched code, styles and controls; remove only verified unused parts. |
+| 5 | Improve the existing interface. | Remove outer page cards first; retain item boxes initially; improve mobile navigation and existing lists. Keep Budget & Expenses together. |
+| 6 | Finish the review and checks. | Verify workflows and regressions; every audit finding fixed, replaced or explicitly deferred. |
+| After review | Choose the next major feature. | Budget/Expenses redesign is the first proposal, but the user can postpone it until after shared trips. Agree account/profile preparation and then the first shared release. |
+
+The review is not complete merely because tests pass, and it does not require every candidate
+refactoring or later feature to be implemented. Work in small reviewed chunks with manual commit
+checkpoints. Steps 3–5 can be arranged by dependency rather than as separate frontend/backend rewrites.
+
+**Shared trips stay after the current review/improvements.** Prepare for sharing in the data
+design now, but do not jump ahead to collaboration. The exact account/profile work before sharing
+and placement of other extensions below remain to be agreed.
+
+## What already works
+
+The initial manual, single-user app includes account-owned trips, dashboard/trip lifecycle,
+Details, activities, planned and actual costs, Packing, To-do and Bookings.
+
+### To-do checklist — first version complete
+
+See [To-do requirements](requirements/to-do-checklist.md).
+The list follows Packing's grouped/ungrouped, editable, manually ordered, default-or-empty
+interaction model with deletion Undo. It uses Done / To do and optional due dates; first release
+has no reminders.
+
+The default checklist covers:
+- Travel: book outbound/return travel, check check-in requirements, arrange transfers.
+- Accommodation: book, pay, save the address and check-in details.
+- Documents and money: ID/passport, visas, insurance, bank/payment preparation.
+- Bookings and activities: reserve priorities and buy tickets.
+- Health: check medication.
+- Connectivity: roaming/eSIM and offline maps.
+- Before leaving: share plans/contact details, check weather and finish packing.
+
+Later ideas: distinguish before/during-trip tasks more clearly where needed; custom categories;
+completion summaries per category and on the dashboard; optional reservation links that can mark
+a task complete. A savings-target task belongs with the later savings feature, not the default list.
+Any future reminder system must have an account-wide off switch.
+
+### Bookings — first version complete
+
+See [Bookings requirements](requirements/bookings.md) for the implemented behavior.
+The page sits between Itinerary and Budget & expenses today. It stores reservation name/category,
+optional Requested/Confirmed/Cancelled status, provider, reference, dates/times, locations, link,
+notes, total cost, paid and refunded values. Financial status is derived.
+
+The original version uses separate records and explicit related-change reviews, one expense per
+booking, optional return journeys, and no booking/planned-cost link. **That describes the delivered
+version, not the next design.** The current review replaces those rules where explicitly agreed.
+
+Current-review decisions include the small shared core, directly related activities/budget/expenses,
+one stored copy of shared facts, and aggregate payment/refund values. The agreed categories are
+Accommodation, Transport, Rental, Activities, Dining, Passes and Other. Relationships include event,
+outbound/return, check-in/checkout, pickup/return and independently scheduled pass visits.
+Full rules are owned by the review plan, not copied here.
+
+Future reservation details: PDF/ticket uploads; optional link/PDF-assisted prefilling; guest or
+attendee/party counts; possible externally sourced status updates. Do not create an entity/form per
+category just for its name; the technical design should share structure where behavior matches.
+
+## First proposed major feature after review: Budget and Expenses
+
+This is **not a simple tab split**. Hold a brainstorming session, then write requirements and a
+technical plan for two useful pages. The user can move this feature after shared trips.
+
+Possible content:
+- **Budget:** planned costs, savings/funding goal, amount saved, remaining target, progress and
+  useful statistics.
+- **Expenses:** actual spending, overall/category summaries, progress or remaining amounts and
+  useful statistics.
+- Per-day and per-traveller totals where meaningful.
+- Clear navigation between related entries on the separate pages.
+
+Savings, planned costs and actual spending are different. Before implementation, decide what the
+goal is, how savings are maintained, what each progress indicator compares against, and what
+happens with no target or an exceeded target. Category share of spending is not the same as
+spending against a category budget. The user does not want original-estimate history.
+
+Grouping, remembered views, related-entry details, date sorting, category collapse/order and aligned
+heading totals are existing-list improvements in the current review. Budget and Expenses begin
+with the same category order, then remember independent changes. Planned budget needs Ungrouped.
+
+Later financial ideas, not automatically part of this feature:
+- Expected dates for planned costs.
+- Receipt uploads before OCR.
+- Multiple currencies: first consider saved manual rates per transaction; never rewrite historical
+  trip costs from a live rate.
+- Standalone refund/negative-expense handling. An earlier idea was a Refund category; its interaction
+  with derived Paid − Refunded needs design, not a second incompatible refund system.
+- Optional savings-target task in To-do.
+
+## Account and profile preparation
+
+Decide the minimum useful scope before shared trips; a large preference system is not automatically
+a prerequisite.
+
+### Recovery and account details
+
+- Password reset using a single-use, expiring email link.
+- Choose a transactional email provider and sending address.
+- Decide whether/how email addresses are verified and what existing accounts must do.
+  Keep verification friction low.
+- Changing username, email and password; decide which are required first.
+- Profile pictures as a possible addition.
+
+Questions from the user's notes to explain before committing to scope:
+- **Rate limiting:** limits repeated sensitive requests; discuss the smallest appropriate protection
+  for recovery/invitations rather than treating it as a large feature or silently omitting safeguards.
+- **Session/device management:** listing sessions, revoking a device and signing out everywhere.
+  Explain the benefit and decide whether it belongs in the first release or later.
+- **Change history:** recording who changed shared information, especially money. Define the minimum
+  required; a full user-facing audit feature is not assumed.
+
+### Profile/settings ideas
+
+- Number of travellers belongs to the trip, even if edited through related settings.
+- Optional interests: history, food, nightlife, hiking, museums, beach, architecture.
+- Pace: relaxed, balanced or busy.
+- Dietary/accessibility needs, accommodation preferences and budget style.
+- Preferences should not obstruct manual planning; later they can inform suggestions.
+- Reusable Packing/To-do templates can later be managed here.
+
+## Initial shared trips
+
+Goal: let friends plan the same trip while keeping personal entries private.
+This follows the review and agreed account preparation. Budget/Expenses redesign need not precede it.
+
+Current direction:
+- Shared trip details and activity list.
+- Select individual bookings to share, for example a shared hotel but separate personal flights.
+- Keep personal pages/data available to every member: sharing a trip does not merge everyone's budget,
+  spending or checklists.
+- Plan for item-level selection, such as checkboxes, and future whole-page sharing choices.
+- Make shared/private trips and entries distinguishable; avatars/initials are a design idea.
+- Invitations. Initial direction is equal add/edit/delete rights over shared content; advanced roles
+  come later. Equal shared rights do not permit reading someone else's private entries.
+- A shared schedule may update a private linked booking; its confirmation/payment details stay
+  private. Permissions must be enforced by the API, not inferred from table separation.
+
+Still to decide for the initial release:
+- Whether selectable shared expenses/planned costs are included immediately, or finance pages remain
+  personal first. Architecture should allow both; spending is recording only, without splitting.
+- Selection/default/bulk actions, invitation/account rules, ownership when members leave, deletion,
+  concurrent editing and permission to update shared trip dates.
+- Whether a confirmation should explain edits affecting shared facts.
+
+Later collaboration:
+- Owner/editor/viewer roles and advanced section permissions.
+- Personal versus shared Packing and To-do.
+- Expense payer/participants, cost allocation, split calculations and settlement summaries.
+- More detailed change history and device management if not needed initially.
+
+Do not bundle these later ideas into the first release by treating the old roadmap's full
+collaboration list as mandatory.
+
+## Other planned features and extensions
+
+These ideas are retained, but their exact position around the first post-review features is
+not fixed. In particular, they are not all prerequisites for shared trips.
+
+The earlier updated draft placed Activity planning's first extension and Trip overview before
+account recovery and shared trips. Keep that tentative priority for the post-review planning
+choice; it has not been rejected, but neither extension is an agreed prerequisite for sharing.
+
+### Activity planning — first extension
+
+- Overlap detection and arrival/departure/opening-hours hints.
+- Arrival/departure times in daily headings where available.
+- Manual ordering for untimed activities.
+- Drag between dates in list view, keeping time; reuse appropriate checklist mechanisms where possible.
+- Later calendar drag may move within or between days.
+- A trip-date change choice between keeping activity dates and deliberately shifting the plan.
+  Keep outside-trip dates with the agreed warning; the old proposal to make them unscheduled is
+  superseded. Moving the whole plan remains a separate behavior to define.
+- The old note rejecting opening-hours hints without a selected start time remains an excluded idea
+  unless reconsidered.
+- Direct activity-to-finance links are already in the current review, not duplicated as a later feature.
+
+### Trip overview / Details
+
+Decide whether to rename Details to Overview or add an overview section, possibly a second
+desktop column. Show useful information at a glance rather than reproducing every page.
+
+Candidates:
+- Links to activities, bookings and other pages.
+- Collapsible outstanding work, such as unfinished tasks and unpaid bookings.
+- To-do/Packing progress, booking/reservation/payment summaries, planned/actual/remaining costs.
+- Near-trip countdown and current day out of the trip length, possibly in a header.
+- Later deadline warnings and externally sourced booking-status updates.
+- High-priority unscheduled activities were questioned in earlier notes; inclusion remains open.
+
+### Activity planning — second extension
+
+- Calendar/day timeline alongside the list.
+- Compact/expanded calendar layouts and visible free time.
+- Manual untimed ordering, shared with the first extension rather than implemented twice.
+- Later route optimisation, after location structure, travel modes, opening hours and map data.
+
+### Past-trip history
+
+- Separate past trips from active planning.
+- Planned versus actual spending, categories, activity/booking counts, notes and lessons.
+- Checklist completion can be optional rather than central.
+- Individual-trip summaries and cross-trip statistics, such as average spending.
+
+### Trip structure
+
+- Multiple destinations, by country and city/area, each with dates and notes.
+- Refine trip types based on real use.
+- Settle this model before destination search, maps, weather and multi-destination dashboard cards.
+
+### Personalisation and dashboard
+
+- Custom activity categories and relevant category-specific fields; walks/beaches/hikes need not ask
+  for opening hours.
+- Dashboard search/filtering/sorting when lifecycle ordering is insufficient.
+- Clear multi-destination cards.
+
+### Packing and To-do templates
+
+- User-managed reusable templates: add, edit, delete and later share.
+- Keep the built-in default template available and non-deletable.
+- Apply a template or selected items from templates; allow adding them after Start empty.
+- Prevent duplicates by normalised item name.
+- Later suggestions based on trip type, duration, laundry access and activities.
+- Custom categories and free-text names when Other is selected.
+- Live row movement is optional/deferred, not required for review completion; reopen only on request.
+
+### Feedback
+
+- A feedback action in the account/profile menu.
+- Signed-in users submit free text without leaving the app.
+- Choose private delivery/review: owner email or another reliable store.
+- Decide abuse controls, privacy notice and whether account/trip/browser/diagnostic context is included.
+
+### More detailed payments — later
+
+The current shared-data work is not a transaction ledger. Later ideas include:
+- Several payments for one booking, such as deposit and balance.
+- Multiple expense/refund transactions, payment dates and methods.
+- Partial refunds and non-refundable fees as transactions.
+- Allocating costs across activities/travellers.
+- Transaction history and migration without duplicate spending.
+
+These are separate from the agreed aggregate Paid/Refunded model and do not require keeping an
+original planned-cost estimate. Ordinary expenses already have their own payment date, independent
+of an activity's or booking's schedule; those dates are not deferred to this later ledger feature.
+
+### App-wide Undo/Redo — later
+
+Plan Ctrl+Z and Ctrl+Y for supported app actions, introduced through shared action handling.
+Preserve native text undo in inputs; related multi-record changes must undo together and redo safely.
+This is not part of the current review implementation.
+
+## Later: external data and assistance
+
+Introduce external data with clear sources, failure handling, caching and editable manual fallback.
+Imported information is a suggestion: hours, availability, prices, maps and forecasts can change.
+
+Proposed order:
+1. Destination search/validation, after trip structure is settled.
+2. Weather near travel dates, including refreshing daily activity forecasts.
+3. Opening hours, entry prices, closed days and booking requirements.
+4. Activity/event discovery and category suggestions based on trip type.
+5. Map imports, booking/ticket links and travel-time estimates.
+6. Exchange-rate lookup with source/date, caching and an editable saved rate.
+7. Receipt OCR after receipt uploads.
+8. Booking, departure, budget and checklist notifications with an account-wide off switch.
+
+Weather-aware Packing could suggest umbrellas/raincoats when appropriate.
+
+Later assistant/automation/export ideas:
+- Activities fitting free time and personal preferences.
+- Opening-hours/conflict warnings and forecast-based packing suggestions.
+- Budget estimates using destination, dates, travellers and activities.
+- Conversational planning.
+- Exportable activity, booking and expense reports.
+
+Suggestions must show sources/assumptions/prices where relevant and require an explicit Add to trip
+action. Imported/AI suggestions must never quietly change plans, bookings or finances.
