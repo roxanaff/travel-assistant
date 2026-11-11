@@ -1,13 +1,15 @@
 # App review and improvements
 
 Last planning update: **27 October 2026**.
-Branch for approved work: `feature/app-review-improvements`.
+Earlier review work: `feature/app-review-improvements`. Major changes now get their own branches
+from dev. Current technical planning: `feature/shared-item-data`, with the
+[shared-item technical plan](shared-item-data.md). Keep implementation chunks within their major-change branch.
 
 This is the detailed plan for finishing the review that started after Bookings.
 The [roadmap](../roadmap.md) gives the bigger product order. The
 [maintenance backlog](../maintenance-backlog.md) holds individual issues and later ideas.
 
-**Start here:** the next sections explain our decisions and work order in plain language.
+**Start here:** the next sections explain the agreed decisions and work order in plain language.
 The [technical reference](#technical-reference) keeps the original findings, code links,
 test results and limits. Its F/B/C identifiers are unchanged.
 
@@ -24,7 +26,7 @@ The existing app keeps its current behavior until each replacement is implemente
    duplicate prevention, booking categories and activity roles, and outside-trip dates.
 4. **Finish useful code cleanup.** Review frontend and backend findings, remove verified unused
    code, simplify repeated or patched workflows, and share equivalent styles and controls.
-   Reassess findings about the old review system instead of improving code we will replace.
+   Reassess findings about the old review system instead of improving code scheduled for replacement.
 5. **Improve the existing interface.** Remove outer page cards first; keep item boxes initially.
    Improve mobile navigation and existing-list usability. Keep Budget & Expenses together here.
 6. **Finish the review and checks.** Verify affected workflows, database behavior, mobile and
@@ -34,8 +36,8 @@ Steps 3–5 are work groups, not single commits or a rule that all backend work 
 The technical plan will arrange their dependencies into small, reviewable chunks.
 
 **After this review:** the first proposed major feature is the separate Budget and Expenses
-redesign, with its own brainstorming and useful content for both pages. The user may postpone
-it until after shared trips. It is not a prerequisite for sharing. Account/profile preparation
+redesign, with its own brainstorming and useful content for both pages. It may be postponed
+until after shared trips. It is not a prerequisite for sharing. Account/profile preparation
 and a small first shared-trip release follow the roadmap; their exact scope still needs discussion.
 Shared trips do not jump ahead of the current review/improvements.
 
@@ -47,8 +49,8 @@ tracing earlier discussions; a queue number does not mean code is approved.
 | Earlier ID | What it means now | Before implementation |
 | --- | --- | --- |
 | Q01 | Touch dragging/cancellation: done, accepted and committed. | No new work. |
-| Q02 | Live row movement: deferred and optional. | Reopen only if the user asks; not needed to finish this review. |
-| Q03 | Shared-data behavior agreed below; technical design is next after this document check. | Define schema/API, invariants, migration/reset scope and slices; independent architecture review. |
+| Q02 | Live row movement: deferred and optional. | Reopen only after an explicit implementation request; not needed to finish this review. |
+| Q03 | Shared-data decisions and implementation order are recorded in the [technical plan](shared-item-data.md). | Scope and review the first implementation chunk before coding. |
 | Q04 | UI decisions partly agreed; remaining interaction choices need examples. | Confirm each change, mobile/keyboard behavior and deletion wording; no wholesale UI rewrite. |
 | Q05 | Remove one proven-unused group at a time (C01). | Check references, compatibility, assets and tests; approve concrete targets. |
 | Q06a | Give shared text roles one style owner (F02/F04). | Agree visual hierarchy; preserve palette experiments and verify consumers. |
@@ -73,10 +75,14 @@ fixed, replaced by the new design, or explicitly deferred—not automatically im
 Use a **small shared core with optional parts**, rather than one large record containing every
 possible field or copied values that need repeated Update/Keep reviews.
 
-The core identifies the underlying item and its trip; a common name is the current direction.
+The core identifies the underlying item and its trip. Related entries keep separate titles,
+prefilled when created; they do not share an editable common name.
+Agreed code names are `ItemCore`, `ItemSchedule`, `ItemCost`, `ItemPaymentTotals`, `Activity`,
+`Booking`, `PlannedCost` and `Expense`. The core is limited to this related-data group; Packing and
+To-do items remain directly trip-owned. Code naming does not settle the visible replacement for Itinerary.
 Activity, booking, planned-cost and expense details remain separate. Shared schedules and financial
-facts have one owner and are stored once. Exact tables, keys, constraints and API shapes are not
-designed yet; these responsibilities do not require one table for every small group of fields.
+facts have one owner and are stored once. The [technical plan](shared-item-data.md) describes
+the data model and the implementation details to verify in each chunk.
 
 Payment date belongs to the expense and stays independent of the event/journey date; it does not
 follow schedule edits. Booking, activity and budget/expense
@@ -162,9 +168,21 @@ Unlinking separates identities and copies the required current facts into indepe
 records. For example, two references to one schedule become references to two schedules with
 initially equal dates. Do not erase dates because individual parts have no date columns.
 
-The user says local booking links can be reset and preserving that particular data is low priority.
+Preserving local booking links is low priority; resetting them is an acceptable migration option.
 This is not permission to erase deployed/account data or unrelated planned-cost/expense links.
 Agree the concrete reset/migration scope before a destructive operation.
+
+### Marking a booking cancelled
+
+Use one dialog titled **Mark booking as cancelled?**, with **Cancel** and **Mark as cancelled**
+buttons. Show each existing related activity and planned cost by name with **Keep / Delete** radio
+choices, defaulted to Keep. Users can choose activities individually. Cancel/Escape changes nothing.
+
+Mark as cancelled applies the booking status and selected deletions together. The booking stays as
+a cancelled record; kept related entries show that status. Recorded spending and Paid/Refunded stay
+unchanged. Refunds can be edited separately. Deleting an activity or plan follows the retention
+rules above; it never deletes its expense or other siblings implicitly. This replaces the earlier
+unclear proposal to keep all entries without offering cancellation choices.
 
 ### Allow dates outside the trip
 
@@ -200,12 +218,17 @@ Separate tables alone do not enforce this; APIs must check access and avoid leak
 names, counts or values.
 
 Plan for individual activity/booking/planned-cost/expense visibility, plus eventual page-wide
-choices. The user's intended activity list is shared; selected bookings and potentially expenses
+choices. The activity list is intended to be shared; selected bookings and potentially expenses
 can be shared, while personal entries stay private. Initial financial-sharing scope is still open.
 
 It is accepted that editing an accessible shared fact can update a private booking using that fact.
 A confirmation explaining the effects may be considered when sharing is implemented.
 This does not grant permission to edit private-only fields.
+
+For a shared hotel/reservation, keep one aggregate Paid/Refunded total: typically one person pays
+and friends settle privately. Do not introduce per-member Your paid/Your refunded values now.
+Personal reimbursements, allocations and split payments are later features. Keep cost and payment
+ownership separable in the technical design, and preserve personal budget/expense ownership.
 
 Default sharing choices, bulk selection, invitation/role policy, record ownership and permission to
 change shared trip dates need a dedicated plan. Proposed defaults were examples, not agreements.
@@ -230,10 +253,10 @@ entries, not add another nested financial card. Amounts, labels and actions need
 ## Still to work out before coding
 
 - Exact core/schedule/financial records and uniqueness constraints, including event versus journey/validity.
-- Ownership of names, categories, notes, event end/duration and prices on reservation parts.
+- Exact handling of categories, notes, event end/duration and prices on reservation parts.
 - Concrete examples for standalone activity/expense, round trip, hotel, Rental, pass and multi-day tour.
-- Cancellation's effect on activities and budget entries. Deletion and unlinking are decided above,
-  but cancellation must not erase money already paid/refunded.
+- Cancellation uses the agreed Keep/Delete dialog above; integrate it with edit-form status changes
+  and atomic writes. It must not erase money already paid/refunded.
 - Linking incompatible relationship types, merging existing identities and concurrent/stale edits.
 - Compatibility/reset scope, constraints, API responses, privacy boundaries and atomic writes.
 - Which old review/notice paths disappear, which remain, and how they transition safely.
@@ -242,17 +265,17 @@ entries, not add another nested financial card. Amounts, labels and actions need
 
 After the design, specify observable acceptance examples and small code/test/documentation chunks.
 Independent architecture review precedes substantial implementation. Each completed chunk gets
-independent review, verification, a manual check handoff and the user's commit pause.
+independent review, verification, a manual check handoff and the manual commit checkpoint.
 
 ## Done
 
 | Work | Completion |
 | --- | --- |
-| F14 — Unsaved forms | Shared controlled-state guard, regression checks and independent review; user accepted and committed. |
+| F14 — Unsaved forms | Shared controlled-state guard, regression checks and independent review; acceptance confirmed and changes committed. |
 | F01 — Frontend test baseline | Obsolete TripSetup tests migrated to TripDetails; full suite restored and committed. |
-| B09 — Dependency/runtime servicing | Scoped package updates and local .NET update checked/reviewed; user restarted and committed. Deployment unchanged. |
-| F10 — Stale loading | Current-request protection, regression checks and review; user accepted and committed. |
-| Q01/F15 — Touch drag cancellation | Shared fix and regression checks; user accepted and committed. |
+| B09 — Dependency/runtime servicing | Scoped package updates and local .NET update checked/reviewed; restart confirmed and changes committed. Deployment unchanged. |
+| F10 — Stale loading | Current-request protection, regression checks and review; acceptance confirmed and changes committed. |
+| Q01/F15 — Touch drag cancellation | Shared fix and regression checks; acceptance confirmed and changes committed. |
 | D08 — Working process | Skills and repository rules adopted; small planning checks or full architecture review according to risk. |
 
 These are historical completion results, not claims of a new full test/security run today.
@@ -260,7 +283,7 @@ Detailed counts, source evidence and test limits remain below.
 
 ## Later or optional
 
-- Q02 live row movement: deferred on 25 October 2026; reopen only at the user's request.
+- Q02 live row movement: deferred on 25 October 2026; reopen only by explicit decision.
 - App-wide **Ctrl+Z / Ctrl+Y** Undo/Redo: requested for future planning, not this round.
   Keep native text undo inside inputs; cross-record actions must undo together and redo safely.
 - Budget/Expenses redesign, savings goals, progress and statistics: first proposed major feature
@@ -334,7 +357,7 @@ it without duplication. No application code, API, schema or test-exclusion chang
 unit suite, lint and production build, then independent chunk review. Browser/backend checks are not required for this
 test-only migration. Verification: all 95 tests in 14 frontend test files pass with no suite exclusions added;
 lint, production build and diff checks pass. No application behavior changed. Independent review found no actionable
-issues. The chunk is ready for the user's commit checkpoint.
+issues. The chunk is ready for the manual commit checkpoint.
 
 Backend dependency advisories are a separate maintenance task; the follow-up assessment is recorded under B09.
 
@@ -350,7 +373,7 @@ and sizes. Booking summaries use a feature-specific color; activity metadata use
 text was darkened already, but that did not centralize its semantic meaning.
 
 Next: agree summary, detail, muted, label and action text roles, then bind equivalent consumers to shared tokens/styles.
-Preserve the user's current palette experimentation. Do not darken every grey element globally.
+Preserve the current palette experimentation. Do not darken every grey element globally.
 Checks: one change per role affects equivalent booking/activity/budget text; links, hints and placeholders remain distinct.
 
 ### F03 — Form-control appearance is repeated with slightly different values
@@ -446,7 +469,7 @@ global cache or state library without evidence that it simplifies the ownership 
 
 ### F10 — Stale requests and failed-load recovery; protected checklist key transitions
 
-**Priority:** P2. **Status:** Focused fix verified, independently reviewed and accepted by the user. Checklist case remains protected by routing.
+**Priority:** P2. **Status:** Focused fix verified, independently reviewed and accepted. Checklist case remains protected by routing.
 
 Original source finding: [`Workspace.tsx`](../../frontend/src/pages/Workspace.tsx) loaded by route ID without an
 active-request guard or resetting the previous error/trip at load start. Expense loading also assigned asynchronous
@@ -487,7 +510,7 @@ permanent regression tests asserting the correct results for the reproduced case
 trip setter and existing navigation/form guards. Leave the currently protected checklist hook and broader async
 refactoring out of this fix unless a real consumer needs same-mounted key changes.
 
-No application behavior changed during diagnosis. The user subsequently approved this focused implementation.
+No application behavior changed during diagnosis. This focused implementation was subsequently approved.
 
 Lightweight technical plan: use trip-keyed private content components, following the existing checklist route pattern,
 so a trip change renders fresh loading state rather than old trip data/forms/errors. Preserve the existing shared
@@ -507,7 +530,7 @@ Lint and production build passed. Two isolated Chromium tests passed: full manua
 Add/Edit form protection across five areas. Controlled request ordering is verified by component tests, not by
 network-timed browser tests. No backend code/schema changes or deployment; backend tests were not rerun. Independent
 review requested multiline test formatting, now corrected; final review found no actionable issues. Affected tests,
-lint and build passed again after those corrections. The user accepted and committed the fix. The checklist hook and touch/drag
+lint and build passed again after those corrections. Acceptance was confirmed and the fix was committed. The checklist hook and touch/drag
 investigation stay outside this chunk.
 
 ### F11 — One destructive booking path still uses a browser-default confirmation
@@ -542,7 +565,7 @@ Confirm whether the current behavior is accepted and update the requirement, or 
 
 ### F14 — Dirty-form snapshot misses the controls it is protecting
 
-**Priority:** P1. **Status:** Verified and accepted by the user. **Type:** Confirmed loss of unsaved edits.
+**Priority:** P1. **Status:** Verified and accepted. **Type:** Confirmed loss of unsaved edits.
 
 [`useFormKeyboardInteraction`](../../frontend/src/utils/useFormKeyboardInteraction.ts) determines whether Escape/cancel
 needs confirmation by comparing `new FormData(form)` snapshots. FormData includes named controls, but the inputs/selects
@@ -577,7 +600,7 @@ not passing regression tests for correct behavior; temporary harness/config file
 
 #### Approved fix
 
-The user approved the focused shared fix and regression coverage after the diagnosis. The shared keyboard hook now
+The focused shared fix and regression coverage were approved after diagnosis. The shared keyboard hook now
 compares JSON-serializable controlled form state, not FormData. This includes unnamed inputs and values temporarily
 hidden under More details. Callers supply a form identity: null while closed, Add, or the edited record ID. Each new
 identity captures its initial values synchronously, before the deferred focus callback. Ordinary edits never replace
@@ -600,7 +623,7 @@ Independent review of the complete chunk, including documentation, reported no a
 
 ### F15 — Checklist touch dragging cancels, and cancelled gestures can save
 
-**Priority:** P1 for touch/cancellation correctness; live-row feedback is optional. **Status:** Q01 verified, accepted by the user and committed. Q02 deferred at the user's request.
+**Priority:** P1 for touch/cancellation correctness; live-row feedback is optional. **Status:** Q01 verified, accepted and committed. Q02 deferred by explicit decision.
 
 Six temporary Chromium observation cases used fresh accounts/trips with 20 rows each and an isolated in-memory API.
 Desktop viewport was 1280 x 844; touch emulation used 390 x 844 with CDP touch input (not synthetic DOM pointer events).
@@ -635,11 +658,11 @@ implementations. Keep cancellation correctness distinct from optional preview/la
 
 Limits: Chromium touch emulation is not physical Android/iOS verification. Group boundaries, packed/completed moves,
 edge auto-scroll, pen/multi-touch, cancellation in To-do, save failures and keyboard reordering were not exercised.
-The running user Debug API was left untouched after an executable-lock failure; probes used the previously verified
+The running development Debug API was left untouched after an executable-lock failure; probes used the previously verified
 Release build with Testing/in-memory configuration. PLAYWRIGHT_API_PORT=5277 and PLAYWRIGHT_FRONTEND_PORT=5187 were
 explicitly set for the temporary config and its inherited API/frontend origins. No application source or
-user/production data changed. Independent source/evidence review supports the diagnosis and shared fix areas. The
-temporary probe/config files were removed after review. The user subsequently approved Q01, as recorded below.
+personal/production data changed. Independent source/evidence review supports the diagnosis and shared fix areas. The
+temporary probe/config files were removed after review. Q01 was subsequently approved, as recorded below.
 
 Approved first chunk (Q01 below): change only the shared handle gesture ownership and cancel/finish distinction.
 The dedicated drag handle becomes drag-only (`touch-action: none` from pointerdown); ordinary page scrolling remains
@@ -661,13 +684,13 @@ Q01 implementation and verification:
 - Reused the existing browser-fetch test helper by extracting it unchanged from booking tests. All 11 booking browser
   cases passed after this test-only extraction; the four new drag cases also passed (15 browser tests total).
 - All 109 frontend unit tests in 16 files, lint, production build and diff checks passed. The temporary Release-API
-  verification config used ports 5277/5187 and isolated in-memory data, then was removed. The user's Debug API and
+  verification config used ports 5277/5187 and isolated in-memory data, then was removed. The existing Debug API and
   personal/deployed data were untouched. Backend/schema/deployment code did not change; backend tests were not rerun.
 - Independent review of the full chunk, including documentation, found no actionable issues. Try the handle on a
   physical phone: hold briefly, drag straight up/down and release, then swipe on row content to scroll. Automated
-  touch emulation does not establish physical Android/iOS verification. The user subsequently confirmed the fix works
-  and committed it. On 25 October 2026, the user deferred Q02 as low-value and optional; it is not required to finish
-  this review and must not be picked up automatically. Revisit only if the user chooses to implement it later.
+  touch emulation does not establish physical Android/iOS verification. The fix was subsequently confirmed to work
+  and committed. On 25 October 2026, Q02 was deferred as low-value and optional; it is not required to finish
+  this review and must not be picked up automatically. Revisit only after an explicit implementation request.
 
 ## Backend findings
 
@@ -786,7 +809,7 @@ production databases, and do not assume all provider differences should disappea
 
 ### B09 — Patch vulnerable cryptography dependencies and verify runtime servicing
 
-**Priority:** P1. **Status:** Verified and independently reviewed; user confirmed restart and committed the chunk.
+**Priority:** P1. **Status:** Verified and independently reviewed; restart was confirmed and the chunk committed.
 
 Read-only reassessment on 24 October 2026: the test-project vulnerability listing still reports
 `System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml` at 10.0.11 (two and three advisories
@@ -810,7 +833,7 @@ changes by default. Restore found that ASP.NET Core OpenApi 10.0.13 requires Mic
 so raise the existing direct reference from 2.7.5 to the minimum 2.12.2 as a required compatibility adjustment,
 not a major-version upgrade. Verify the two cryptography versions and advisories, run Release backend tests and build, and
 check authentication/data-protection behavior through existing coverage. Report unavailable vulnerability data
-explicitly. The user also authorized a local .NET servicing update; inspect the available stable .NET 10 SDK/runtime
+explicitly. A local .NET servicing update was also authorized; inspect the available stable .NET 10 SDK/runtime
 and verify versions after installation. Container rebuilding/deployment is not authorized. No package references or
 runtime installations changed during the original assessment; the approved implementation follows it.
 
@@ -820,8 +843,8 @@ Implementation and verification:
   Npgsql and test-runner references are unchanged. No application logic, schema or deployment files changed.
 - Installed Microsoft .NET SDK 10.0.402 using the Microsoft WinGet package; `dotnet --version` selects it.
   .NET, ASP.NET Core and Windows Desktop runtimes 10.0.13 are installed. Old SDK/runtime versions remain installed;
-  they were not separately uninstalled. The installer requested a Windows restart; the user subsequently confirmed
-  restarting and committing the chunk. A follow-up check still selects SDK 10.0.402 and lists runtimes 10.0.13.
+  they were not separately uninstalled. The installer requested a Windows restart; the restart and commit were
+  subsequently confirmed. A follow-up check still selects SDK 10.0.402 and lists runtimes 10.0.13.
 - Fresh no-cache restore succeeded. Dependency tracing confirms Xml and Pkcs resolve to 10.0.13. Both project
   vulnerability listings (including transitive dependencies) reported no vulnerable packages from NuGet, without
   NU1900 failures in this verification run. This is a point-in-time package audit, not a complete security assessment.
@@ -831,7 +854,7 @@ Implementation and verification:
   across an upgrade or PostgreSQL-specific behavior.
 - The existing Chromium full-trip smoke test passed, including registration, authenticated operations, sign-out and
   sign-in, using an isolated in-memory API. Production/local trip data and deployment were not touched.
-- Independent review found no actionable issues. The user confirmed the requested Windows restart afterward.
+- Independent review found no actionable issues. Completion of the requested Windows restart was confirmed afterward.
 
 ## Unused code, obsolete paths and accumulated patches
 
@@ -847,7 +870,7 @@ Implementation and verification:
   labels, not that property. Check contract consumers before removing this cross-stack leftover.
 - Starter [`react.svg`](../../frontend/src/assets/react.svg) and [`vite.svg`](../../frontend/src/assets/vite.svg) have no
   app/index references found in the source search. The actual icon in `index.html` is `/favicon.svg`; retain that icon
-  and assess the user-provided hero image separately rather than treating it as disposable starter material. An unused
+  and assess the custom hero image separately rather than treating it as disposable starter material. An unused
   starter asset is not evidence that an arbitrary image can be deleted.
 - F01's obsolete TripSetup test was migrated to current TripDetails coverage, preserving its valuable expectations.
 
@@ -912,7 +935,7 @@ Prefer fewer concepts, clearer state and fewer edit locations over fewer charact
 
 ## Adopted architecture-first change process
 
-The user approved the proportional workflow and instruction cleanup. The authoritative repository-wide rules are in
+The proportional workflow and instruction cleanup were approved. The authoritative repository-wide rules are in
 [`AGENTS.md`](../../AGENTS.md). Task procedures are maintained in the project skills rather than duplicated here:
 
 - [Product planning](../../.agents/skills/plan-feature/SKILL.md).
@@ -939,7 +962,7 @@ older one-time-note or unscheduling proposals are not requirements for the redes
 | Planned cost to expense navigation                     | PlannedBudget still renders Added and Undo, not a named expense link.                                                                 | Still open, separate from bookings.                                                                                       |
 | Expense related-record disclosure                      | Expense data carries both IDs and deletion handles both, but saved rows do not expose the proposed backlinks disclosure.              | Still open; design both-source display without losing either relationship.                                                |
 | Group collapse/custom category order/heading totals    | GroupHeading is shared; ordering/collapse controls and alignment decisions remain.                                                    | Still open: D07.                                                                                                          |
-| Packing drag/touch issues | Q01 shared touch/cancellation fix is verified, user-accepted and committed. | Q02 live row feedback is deferred/optional; reopen only at the user's request. |
+| Packing drag/touch issues | Q01 shared touch/cancellation fix is verified, accepted and committed. | Q02 live row feedback is deferred/optional; reopen only by explicit decision. |
 | Global confirmations                                   | Shared accessible dialog already exists; booking removal still has one native path.                                                   | Partially implemented: F11.                                                                                               |
 | Activity reminder after trip-date changes              | Activity linked-record reviews exist, but Itinerary does not render the general trip-date-change reminder described in the backlog.   | Still open; distinguish it from a linked booking's schedule warning and agree persistence/dismissal behavior.             |
 | Darker text                                            | Booking summary and expanded detail colors were changed; other metadata roles remain separate.                                        | Partially implemented: F02/F04, not a request to undo the current palette.                                                |
@@ -950,12 +973,12 @@ older one-time-note or unscheduling proposals are not requirements for the redes
 - **Agreed process:** D08 adopted; workflow rules/procedures linked above. Product redesigns still need agreement.
 - **F01:** test-only migration committed; full frontend unit suite, lint and production build passed, with no
   actionable independent review findings.
-- **B09:** package patches and local .NET servicing verified/reviewed; user restarted and committed. Deployment unchanged.
-- **F10:** loader fixes and permanent regressions verified/reviewed; user accepted and committed.
-- **Q01/F15:** touch/cancellation fix verified and independently reviewed; user accepted and committed.
-- **Q02:** deferred/optional at the user's request; do not automatically reopen live-row feedback.
+- **B09:** package patches and local .NET servicing verified/reviewed; restart confirmed and changes committed. Deployment unchanged.
+- **F10:** loader fixes and permanent regressions verified/reviewed; acceptance confirmed and changes committed.
+- **Q01/F15:** touch/cancellation fix verified and independently reviewed; acceptance confirmed and changes committed.
+- **Q02:** deferred/optional by explicit decision; do not automatically reopen live-row feedback.
 - **Approved follow-up implementation:** F14 shared unsaved-form protection and focused regression coverage.
-  Verification and independent review passed; user accepted the fix. No broader new
+  Verification and independent review passed; acceptance of the fix was confirmed. No broader new
   runtime/security/performance verification is implied.
   The original temporary diagnostic files were removed; permanent regression tests accompany the fix.
 - **27 October planning update:** Q03 behavior and the overall order are agreed above. Exact architecture,

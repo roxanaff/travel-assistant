@@ -70,6 +70,10 @@ place; reference it elsewhere instead of copying it.
   backend path. Reuse when behavior fits; otherwise preserve equivalent appearance
   and interaction. Do not introduce abstractions solely to reduce line counts.
 - Use readable multi-line code, consistent indentation and sensible line breaks.
+- Write product and technical documentation impersonally. State requirements, decisions,
+  rationale and verification results without referring to authors or decision-makers as
+  I, we or the user. Passive wording such as "It was decided" is acceptable. References
+  to app users remain appropriate when describing product behavior or permissions.
 - Keep behavior, technical decisions and concise completion status in
   `documentation/requirements/<feature>.md` (or the existing audit for maintenance).
   Preserve existing content; separate agreements from open questions/deferred ideas.

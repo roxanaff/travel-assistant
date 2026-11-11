@@ -29,6 +29,8 @@ features move to their own completed feature documentation when appropriate.
 
 - [To-do checklist](requirements/to-do-checklist.md)
 - [Bookings](requirements/bookings.md)
+- [Shared item data: technical plan](requirements/shared-item-data.md) — reviewed plan for the current
+  relationship redesign. The review plan records the agreed product rules.
 
 ## Product planning
 

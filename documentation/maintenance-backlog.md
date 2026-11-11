@@ -51,9 +51,9 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   the agreed shared-data design. Expected/confirmed total and Paid/Refunded retain different meanings; use the
   [review plan](requirements/app-review-and-improvements.md#decided-shared-data-and-relationships--d01), not an
   extra synchronization prompt. Implementation remains part of the approved-chunk workflow.
-- [P3 — Deferred/optional] Packing/To-do — Live row movement while dragging was skipped by the user on 25 October
+- [P3 — Deferred/optional] Packing/To-do — Live row movement while dragging was deferred on 25 October
   2026 because it adds little value. Keep the current preview; this is not required for review completion. Reopen only
-  if the user requests it. Any later implementation should use the shared path (audit F15/Q02).
+  after an explicit implementation request. Any later implementation should use the shared path (audit F15/Q02).
 - [P3] Packing — Consider making the Group by control apply to the whole page, rather than separately to the To pack and
   Packed sections.
 - [P2] Shared UI — Replace browser-default destructive-action confirmations with accessible, app-styled confirmation
@@ -85,7 +85,7 @@ Agreed requirements do not themselves authorize every implementation chunk.
   new expense and existing expense. Consider existing eligibility rules and narrow-screen placement when designing
   the menu. Deferred improvement only; keep the current controls until implementation is approved.
 - [P2] Inline editing — Explore changing status pills and selected names, dates or money values without opening the
-  full form. User suggested double-click; discuss discoverable single-click/tap alternatives, keyboard access,
+  full form. Double-click was proposed; discuss discoverable single-click/tap alternatives, keyboard access,
   save/cancel behavior and which fields still need a full form. No interaction choice is final yet.
 - [P2] Warning consistency — Review the blue To-do notice after trip dates change; consider the shared yellow caution
   treatment because it asks the traveller to review retained deadlines. Review notice semantics consistently across tabs.
@@ -98,7 +98,7 @@ Agreed requirements do not themselves authorize every implementation chunk.
   on mobile/desktop before considering divider-separated item rows. Improve mobile page navigation; its replacement
   still needs design. Avoid adding nested financial boxes for related-entry details.
 - [P2] Related-review presentation — Revisit the current pink disclosure and neutral review panel after booking
-  completion. The current appearance is a working version, not the user's final visual acceptance.
+  completion. The current appearance is a working version, not a final accepted design.
 - [P2] Naming — Replace the user-facing word Itinerary with a clearer name. Schedule, Activities and Trip plan were
   discussed; Schedule is the current suggestion, not an agreed rename. Keep naming consistent in navigation,
   headings and related-entry actions after a choice is made.
@@ -114,17 +114,17 @@ and documentation corrections here.
 ## Done
 
 - Packing/To-do touch dragging — Shared handle gestures no longer require sideways movement, and pointer cancellation
-  clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; user accepted and committed.
+  clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; acceptance confirmed and changes committed.
   Live row movement is deferred/optional. See [audit F15](requirements/app-review-and-improvements.md#f15--checklist-touch-dragging-cancels-and-cancelled-gestures-can-save).
 
 - Stale trip/expense loading — Trip-keyed content and current-request guards prevent old results/errors from
   replacing the current context. Successful loads recover from prior errors. All 106 frontend tests, lint/build,
-  two browser checks passed; user accepted and committed. Checklist routing/hook unchanged. See
+  two browser checks passed; acceptance confirmed and changes committed. Checklist routing/hook unchanged. See
   [audit F10](requirements/app-review-and-improvements.md#f10--stale-requests-and-failed-load-recovery-protected-checklist-key-transitions).
 
 - Backend dependency servicing — Scoped Microsoft references updated to 10.0.13, with required Microsoft.OpenApi
   compatibility update to 2.12.2. Both package audits are clear; 107 backend tests, Release build and browser smoke
-  pass. Local SDK 10.0.402/runtimes 10.0.13 installed; user confirmed the Windows restart. Old versions remain;
+  pass. Local SDK 10.0.402/runtimes 10.0.13 installed; completion of the Windows restart was confirmed. Old versions remain;
   deployed containers are unchanged. See [audit B09](requirements/app-review-and-improvements.md#b09--patch-vulnerable-cryptography-dependencies-and-verify-runtime-servicing).
 
 - Frontend test baseline — Migrated obsolete TripSetup coverage to TripDetails, preserving display and edit/save
@@ -134,6 +134,6 @@ and documentation corrections here.
 - Unsaved form protection — The shared guard now compares controlled form values and resets its baseline for each
   Add/Edit session. Escape and Cancel require confirmation for changed Activity, Planned cost, Expense, Packing,
   To-do and Trip forms; cancelling confirmation preserves edits. Focused unit tests and the five-area Chromium
-  regression pass; accepted by the user. See [audit F14](requirements/app-review-and-improvements.md#f14--dirty-form-snapshot-misses-the-controls-it-is-protecting).
+  regression pass; accepted. See [audit F14](requirements/app-review-and-improvements.md#f14--dirty-form-snapshot-misses-the-controls-it-is-protecting).
 
 Move completed items here when keeping a short record is useful. Otherwise, delete them from the active sections.

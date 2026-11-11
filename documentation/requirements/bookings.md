@@ -654,8 +654,8 @@ User acceptance checklist:
 - Change linked date/cost/payment values, resolve individual reviews from both pages, and check navigation/highlights.
 - Check unlink/delete confirmations and the retained related records, including collapsed and phone-sized views.
 
-After user acceptance, the feature can be closed. The user controls committing and merging; verification does not
-authorize deployment.
+After manual acceptance, the feature can be closed. Committing and merging remain manual steps;
+verification does not authorize deployment.
 
 The historical chunk summaries below describe the completed implementation. The final verification status above
 supersedes their earlier pending-check notes.
@@ -814,8 +814,8 @@ Completed in the quick-payment action chunk:
   enforces ownership and existing payment validation, and rejects stale actions. Neither action creates or edits an
   expense. Linked-expense review warnings follow normal change/revert handling.
 - All 94 backend tests, 38 affected frontend tests, two Chromium payment flows, production build and lint pass.
-  Browser checks cover unpaid-to-paid, immediate Undo, no automatic expense and mobile layout. The user confirmed
-  that Mark as paid works.
+  Browser checks cover unpaid-to-paid, immediate Undo, no automatic expense and mobile layout. Mark as paid was
+  also confirmed to work during manual acceptance.
 
 Completed in the financial highlight consistency follow-up:
 

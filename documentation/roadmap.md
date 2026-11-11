@@ -2,7 +2,7 @@
 
 Last organised: **27 October 2026**.
 
-This is the single roadmap. It combines the earlier roadmap and the user's updated notes.
+This is the single roadmap. It consolidates the earlier roadmap and updated planning notes.
 It describes direction and order, not permission to implement every idea or a fixed delivery date.
 Detailed current decisions and audit evidence live in the
 [app review and improvements plan](requirements/app-review-and-improvements.md).
@@ -20,11 +20,14 @@ Goal: plan and run a real trip without scattered notes, emails and spreadsheets.
 | 4 | Finish relevant frontend/backend cleanup. | Simplify repeated/patched code, styles and controls; remove only verified unused parts. |
 | 5 | Improve the existing interface. | Remove outer page cards first; retain item boxes initially; improve mobile navigation and existing lists. Keep Budget & Expenses together. |
 | 6 | Finish the review and checks. | Verify workflows and regressions; every audit finding fixed, replaced or explicitly deferred. |
-| After review | Choose the next major feature. | Budget/Expenses redesign is the first proposal, but the user can postpone it until after shared trips. Agree account/profile preparation and then the first shared release. |
+| After review | Choose the next major feature. | Budget/Expenses redesign is the first proposal, but it may be postponed until after shared trips. Agree account/profile preparation and then the first shared release. |
 
 The review is not complete merely because tests pass, and it does not require every candidate
 refactoring or later feature to be implemented. Work in small reviewed chunks with manual commit
 checkpoints. Steps 3–5 can be arranged by dependency rather than as separate frontend/backend rewrites.
+
+Each major change uses its own feature branch from dev. The shared-data technical design is being
+prepared on `feature/shared-item-data`; see its [technical plan](requirements/shared-item-data.md).
 
 **Shared trips stay after the current review/improvements.** Prepare for sharing in the data
 design now, but do not jump ahead to collaboration. The exact account/profile work before sharing
@@ -80,7 +83,7 @@ category just for its name; the technical design should share structure where be
 ## First proposed major feature after review: Budget and Expenses
 
 This is **not a simple tab split**. Hold a brainstorming session, then write requirements and a
-technical plan for two useful pages. The user can move this feature after shared trips.
+technical plan for two useful pages. This feature may be moved after shared trips.
 
 Possible content:
 - **Budget:** planned costs, savings/funding goal, amount saved, remaining target, progress and
@@ -93,7 +96,7 @@ Possible content:
 Savings, planned costs and actual spending are different. Before implementation, decide what the
 goal is, how savings are maintained, what each progress indicator compares against, and what
 happens with no target or an exceeded target. Category share of spending is not the same as
-spending against a category budget. The user does not want original-estimate history.
+spending against a category budget. Original-estimate history is outside the agreed scope.
 
 Grouping, remembered views, related-entry details, date sorting, category collapse/order and aligned
 heading totals are existing-list improvements in the current review. Budget and Expenses begin
@@ -122,7 +125,7 @@ a prerequisite.
 - Changing username, email and password; decide which are required first.
 - Profile pictures as a possible addition.
 
-Questions from the user's notes to explain before committing to scope:
+Open questions to resolve before defining scope:
 - **Rate limiting:** limits repeated sensitive requests; discuss the smallest appropriate protection
   for recovery/invitations rather than treating it as a large feature or silently omitting safeguards.
 - **Session/device management:** listing sessions, revoking a device and signing out everywhere.
