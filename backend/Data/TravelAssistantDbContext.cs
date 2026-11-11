@@ -78,7 +78,16 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         {
             expense.Property(item => item.Name).HasMaxLength(150).IsRequired();
             expense.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
-            expense.Property(item => item.Amount).HasPrecision(12, 2);
+            expense.HasOne(item => item.ItemCore)
+                .WithMany()
+                .HasForeignKey(item => new { item.TripId, item.ItemCoreId })
+                .HasPrincipalKey(item => new { item.TripId, item.Id })
+                .OnDelete(DeleteBehavior.NoAction);
+            expense.HasOne(item => item.PaymentTotals)
+                .WithOne()
+                .HasForeignKey<Expense>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.NoAction);
+            expense.Navigation(item => item.PaymentTotals).AutoInclude();
             expense.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
             // An actual expense can represent at most one planned cost.
             expense.HasIndex(item => item.PlannedCostId).IsUnique();

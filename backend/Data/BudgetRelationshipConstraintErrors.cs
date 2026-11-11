@@ -7,7 +7,7 @@ using Npgsql;
 namespace TravelAssistant.Data;
 
 /// <summary>
-/// Identifies the two database constraints that keep booking budget relationships one-to-one.
+/// Identifies storage conflicts for booking and budget relationships.
 /// </summary>
 public static class BudgetRelationshipConstraintErrors
 {
@@ -24,7 +24,26 @@ public static class BudgetRelationshipConstraintErrors
         IsUniqueViolation(
             exception,
             PlannedCostExpenseIndex,
-            "Expenses.PlannedCostId");
+            "Expenses.PlannedCostId")
+        || IsUniqueViolation(exception, "IX_Expenses_ItemCoreId", "Expenses.ItemCoreId")
+        || IsUniqueViolation(exception, "PK_ItemPaymentTotals", "ItemPaymentTotals.ItemCoreId");
+
+    public static bool IsFinancialItemWriteConflict(DbUpdateException exception) =>
+        exception is DbUpdateConcurrencyException
+        || exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected
+        };
+
+    public static bool IsMissingExpensePlanViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.ForeignKeyViolation,
+            ConstraintName: "FK_Expenses_PlannedCosts_PlannedCostId"
+                or "FK_Expenses_ItemCores_TripId_ItemCoreId"
+                or "FK_ItemPaymentTotals_ItemCores_ItemCoreId"
+        }
+        || exception.InnerException is SqliteException { SqliteExtendedErrorCode: 787 };
 
     private static bool IsUniqueViolation(
         Exception exception,
@@ -41,7 +60,8 @@ public static class BudgetRelationshipConstraintErrors
         if (databaseException is SqliteException sqliteException)
         {
             const int sqliteUniqueConstraint = 2067;
-            return sqliteException.SqliteExtendedErrorCode == sqliteUniqueConstraint
+            const int sqlitePrimaryKeyConstraint = 1555;
+            return sqliteException.SqliteExtendedErrorCode is sqliteUniqueConstraint or sqlitePrimaryKeyConstraint
                 && sqliteException.Message.Contains(
                     sqliteColumnName,
                     StringComparison.OrdinalIgnoreCase);

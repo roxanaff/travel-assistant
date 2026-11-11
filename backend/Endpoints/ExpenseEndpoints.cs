@@ -31,7 +31,7 @@ public static class ExpenseEndpoints
                 .OrderBy(item => item.CreatedAtUtc)
                 .ToListAsync();
 
-            return Results.Ok(expenses);
+            return Results.Ok(expenses.Select(ToResponse));
         }).WithName("GetExpenses");
 
         routes.MapPost("/expenses", async (Guid tripId, CreateExpenseRequest request, TravelAssistantDbContext database) =>
@@ -49,33 +49,38 @@ public static class ExpenseEndpoints
             }
 
             // A planned cost may be converted into only one actual expense for the same trip.
-            if (request.PlannedCostId is not null)
+            PlannedCost? plan = null;
+            if (request.PlannedCostId is Guid planId)
             {
-                var plannedCostExists = await database.PlannedCosts.AnyAsync(cost =>
-                    cost.Id == request.PlannedCostId && cost.TripId == tripId);
+                plan = await database.PlannedCosts.Include(cost => cost.ItemCore)
+                    .SingleOrDefaultAsync(cost => cost.Id == planId && cost.TripId == tripId);
                 var expenseAlreadyAdded = await database.Expenses.AnyAsync(item =>
-                    item.PlannedCostId == request.PlannedCostId);
-                if (!plannedCostExists || expenseAlreadyAdded)
+                    item.TripId == tripId && item.PlannedCostId == planId);
+                if (plan is null || expenseAlreadyAdded)
                 {
                     return Results.Conflict("This planned cost has already been added to expenses.");
                 }
             }
 
+            var core = plan?.ItemCore ?? new ItemCore { TripId = tripId };
+            if (plan is not null)
+            {
+                core.Revision = Guid.NewGuid();
+            }
             var expense = new Expense
             {
                 TripId = tripId,
                 Name = NormalizeName(request.Name),
                 PlannedCostId = request.PlannedCostId,
                 Category = request.Category,
-                Amount = request.Amount,
+                ItemCore = core,
+                PaymentTotals = new ItemPaymentTotals { ItemCore = core, Paid = request.Amount },
                 ExpenseDate = request.ExpenseDate
             };
 
             database.Expenses.Add(expense);
-            if (request.PlannedCostId is Guid planId)
+            if (plan is not null)
             {
-                var plan = await database.PlannedCosts.SingleOrDefaultAsync(item => item.Id == planId && item.TripId == tripId);
-                if (plan is null) return Results.Conflict("The related planned cost no longer exists.");
                 await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, plan, expense);
             }
             try
@@ -83,9 +88,15 @@ public static class ExpenseEndpoints
                 await database.SaveChangesAsync();
             }
             catch (DbUpdateException exception) when (
-                BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception))
+                plan is not null && BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception))
             {
                 return Results.Conflict("This planned cost has already been added to expenses.");
+            }
+            catch (DbUpdateException exception) when (
+                plan is not null && (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception)
+                    || BudgetRelationshipConstraintErrors.IsMissingExpensePlanViolation(exception)))
+            {
+                return Results.Conflict("The related planned cost changed. Refresh before adding an expense.");
             }
 
             return Results.Created($"/api/trips/{tripId}/expenses/{expense.Id}", ToResponse(expense));
@@ -113,7 +124,7 @@ public static class ExpenseEndpoints
 
             expense.Name = NormalizeName(request.Name);
             expense.Category = request.Category;
-            expense.Amount = request.Amount;
+            expense.PaymentTotals.Paid = request.Amount;
             expense.ExpenseDate = request.ExpenseDate;
 
             await LinkedRecordReviews.TrackAsync(database, expense);
@@ -125,6 +136,7 @@ public static class ExpenseEndpoints
         {
             var expense = await database.Expenses
                 .Include(item => item.Booking)
+                .Include(item => item.ItemCore)
                 .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)
             {
@@ -137,8 +149,25 @@ public static class ExpenseEndpoints
             }
 
             database.Expenses.Remove(expense);
+            var hasPlan = await database.PlannedCosts.AnyAsync(item => item.ItemCoreId == expense.ItemCoreId);
+            if (hasPlan)
+            {
+                expense.ItemCore.Revision = Guid.NewGuid();
+                database.ItemPaymentTotals.Remove(expense.PaymentTotals);
+            }
+            else
+            {
+                database.ItemCores.Remove(expense.ItemCore);
+            }
             await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
-            await database.SaveChangesAsync();
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The expense or a related record changed. Refresh before deleting it.");
+            }
             return Results.NoContent();
         }).WithName("DeleteExpense");
 

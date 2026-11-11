@@ -23,9 +23,12 @@ public static class LinkedRecordReviewEndpoints
                 var edge = await LinkedRecordReviews.LoadEdge(database, review);
                 // Deleted/unlinked records no longer have a relationship to review.
                 if (edge is null) continue;
-                var target = edge.Target is PlannedCost plan
-                    ? database.Entry((object)plan.ItemCost)
-                    : database.Entry(edge.Target);
+                var target = database.Entry(edge.Target switch
+                {
+                    PlannedCost plan => plan.ItemCost,
+                    Expense expense => expense.PaymentTotals,
+                    _ => edge.Target
+                });
                 var original = target.CurrentValues.Clone();
                 var requiresUnscheduled = await LinkedRecordReviews.NeedsUnscheduledAsync(database, review, edge);
                 var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge, requiresUnscheduled);

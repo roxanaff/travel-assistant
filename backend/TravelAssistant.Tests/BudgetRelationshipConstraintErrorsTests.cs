@@ -25,12 +25,15 @@ public class BudgetRelationshipConstraintErrorsTests
         Assert.False(BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(foreignKey));
     }
 
-    [Fact]
-    public void PlannedCostExpenseMatcherAcceptsOnlyItsUniqueIndex()
+    [Theory]
+    [InlineData(2067, "Expenses.PlannedCostId")]
+    [InlineData(2067, "Expenses.ItemCoreId")]
+    [InlineData(1555, "ItemPaymentTotals.ItemCoreId")]
+    public void PlannedCostExpenseMatcherRecognizesDuplicateStorage(int extendedErrorCode, string column)
     {
         var matching = CreateSqliteException(
-            2067,
-            "UNIQUE constraint failed: Expenses.PlannedCostId");
+            extendedErrorCode,
+            $"UNIQUE constraint failed: {column}");
         var notNull = CreateSqliteException(
             1299,
             "NOT NULL constraint failed: Expenses.Name");

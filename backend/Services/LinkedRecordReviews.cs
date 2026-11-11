@@ -40,9 +40,12 @@ public static class LinkedRecordReviews
         foreach (var edge in await GetEdges(database, source))
         {
             if (Id(edge.Target) == excludedTarget) continue;
-            var oldValues = source is PlannedCost plan
-                ? ProjectFinancialAmount(database.Entry(plan.ItemCost).Property(cost => cost.Cost).OriginalValue!.Value)
-                : Project(before, edge);
+            var oldValues = source switch
+            {
+                PlannedCost plan => ProjectFinancialAmount(database.Entry(plan.ItemCost).Property(cost => cost.Cost).OriginalValue!.Value),
+                Expense expense => ProjectFinancialAmount(OriginalExpenseAmount(database, expense)),
+                _ => Project(before, edge)
+            };
             var newValues = Project(source, edge);
             var mismatch = await RefreshMismatchReviews(database, edge, oldValues, newValues);
             if (mismatch.ForwardHandled) continue;
@@ -294,9 +297,15 @@ public static class LinkedRecordReviews
                 property => values[property] is decimal number
                     ? number.ToString("G29", CultureInfo.InvariantCulture)
                     : values[property]);
-        if (target is PlannedCost plan)
+        var financialAmount = target switch
         {
-            snapshot[nameof(PlannedCost.Amount)] = plan.Amount.ToString("G29", CultureInfo.InvariantCulture);
+            PlannedCost plan => plan.Amount,
+            Expense expense => expense.Amount,
+            _ => (decimal?)null
+        };
+        if (financialAmount is decimal amount)
+        {
+            snapshot[nameof(Expense.Amount)] = amount.ToString("G29", CultureInfo.InvariantCulture);
         }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
     }
@@ -477,7 +486,7 @@ public static class LinkedRecordReviews
             if (amount <= 0) return "Expenses require a positive amount. Keep the expense and unlink it, or delete the expense; the booking's payment and refund history will remain.";
             var error = ExpenseValidation.Validate(new CreateExpenseRequest(expense.Name, expense.Category, amount, expense.ExpenseDate, expense.PlannedCostId));
             if (error is not null) return error;
-            expense.Amount = amount;
+            expense.PaymentTotals.Paid = amount;
         }
         else if (edge.Target is PlannedCost plan)
         {
@@ -498,6 +507,14 @@ public static class LinkedRecordReviews
 
     private static Dictionary<string, JsonElement> ProjectFinancialAmount(decimal amount) =>
         new() { ["Amount"] = JsonSerializer.SerializeToElement(amount) };
+
+    private static decimal OriginalExpenseAmount(TravelAssistantDbContext database, Expense expense)
+    {
+        var original = database.Entry(expense.PaymentTotals).OriginalValues;
+        var paid = original.GetValue<decimal>(nameof(ItemPaymentTotals.Paid));
+        var refunded = original.GetValue<decimal>(nameof(ItemPaymentTotals.Refunded));
+        return new PaymentAmounts(paid, refunded).Net;
+    }
 
     private static Dictionary<string, JsonElement> Project(object record, Edge edge)
     {

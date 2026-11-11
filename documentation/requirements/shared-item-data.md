@@ -2,7 +2,7 @@
 
 Branch: `feature/shared-item-data`. Planning started **27 October 2026**.
 
-**Status: additive storage implemented on the feature branch.** The [review plan](app-review-and-improvements.md#decided-shared-data-and-relationships--d01)
+**Status: shared storage implemented for planned costs and expenses on the feature branch.** The [review plan](app-review-and-improvements.md#decided-shared-data-and-relationships--d01)
 owns the agreed product behavior. This file owns the technical design and rollout for this major change.
 It does not replace the broader review plan or approve its unrelated UI/refactoring work.
 
@@ -384,6 +384,30 @@ with a retained expense. The disposable PostgreSQL 17 upgrade preserved linked a
 plans, including a legacy zero amount. It rejected a cross-trip reference and passed plan and trip
 deletion checks. The rollback restored the edited amount and preserved the expense link and an
 unrelated core. Independent review found no actionable issues.
+
+### Expense storage cutover
+
+Move each expense's recorded amount into `ItemPaymentTotals`. A linked expense reuses the planned
+cost's core. Other expenses receive their own core, including expenses with a legacy booking link.
+The old expense amount represents recorded net spending, so it is stored as Paid with zero Refunded
+in this migration. Booking payment and refund history remains in its existing fields until the
+booking cutover. Keep the expense IDs, payment dates, links and the API's `amount` field.
+
+The database requires one expense and payment-total record per core and enforces same-trip
+references. When an expense is added to an existing plan or either entry is deleted, check the
+core revision in the same write and advance it if the core survives. A conflicting write rolls back and can be retried
+after a refresh. Delete only the cost or payment totals belonging to the removed entry when a
+sibling still needs the core. Legacy review previews restore the projected payment totals.
+
+Stop old API writers before applying the migration. Its reverse path restores the expense amount
+from net spending and removes only the expense payment records and expense-only cores. Verify
+both directions on a populated PostgreSQL fixture before deployment.
+
+The 113-test backend suite and a separate stale-deletion regression passed. PostgreSQL 17 passed
+the populated `main` upgrade, including linked and standalone expenses and a development fixture
+with booking refunds. Trip deletion removed the shared records. Rollback restored the net expense
+amounts and kept the linked plan. A legacy cross-trip link failed the migration without partial
+changes. Independent review found no actionable issues.
 
 These are proposed groups, not implementation approval or promises that each fits one commit.
 

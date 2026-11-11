@@ -627,8 +627,10 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Empty(await database.PlannedCosts.ToListAsync());
     }
 
-    [Fact]
-    public async Task PlannedCostEditsUseSharedStorageAndDeletionKeepsTheLinkedExpense()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PlanAndExpenseShareACoreUntilBothAreDeleted(bool deletePlanFirst)
     {
         using var client = CreateClient();
         await RegisterAsync(client, "Roxi", "shared-planned-cost@example.com");
@@ -653,15 +655,66 @@ public sealed class BookingApiTests : IAsyncLifetime
         var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
         var savedPlan = await database.PlannedCosts.AsNoTracking().SingleAsync(item => item.Id == planId);
         var savedCost = await database.ItemCosts.AsNoTracking().SingleAsync(item => item.ItemCoreId == savedPlan.ItemCoreId);
-        Assert.Equal(120, savedCost.Cost);
-
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{trip}/planned-costs/{planId}")).StatusCode);
-        Assert.False(await database.ItemCores.AnyAsync(item => item.Id == savedPlan.ItemCoreId));
-        Assert.False(await database.ItemCosts.AnyAsync(item => item.ItemCoreId == savedPlan.ItemCoreId));
         var savedExpense = await database.Expenses.AsNoTracking().SingleAsync(item => item.Id == expenseId);
-        Assert.Null(savedExpense.PlannedCostId);
-        Assert.Equal(100, savedExpense.Amount);
-        Assert.Equal(expenseDate, savedExpense.ExpenseDate);
+        Assert.Equal(120, savedCost.Cost);
+        Assert.Equal(savedPlan.ItemCoreId, savedExpense.ItemCoreId);
+        Assert.Equal(100, savedExpense.PaymentTotals.Paid);
+
+        var planPath = $"{trip}/planned-costs/{planId}";
+        var expensePath = $"{trip}/expenses/{expenseId}";
+        var firstPath = deletePlanFirst ? planPath : expensePath;
+        var secondPath = deletePlanFirst ? expensePath : planPath;
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(firstPath)).StatusCode);
+        Assert.True(await database.ItemCores.AnyAsync(item => item.Id == savedPlan.ItemCoreId));
+
+        if (deletePlanFirst)
+        {
+            Assert.False(await database.ItemCosts.AnyAsync(item => item.ItemCoreId == savedPlan.ItemCoreId));
+            var retainedExpense = await database.Expenses.AsNoTracking().SingleAsync(item => item.Id == expenseId);
+            Assert.Null(retainedExpense.PlannedCostId);
+            Assert.Equal(100, retainedExpense.Amount);
+            Assert.Equal(expenseDate, retainedExpense.ExpenseDate);
+        }
+        else
+        {
+            Assert.False(await database.ItemPaymentTotals.AnyAsync(item => item.ItemCoreId == savedPlan.ItemCoreId));
+            var retainedPlan = await database.PlannedCosts.AsNoTracking().SingleAsync(item => item.Id == planId);
+            Assert.Equal(120, retainedPlan.Amount);
+        }
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(secondPath)).StatusCode);
+        Assert.False(await database.ItemCores.AnyAsync(item => item.Id == savedPlan.ItemCoreId));
+    }
+
+    [Fact]
+    public async Task StalePlanDeletionRollsBackWhenAnExpenseHasJoinedItsCore()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "concurrent-plan-deletion@example.com");
+        var trip = await CreateTripAsync(client);
+        var plan = await ReadJson(await client.PostAsJsonAsync($"{trip}/planned-costs",
+            new CreatePlannedCostRequest("Museum budget", null, 100)));
+        var planId = plan.GetProperty("id").GetGuid();
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        var stalePlan = await database.PlannedCosts.Include(item => item.ItemCore)
+            .SingleAsync(item => item.Id == planId);
+        Assert.False(await database.Expenses.AnyAsync(item => item.ItemCoreId == stalePlan.ItemCoreId));
+
+        var expense = await ReadJson(await client.PostAsJsonAsync($"{trip}/expenses",
+            new CreateExpenseRequest("Museum expense", null, 80, null, planId)));
+        var expenseId = expense.GetProperty("id").GetGuid();
+
+        database.PlannedCosts.Remove(stalePlan);
+        database.ItemCores.Remove(stalePlan.ItemCore);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => database.SaveChangesAsync());
+
+        Assert.True(await database.PlannedCosts.AnyAsync(item => item.Id == planId));
+        var savedExpense = await database.Expenses.AsNoTracking().SingleAsync(item => item.Id == expenseId);
+        Assert.Equal(planId, savedExpense.PlannedCostId);
+        Assert.Equal(stalePlan.ItemCoreId, savedExpense.ItemCoreId);
+        Assert.Equal(80, savedExpense.Amount);
     }
 
     [Fact]

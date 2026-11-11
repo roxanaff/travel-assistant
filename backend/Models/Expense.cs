@@ -13,6 +13,12 @@ public class Expense
 
     public Trip Trip { get; set; } = null!;
 
+    public Guid ItemCoreId { get; set; }
+
+    public ItemCore ItemCore { get; set; } = null!;
+
+    public ItemPaymentTotals PaymentTotals { get; set; } = null!;
+
     public string Name { get; set; } = "Cost item";
 
     public Guid? PlannedCostId { get; set; }
@@ -27,7 +33,7 @@ public class Expense
 
     public ExpenseCategory? Category { get; set; }
 
-    public decimal Amount { get; set; }
+    public decimal Amount => new PaymentAmounts(PaymentTotals.Paid, PaymentTotals.Refunded).Net;
 
     public DateOnly? ExpenseDate { get; set; }
 

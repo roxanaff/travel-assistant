@@ -361,13 +361,15 @@ public static class BookingEndpoints
                 await LinkedRecordReviews.TrackAsync(database, booking);
             }
 
+            var core = new ItemCore { TripId = tripId };
             var expense = new Expense
             {
                 TripId = tripId,
                 BookingId = booking.Id,
                 Name = NormalizeBudgetName(request.Name),
                 Category = request.Category,
-                Amount = request.Amount,
+                ItemCore = core,
+                PaymentTotals = new ItemPaymentTotals { ItemCore = core, Paid = request.Amount },
                 ExpenseDate = request.ExpenseDate
             };
             database.Expenses.Add(expense);

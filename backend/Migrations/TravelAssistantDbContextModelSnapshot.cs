@@ -231,10 +231,6 @@ namespace TravelAssistant.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<Guid?>("BookingId")
                         .HasColumnType("uuid");
 
@@ -253,6 +249,9 @@ namespace TravelAssistant.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -269,10 +268,13 @@ namespace TravelAssistant.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
+                    b.HasIndex("ItemCoreId")
+                        .IsUnique();
+
                     b.HasIndex("PlannedCostId")
                         .IsUnique();
 
-                    b.HasIndex("TripId");
+                    b.HasIndex("TripId", "ItemCoreId");
 
                     b.ToTable("Expenses");
                 });
@@ -853,6 +855,12 @@ namespace TravelAssistant.Migrations
                         .HasForeignKey("TravelAssistant.Models.Expense", "BookingId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TravelAssistant.Models.ItemPaymentTotals", "PaymentTotals")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.Expense", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("TravelAssistant.Models.PlannedCost", "PlannedCost")
                         .WithOne("Expense")
                         .HasForeignKey("TravelAssistant.Models.Expense", "PlannedCostId")
@@ -864,7 +872,18 @@ namespace TravelAssistant.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithMany()
+                        .HasForeignKey("TripId", "ItemCoreId")
+                        .HasPrincipalKey("TripId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.Navigation("Booking");
+
+                    b.Navigation("ItemCore");
+
+                    b.Navigation("PaymentTotals");
 
                     b.Navigation("PlannedCost");
 

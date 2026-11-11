@@ -111,9 +111,25 @@ public static class PlannedCostEndpoints
             }
 
             database.PlannedCosts.Remove(plannedCost);
-            database.ItemCores.Remove(plannedCost.ItemCore);
+            var hasExpense = await database.Expenses.AnyAsync(item => item.ItemCoreId == plannedCost.ItemCoreId);
+            if (hasExpense)
+            {
+                plannedCost.ItemCore.Revision = Guid.NewGuid();
+                database.ItemCosts.Remove(plannedCost.ItemCost);
+            }
+            else
+            {
+                database.ItemCores.Remove(plannedCost.ItemCore);
+            }
             await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
-            await database.SaveChangesAsync();
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The planned cost or a related record changed. Refresh before deleting it.");
+            }
             return Results.NoContent();
         }).WithName("DeletePlannedCost");
 
