@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TravelAssistant.Models;
+using TravelAssistant.Validation;
 
 namespace TravelAssistant.Data;
 
@@ -22,6 +23,10 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     public DbSet<PackingItem> PackingItems => Set<PackingItem>();
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<ItemCore> ItemCores => Set<ItemCore>();
+    public DbSet<ItemSchedule> ItemSchedules => Set<ItemSchedule>();
+    public DbSet<ItemCost> ItemCosts => Set<ItemCost>();
+    public DbSet<ItemPaymentTotals> ItemPaymentTotals => Set<ItemPaymentTotals>();
 
     public DbSet<LinkedRecordReview> LinkedRecordReviews => Set<LinkedRecordReview>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -31,6 +36,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        ConfigureSharedItems(modelBuilder);
 
         modelBuilder.Entity<LinkedRecordReview>(review =>
         {
@@ -181,6 +187,74 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
                 .WithMany(trip => trip.TodoItems)
                 .HasForeignKey(item => item.TripId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureSharedItems(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ItemCore>(core =>
+        {
+            core.Property(item => item.Revision).IsConcurrencyToken();
+            core.HasOne(item => item.Trip)
+                .WithMany()
+                .HasForeignKey(item => item.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ItemSchedule>(schedule =>
+        {
+            schedule.Property(item => item.Kind).HasConversion<string>().HasMaxLength(20);
+            schedule.Property(item => item.FixedSlot).HasConversion<string>().HasMaxLength(20);
+            schedule.Property(item => item.Location).HasMaxLength(300);
+            schedule.Property(item => item.StartLocation).HasMaxLength(300);
+            schedule.Property(item => item.EndLocation).HasMaxLength(300);
+            schedule.HasIndex(item => new { item.ItemCoreId, item.FixedSlot }).IsUnique();
+            schedule.HasOne(item => item.ItemCore)
+                .WithMany()
+                .HasForeignKey(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.Cascade);
+            schedule.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ItemSchedules_StartTimeRequiresDate",
+                    "\"StartTime\" IS NULL OR \"StartDate\" IS NOT NULL");
+                table.HasCheckConstraint(
+                    "CK_ItemSchedules_DurationWithoutEnd",
+                    "\"DurationMinutes\" IS NULL OR (\"DurationMinutes\" > 0 AND \"EndDate\" IS NULL AND \"EndTime\" IS NULL)");
+            });
+        });
+
+        modelBuilder.Entity<ItemCost>(cost =>
+        {
+            cost.HasKey(item => item.ItemCoreId);
+            cost.Property(item => item.Cost).HasPrecision(12, 2);
+            cost.HasOne(item => item.ItemCore)
+                .WithOne()
+                .HasForeignKey<ItemCost>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.Cascade);
+            cost.ToTable(table => table.HasCheckConstraint(
+                "CK_ItemCosts_CostRange",
+                FormattableString.Invariant($"CAST(\"Cost\" AS numeric) BETWEEN 0 AND {MoneyValidation.MaximumAmount}")));
+        });
+
+        modelBuilder.Entity<ItemPaymentTotals>(totals =>
+        {
+            totals.HasKey(item => item.ItemCoreId);
+            totals.Property(item => item.Paid).HasPrecision(12, 2);
+            totals.Property(item => item.Refunded).HasPrecision(12, 2);
+            totals.HasOne(item => item.ItemCore)
+                .WithOne()
+                .HasForeignKey<ItemPaymentTotals>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.Cascade);
+            totals.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ItemPaymentTotals_PaidRange",
+                    FormattableString.Invariant($"CAST(\"Paid\" AS numeric) BETWEEN 0 AND {MoneyValidation.MaximumAmount}"));
+                table.HasCheckConstraint(
+                    "CK_ItemPaymentTotals_RefundedRange",
+                    "CAST(\"Refunded\" AS numeric) BETWEEN 0 AND CAST(\"Paid\" AS numeric)");
+            });
         });
     }
 }

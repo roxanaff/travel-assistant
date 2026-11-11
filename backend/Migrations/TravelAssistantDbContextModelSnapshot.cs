@@ -17,7 +17,7 @@ namespace TravelAssistant.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -275,6 +275,127 @@ namespace TravelAssistant.Migrations
                     b.HasIndex("TripId");
 
                     b.ToTable("Expenses");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemCore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId");
+
+                    b.ToTable("ItemCores");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemCost", b =>
+                {
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("ItemCoreId");
+
+                    b.ToTable("ItemCosts", t =>
+                        {
+                            t.HasCheckConstraint("CK_ItemCosts_CostRange", "CAST(\"Cost\" AS numeric) BETWEEN 0 AND 999999999.99");
+                        });
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemPaymentTotals", b =>
+                {
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Paid")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("Refunded")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("ItemCoreId");
+
+                    b.ToTable("ItemPaymentTotals", t =>
+                        {
+                            t.HasCheckConstraint("CK_ItemPaymentTotals_PaidRange", "CAST(\"Paid\" AS numeric) BETWEEN 0 AND 999999999.99");
+
+                            t.HasCheckConstraint("CK_ItemPaymentTotals_RefundedRange", "CAST(\"Refunded\" AS numeric) BETWEEN 0 AND CAST(\"Paid\" AS numeric)");
+                        });
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("EndLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("FixedSlot")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("StartLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemCoreId", "FixedSlot")
+                        .IsUnique();
+
+                    b.ToTable("ItemSchedules", t =>
+                        {
+                            t.HasCheckConstraint("CK_ItemSchedules_DurationWithoutEnd", "\"DurationMinutes\" IS NULL OR (\"DurationMinutes\" > 0 AND \"EndDate\" IS NULL AND \"EndTime\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_ItemSchedules_StartTimeRequiresDate", "\"StartTime\" IS NULL OR \"StartDate\" IS NOT NULL");
+                        });
                 });
 
             modelBuilder.Entity("TravelAssistant.Models.ItineraryItem", b =>
@@ -748,6 +869,50 @@ namespace TravelAssistant.Migrations
                     b.Navigation("PlannedCost");
 
                     b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemCore", b =>
+                {
+                    b.HasOne("TravelAssistant.Models.Trip", "Trip")
+                        .WithMany()
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemCost", b =>
+                {
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.ItemCost", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemCore");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemPaymentTotals", b =>
+                {
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.ItemPaymentTotals", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemCore");
+                });
+
+            modelBuilder.Entity("TravelAssistant.Models.ItemSchedule", b =>
+                {
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithMany()
+                        .HasForeignKey("ItemCoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemCore");
                 });
 
             modelBuilder.Entity("TravelAssistant.Models.ItineraryItem", b =>

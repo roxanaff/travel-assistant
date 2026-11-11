@@ -2,7 +2,7 @@
 
 Branch: `feature/shared-item-data`. Planning started **27 October 2026**.
 
-**Status: reviewed planning checkpoint.** The [review plan](app-review-and-improvements.md#decided-shared-data-and-relationships--d01)
+**Status: additive storage implemented on the feature branch.** The [review plan](app-review-and-improvements.md#decided-shared-data-and-relationships--d01)
 owns the agreed product behavior. This file owns the technical design and rollout for this major change.
 It does not replace the broader review plan or approve its unrelated UI/refactoring work.
 
@@ -341,6 +341,18 @@ creation and populated upgrade. Before production cutover require backup/rollbac
 after shared writes, rollback is restore/forward-fix unless a tested reverse migration preserves data.
 
 ## Implementation groups to split into commit-sized chunks
+
+The first storage chunk adds the four shared tables through `AddSharedItemStorage`. Foreign keys
+connect the tables to the trip through `ItemCore`. Primary keys enforce one cost and one payment
+total per core. Fixed schedule slots are unique, and multiple independent visits are supported.
+The migration creates empty tables. Existing entries and their links continue to supply the app's
+data until the relevant backfill and read/write changes are implemented together.
+
+Verification covered the full 109-test backend suite and a disposable PostgreSQL 17 database.
+The migration chain ran on an empty database and upgraded a populated `main` fixture. The linked
+planned cost and expense retained their IDs, amounts, relationship and payment date. PostgreSQL
+checks exercised foreign keys, duplicate slots and totals, refund limits, schedule constraints
+and trip deletion. Independent source review found no actionable issues.
 
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
