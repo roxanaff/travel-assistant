@@ -359,6 +359,32 @@ net amount. Booking responses, expense eligibility and linked-record reviews use
 The review preview uses the same booking payment projection as the update. Existing records
 supply the financial values through the same API contracts until the financial backfill and cutover.
 
+### Planned-cost storage cutover
+
+Move planned-cost amounts into `ItemCost` before moving expense amounts or booking payments.
+The migration creates one trip-owned `ItemCore` and cost record per existing plan. Planned-cost
+IDs and expense links stay in place. The existing API keeps its `amount` field, backed by the new
+cost record. Expense amounts and payment fields continue to use their current storage in this chunk.
+
+The planned-cost endpoints and linked-record reviews both use the cost record. Review previews
+restore the cost after validation. Stale-review checks include the shared cost. Deleting a plan
+removes its cost and core and leaves its expense in place. A later expense migration can reuse
+the core through the preserved planned-cost link.
+
+The planned-cost edit form continues to use its existing request contract. Item revision checks
+for form saves are introduced with the versioned shared-item commands. Existing review checks
+continue to validate the destination and use the stored cost in its version.
+
+Apply the cutover with old API instances stopped because it removes the legacy amount column.
+The reverse migration copies the amount back before removing the new planned-cost references.
+Verify the forward and reverse paths on disposable PostgreSQL seeded at the `main` baseline.
+
+All 110 backend tests passed, including planned-cost edits, linked review previews and deletion
+with a retained expense. The disposable PostgreSQL 17 upgrade preserved linked and standalone
+plans, including a legacy zero amount. It rejected a cross-trip reference and passed plan and trip
+deletion checks. The rollback restored the edited amount and preserved the expense link and an
+unrelated core. Independent review found no actionable issues.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

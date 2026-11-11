@@ -35,7 +35,7 @@ public static class PlannedCostEndpoints
                     cost.TripId,
                     cost.Name,
                     cost.Category,
-                    cost.Amount,
+                    Amount = cost.ItemCost.Cost!.Value,
                     cost.CreatedAtUtc,
                     // The UI uses this derived flag to show whether a planned cost has been spent.
                     ExpenseAdded = cost.Expense != null,
@@ -60,17 +60,19 @@ public static class PlannedCostEndpoints
                 return Results.NotFound();
             }
 
+            var core = new ItemCore { TripId = tripId };
             var plannedCost = new PlannedCost
             {
                 TripId = tripId,
                 Name = NormalizeName(request.Name),
                 Category = request.Category,
-                Amount = request.Amount
+                ItemCore = core,
+                ItemCost = new ItemCost { ItemCore = core, Cost = request.Amount }
             };
 
             database.PlannedCosts.Add(plannedCost);
             await database.SaveChangesAsync();
-            return Results.Created($"/api/trips/{tripId}/planned-costs/{plannedCost.Id}", plannedCost);
+            return Results.Created($"/api/trips/{tripId}/planned-costs/{plannedCost.Id}", ToResponse(plannedCost));
         }).WithName("CreatePlannedCost");
 
         routes.MapPut("/planned-costs/{id:guid}", async (Guid tripId, Guid id, CreatePlannedCostRequest request, TravelAssistantDbContext database) =>
@@ -90,27 +92,18 @@ public static class PlannedCostEndpoints
 
             plannedCost.Name = NormalizeName(request.Name);
             plannedCost.Category = request.Category;
-            plannedCost.Amount = request.Amount;
+            plannedCost.ItemCost.Cost = request.Amount;
 
             await LinkedRecordReviews.TrackAsync(database, plannedCost);
             await database.SaveChangesAsync();
-            return Results.Ok(new
-            {
-                plannedCost.Id,
-                plannedCost.TripId,
-                plannedCost.Name,
-                plannedCost.Category,
-                plannedCost.Amount,
-                plannedCost.CreatedAtUtc,
-                ExpenseAdded = plannedCost.Expense is not null,
-                ExpenseId = plannedCost.Expense?.Id
-            });
+            return Results.Ok(ToResponse(plannedCost));
         }).WithName("UpdatePlannedCost");
 
         routes.MapDelete("/planned-costs/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var plannedCost = await database.PlannedCosts
                 .Include(cost => cost.Expense)
+                .Include(cost => cost.ItemCore)
                 .SingleOrDefaultAsync(cost => cost.Id == id && cost.TripId == tripId);
             if (plannedCost is null)
             {
@@ -118,6 +111,7 @@ public static class PlannedCostEndpoints
             }
 
             database.PlannedCosts.Remove(plannedCost);
+            database.ItemCores.Remove(plannedCost.ItemCore);
             await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
             await database.SaveChangesAsync();
             return Results.NoContent();
@@ -125,6 +119,18 @@ public static class PlannedCostEndpoints
 
         return app;
     }
+
+    private static object ToResponse(PlannedCost cost) => new
+    {
+        cost.Id,
+        cost.TripId,
+        cost.Name,
+        cost.Category,
+        cost.Amount,
+        cost.CreatedAtUtc,
+        ExpenseAdded = cost.Expense is not null,
+        ExpenseId = cost.Expense?.Id
+    };
 
     /// <summary>Provides a consistent display name when an optional planned-cost name is omitted.</summary>
     private static string NormalizeName(string? name) =>

@@ -101,7 +101,16 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
         {
             plannedCost.Property(item => item.Name).HasMaxLength(150).IsRequired();
             plannedCost.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
-            plannedCost.Property(item => item.Amount).HasPrecision(12, 2);
+            plannedCost.HasOne(item => item.ItemCore)
+                .WithMany()
+                .HasForeignKey(item => new { item.TripId, item.ItemCoreId })
+                .HasPrincipalKey(item => new { item.TripId, item.Id })
+                .OnDelete(DeleteBehavior.NoAction);
+            plannedCost.HasOne(item => item.ItemCost)
+                .WithOne()
+                .HasForeignKey<PlannedCost>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.NoAction);
+            plannedCost.Navigation(item => item.ItemCost).AutoInclude();
             plannedCost.HasOne(item => item.Trip)
                 .WithMany(trip => trip.PlannedCosts)
                 .HasForeignKey(item => item.TripId)

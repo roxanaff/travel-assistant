@@ -40,7 +40,9 @@ public static class LinkedRecordReviews
         foreach (var edge in await GetEdges(database, source))
         {
             if (Id(edge.Target) == excludedTarget) continue;
-            var oldValues = Project(before, edge);
+            var oldValues = source is PlannedCost plan
+                ? ProjectFinancialAmount(database.Entry(plan.ItemCost).Property(cost => cost.Cost).OriginalValue!.Value)
+                : Project(before, edge);
             var newValues = Project(source, edge);
             var mismatch = await RefreshMismatchReviews(database, edge, oldValues, newValues);
             if (mismatch.ForwardHandled) continue;
@@ -292,6 +294,10 @@ public static class LinkedRecordReviews
                 property => values[property] is decimal number
                     ? number.ToString("G29", CultureInfo.InvariantCulture)
                     : values[property]);
+        if (target is PlannedCost plan)
+        {
+            snapshot[nameof(PlannedCost.Amount)] = plan.Amount.ToString("G29", CultureInfo.InvariantCulture);
+        }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
     }
 
@@ -478,7 +484,7 @@ public static class LinkedRecordReviews
             var amount = Number(values["Amount"])!.Value;
             var error = PlannedCostValidation.Validate(new CreatePlannedCostRequest(plan.Name, plan.Category, amount));
             if (error is not null) return error;
-            plan.Amount = amount;
+            plan.ItemCost.Cost = amount;
         }
         return null;
     }
@@ -489,6 +495,9 @@ public static class LinkedRecordReviews
         booking.StartLocation, booking.EndLocation, booking.ReturnStartDate, booking.ReturnStartTime,
         booking.ReturnStartLocation, booking.ReturnEndDate, booking.ReturnEndTime, booking.ReturnEndLocation,
         booking.ExternalLink, booking.Note, booking.TotalCost, booking.AmountPaid, booking.AmountRefunded);
+
+    private static Dictionary<string, JsonElement> ProjectFinancialAmount(decimal amount) =>
+        new() { ["Amount"] = JsonSerializer.SerializeToElement(amount) };
 
     private static Dictionary<string, JsonElement> Project(object record, Edge edge)
     {
@@ -501,7 +510,7 @@ public static class LinkedRecordReviews
                 PlannedCost plan => plan.Amount,
                 _ => throw new InvalidOperationException("Unsupported financial relationship.")
             };
-            return new() { ["Amount"] = JsonSerializer.SerializeToElement(amount) };
+            return ProjectFinancialAmount(amount);
         }
 
         object? date;

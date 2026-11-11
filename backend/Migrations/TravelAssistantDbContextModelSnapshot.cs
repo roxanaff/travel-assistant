@@ -295,8 +295,6 @@ namespace TravelAssistant.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TripId");
-
                     b.ToTable("ItemCores");
                 });
 
@@ -599,16 +597,15 @@ namespace TravelAssistant.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<string>("Category")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -620,7 +617,10 @@ namespace TravelAssistant.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TripId");
+                    b.HasIndex("ItemCoreId")
+                        .IsUnique();
+
+                    b.HasIndex("TripId", "ItemCoreId");
 
                     b.ToTable("PlannedCosts");
                 });
@@ -957,11 +957,28 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.PlannedCost", b =>
                 {
+                    b.HasOne("TravelAssistant.Models.ItemCost", "ItemCost")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.PlannedCost", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("TravelAssistant.Models.Trip", "Trip")
                         .WithMany("PlannedCosts")
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithMany()
+                        .HasForeignKey("TripId", "ItemCoreId")
+                        .HasPrincipalKey("TripId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ItemCore");
+
+                    b.Navigation("ItemCost");
 
                     b.Navigation("Trip");
                 });

@@ -628,6 +628,43 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PlannedCostEditsUseSharedStorageAndDeletionKeepsTheLinkedExpense()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "shared-planned-cost@example.com");
+        var trip = await CreateTripAsync(client);
+        var planRequest = new CreatePlannedCostRequest("Museum budget", null, 100);
+        var plan = await ReadJson(await client.PostAsJsonAsync($"{trip}/planned-costs", planRequest));
+        var planId = plan.GetProperty("id").GetGuid();
+        var expenseDate = new DateOnly(2027, 3, 1);
+        var expense = await ReadJson(await client.PostAsJsonAsync($"{trip}/expenses",
+            new CreateExpenseRequest("Museum expense", null, 100, expenseDate, planId)));
+        var expenseId = expense.GetProperty("id").GetGuid();
+
+        var updated = await ReadJson(await client.PutAsJsonAsync($"{trip}/planned-costs/{planId}",
+            planRequest with { Amount = 120 }));
+        Assert.Equal(120, updated.GetProperty("amount").GetDecimal());
+        var review = Assert.Single(await GetReviews(client, trip));
+        var change = review.GetProperty("changes")[0];
+        Assert.Equal(100, change.GetProperty("before").GetDecimal());
+        Assert.Equal(120, change.GetProperty("after").GetDecimal());
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        var savedPlan = await database.PlannedCosts.AsNoTracking().SingleAsync(item => item.Id == planId);
+        var savedCost = await database.ItemCosts.AsNoTracking().SingleAsync(item => item.ItemCoreId == savedPlan.ItemCoreId);
+        Assert.Equal(120, savedCost.Cost);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{trip}/planned-costs/{planId}")).StatusCode);
+        Assert.False(await database.ItemCores.AnyAsync(item => item.Id == savedPlan.ItemCoreId));
+        Assert.False(await database.ItemCosts.AnyAsync(item => item.ItemCoreId == savedPlan.ItemCoreId));
+        var savedExpense = await database.Expenses.AsNoTracking().SingleAsync(item => item.Id == expenseId);
+        Assert.Null(savedExpense.PlannedCostId);
+        Assert.Equal(100, savedExpense.Amount);
+        Assert.Equal(expenseDate, savedExpense.ExpenseDate);
+    }
+
+    [Fact]
     public async Task FinancialReviewsUpdateOnlyAmountsAndDoNotBounceBack()
     {
         using var client = CreateClient();
@@ -657,6 +694,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal("Flight", updatedBooking.GetProperty("name").GetString());
         Assert.Single(await GetReviews(client, trip));
         var planReview = (await GetReviews(client, trip)).Single();
+        Assert.Equal(150, planReview.GetProperty("changes")[0].GetProperty("targetValue").GetDecimal());
         Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, planReview, "apply")).StatusCode);
         Assert.Empty(await GetReviews(client, trip));
         await using var scope = factory.Services.CreateAsyncScope();
