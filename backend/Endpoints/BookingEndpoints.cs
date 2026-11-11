@@ -551,8 +551,9 @@ public static class BookingEndpoints
 
     private static IResult? ValidateExpenseEligibility(Booking booking)
     {
+        var payment = booking.GetPaymentAmounts();
         if (booking.TotalCost is null or <= 0
-            || (booking.AmountPaid > 0 && booking.AmountPaid - (booking.AmountRefunded ?? 0) <= 0))
+            || (payment.Paid > 0 && payment.Net <= 0))
         {
             return Results.Conflict("Expenses need a positive booking cost and cannot be linked after a full refund.");
         }
@@ -655,7 +656,7 @@ public static class BookingEndpoints
         FinancialStatus = GetFinancialStatus(booking),
         OutsideTripWarning = BookingDateWarnings.Get(booking),
         booking.DismissedOutsideTripWarningKey,
-        NetCost = booking.AmountPaid - (booking.AmountRefunded ?? 0),
+        NetCost = booking.GetPaymentAmounts().Net,
         ActivityLinks = booking.Activities.Select(activity => new
         {
             activity.Id,

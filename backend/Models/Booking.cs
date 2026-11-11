@@ -58,6 +58,8 @@ public class Booking
 
     public decimal? AmountRefunded { get; set; }
 
+    public PaymentAmounts GetPaymentAmounts() => new(AmountPaid, AmountRefunded ?? 0);
+
     public bool HasPendingDeletedActivityNotice { get; set; }
 
     public bool HasPendingDeletedExpenseNotice { get; set; }

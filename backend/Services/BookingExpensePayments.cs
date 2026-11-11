@@ -8,7 +8,7 @@ public static class BookingExpensePayments
 {
     public static (decimal Paid, decimal TotalCost) Project(Booking booking, decimal expenseAmount)
     {
-        var paid = expenseAmount + (booking.AmountRefunded ?? 0);
+        var paid = expenseAmount + booking.GetPaymentAmounts().Refunded;
         return (paid, Math.Max(booking.TotalCost ?? 0, paid));
     }
 

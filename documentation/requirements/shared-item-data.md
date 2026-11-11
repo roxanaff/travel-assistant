@@ -354,6 +354,11 @@ planned cost and expense retained their IDs, amounts, relationship and payment d
 checks exercised foreign keys, duplicate slots and totals, refund limits, schedule constraints
 and trip deletion. Independent source review found no actionable issues.
 
+The first financial chunk introduces `PaymentAmounts` for the paid/refunded pair and its computed
+net amount. Booking responses, expense eligibility and linked-record reviews use that calculation.
+The review preview uses the same booking payment projection as the update. Existing records
+supply the financial values through the same API contracts until the financial backfill and cutover.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

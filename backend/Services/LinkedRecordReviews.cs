@@ -314,41 +314,45 @@ public static class LinkedRecordReviews
         LinkedRecordReview review,
         Edge edge,
         string? blockedReason,
-        bool requiresUnscheduled) => new
+        bool requiresUnscheduled)
     {
-        review.Id,
-        review.Revision,
-        RequiresUnscheduled = requiresUnscheduled,
-        TargetVersion = TargetVersion(database, edge.Target),
-        review.SourceKind,
-        review.SourceId,
-        SourceName = Name(edge.Source),
-        review.TargetKind,
-        review.TargetId,
-        TargetName = Name(edge.Target),
-        review.IsMismatch,
-        Role = edge.Activity?.BookingRole,
-        Changes = ReadChanges(review).Select(change => new
+        var targetBooking = edge.IsFinancial ? edge.Target as Booking : null;
+        var sourceAmount = edge.IsFinancial ? Project(edge.Source, edge)["Amount"].GetDecimal() : (decimal?)null;
+        var projectedPayment = targetBooking is not null && sourceAmount is decimal amount
+            ? BookingExpensePayments.Project(targetBooking, amount)
+            : ((decimal Paid, decimal TotalCost)?)null;
+
+        return new
         {
-            change.Field,
-            change.Before,
-            change.After,
-            TargetValue = Project(edge.Target, edge)[change.Field],
-        }),
-        ProposedAmount = edge.IsFinancial
-            ? Project(edge.Source, edge)["Amount"].GetDecimal()
-                + (edge.Target is Booking booking ? booking.AmountRefunded ?? 0 : 0)
-            : (decimal?)null,
-        TargetPaid = edge.IsFinancial && edge.Target is Booking paymentTarget ? paymentTarget.AmountPaid : (decimal?)null,
-        TargetTotalCost = edge.IsFinancial && edge.Target is Booking priceTarget ? priceTarget.TotalCost : null,
-        ProposedTotalCost = edge.IsFinancial && edge.Target is Booking totalTarget
-            ? BookingExpensePayments.Project(totalTarget, Project(edge.Source, edge)["Amount"].GetDecimal()).TotalCost
-            : (decimal?)null,
-        UpdateLabel = edge.Target is Booking && edge.Source is Expense
-            ? "Update amount paid"
-            : $"Update {Kind(edge.Target) switch { LinkedRecordKind.PlannedCost => "planned amount", LinkedRecordKind.Expense => "expense amount", LinkedRecordKind.Activity => "activity", _ => "booking" }}",
-        BlockedReason = blockedReason
-    };
+            review.Id,
+            review.Revision,
+            RequiresUnscheduled = requiresUnscheduled,
+            TargetVersion = TargetVersion(database, edge.Target),
+            review.SourceKind,
+            review.SourceId,
+            SourceName = Name(edge.Source),
+            review.TargetKind,
+            review.TargetId,
+            TargetName = Name(edge.Target),
+            review.IsMismatch,
+            Role = edge.Activity?.BookingRole,
+            Changes = ReadChanges(review).Select(change => new
+            {
+                change.Field,
+                change.Before,
+                change.After,
+                TargetValue = Project(edge.Target, edge)[change.Field],
+            }),
+            ProposedAmount = projectedPayment?.Paid ?? sourceAmount,
+            TargetPaid = targetBooking?.AmountPaid,
+            TargetTotalCost = targetBooking?.TotalCost,
+            ProposedTotalCost = projectedPayment?.TotalCost,
+            UpdateLabel = edge.Target is Booking && edge.Source is Expense
+                ? "Update amount paid"
+                : $"Update {Kind(edge.Target) switch { LinkedRecordKind.PlannedCost => "planned amount", LinkedRecordKind.Expense => "expense amount", LinkedRecordKind.Activity => "activity", _ => "booking" }}",
+            BlockedReason = blockedReason
+        };
+    }
 
     /// <summary>Changes only affected fields. The caller restores proposed values after validation-only checks.</summary>
     public static async Task<string?> ApplyAsync(
@@ -492,7 +496,7 @@ public static class LinkedRecordReviews
         {
             var amount = record switch
             {
-                Booking booking => booking.AmountPaid - (booking.AmountRefunded ?? 0),
+                Booking booking => booking.GetPaymentAmounts().Net,
                 Expense expense => expense.Amount,
                 PlannedCost plan => plan.Amount,
                 _ => throw new InvalidOperationException("Unsupported financial relationship.")
