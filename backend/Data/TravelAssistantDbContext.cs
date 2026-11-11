@@ -166,9 +166,25 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
             booking.Property(item => item.ReturnEndLocation).HasMaxLength(300);
             booking.Property(item => item.ExternalLink).HasMaxLength(2000);
             booking.Property(item => item.Note).HasMaxLength(1000);
-            booking.Property(item => item.TotalCost).HasPrecision(12, 2);
-            booking.Property(item => item.AmountPaid).HasPrecision(12, 2).HasDefaultValue(0);
-            booking.Property(item => item.AmountRefunded).HasPrecision(12, 2);
+            booking.Ignore(item => item.TotalCost);
+            booking.Ignore(item => item.AmountPaid);
+            booking.Ignore(item => item.AmountRefunded);
+            booking.HasOne(item => item.ItemCore)
+                .WithOne()
+                .HasForeignKey<Booking>(item => new { item.TripId, item.ItemCoreId })
+                .HasPrincipalKey<ItemCore>(item => new { item.TripId, item.Id })
+                .OnDelete(DeleteBehavior.NoAction);
+            booking.HasOne(item => item.ItemCost)
+                .WithOne()
+                .HasForeignKey<Booking>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.NoAction);
+            booking.HasOne(item => item.PaymentTotals)
+                .WithOne()
+                .HasForeignKey<Booking>(item => item.ItemCoreId)
+                .OnDelete(DeleteBehavior.NoAction);
+            booking.Navigation(item => item.ItemCore).AutoInclude();
+            booking.Navigation(item => item.ItemCost).AutoInclude();
+            booking.Navigation(item => item.PaymentTotals).AutoInclude();
             booking.Property(item => item.HasPendingDeletedActivityNotice).HasDefaultValue(false);
             booking.Property(item => item.HasPendingDeletedExpenseNotice).HasDefaultValue(false);
             booking.Property(item => item.DismissedOutsideTripWarningKey).HasMaxLength(64);

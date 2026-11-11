@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TravelAssistant.Contracts;
 using TravelAssistant.Data;
 using TravelAssistant.Models;
+using TravelAssistant.Services;
 using Xunit;
 
 namespace TravelAssistant.Tests;
@@ -337,6 +338,10 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal(200, plannedCost.Amount);
         Assert.Null(expense.BookingId);
         Assert.True(expense.HasPendingDeletedBookingNotice);
+        Assert.Equal(plannedCost.ItemCoreId, expense.ItemCoreId);
+        Assert.Equal(plannedCost.ItemCoreId, (await database.ItemCores.SingleAsync()).Id);
+        Assert.Equal(plannedCost.ItemCoreId, (await database.ItemCosts.SingleAsync()).ItemCoreId);
+        Assert.Equal(expense.ItemCoreId, (await database.ItemPaymentTotals.SingleAsync()).ItemCoreId);
     }
 
     [Fact]
@@ -718,6 +723,31 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StaleBookingPaymentRollsBackAfterCostChanges()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "concurrent-booking-payment@example.com");
+        var trip = await CreateTripAsync(client);
+        var request = CreateBookingRequest(totalCost: 100, amountPaid: 50);
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings", request));
+        var bookingId = booking.GetProperty("id").GetGuid();
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        var staleBooking = await database.Bookings.SingleAsync(item => item.Id == bookingId);
+        var edit = await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", request with { TotalCost = 60 });
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+
+        staleBooking.AmountPaid = 90;
+        await LinkedRecordReviews.TrackAsync(database, staleBooking);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => database.SaveChangesAsync());
+
+        var savedBooking = await ReadJson(await client.GetAsync($"{trip}/bookings/{bookingId}"));
+        Assert.Equal(60, savedBooking.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(50, savedBooking.GetProperty("amountPaid").GetDecimal());
+    }
+
+    [Fact]
     public async Task FinancialReviewsUpdateOnlyAmountsAndDoNotBounceBack()
     {
         using var client = CreateClient();
@@ -811,6 +841,15 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.True(review.GetProperty("isMismatch").GetBoolean());
         Assert.Equal(JsonValueKind.Null, review.GetProperty("blockedReason").ValueKind);
         Assert.Equal(250, review.GetProperty("proposedTotalCost").GetDecimal());
+        Assert.Equal(200, review.GetProperty("targetTotalCost").GetDecimal());
+        Assert.Equal(150, review.GetProperty("targetPaid").GetDecimal());
+
+        var edit = await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}",
+            CreateBookingRequest(name: "Flight", totalCost: 210, amountPaid: 150));
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await Resolve(client, trip, review, "apply")).StatusCode);
+        review = (await GetReviews(client, trip)).Single(item => item.GetProperty("targetKind").GetString() == "Booking");
+        Assert.Equal(210, review.GetProperty("targetTotalCost").GetDecimal());
         Assert.Equal(HttpStatusCode.NoContent, (await Resolve(client, trip, review, "apply")).StatusCode);
         var booking = await ReadJson(await client.GetAsync($"{trip}/bookings/{bookingId}"));
         Assert.Equal(250, booking.GetProperty("amountPaid").GetDecimal());

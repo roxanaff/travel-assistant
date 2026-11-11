@@ -11,6 +11,14 @@ public class Booking
 
     public Trip Trip { get; set; } = null!;
 
+    public Guid ItemCoreId { get; set; }
+
+    public ItemCore ItemCore { get; set; } = null!;
+
+    public ItemCost ItemCost { get; set; } = null!;
+
+    public ItemPaymentTotals PaymentTotals { get; set; } = null!;
+
     public string Name { get; set; } = string.Empty;
 
     public BookingCategory? Category { get; set; }
@@ -52,13 +60,25 @@ public class Booking
     public string? Note { get; set; }
 
     /// <summary><c>null</c> means unknown, zero means explicitly free, and a positive value means paid or payable.</summary>
-    public decimal? TotalCost { get; set; }
+    public decimal? TotalCost
+    {
+        get => ItemCost.Cost;
+        set => ItemCost.Cost = value;
+    }
 
-    public decimal AmountPaid { get; set; }
+    public decimal AmountPaid
+    {
+        get => PaymentTotals.Paid;
+        set => PaymentTotals.Paid = value;
+    }
 
-    public decimal? AmountRefunded { get; set; }
+    public decimal? AmountRefunded
+    {
+        get => PaymentTotals.Refunded == 0 ? null : PaymentTotals.Refunded;
+        set => PaymentTotals.Refunded = value ?? 0;
+    }
 
-    public PaymentAmounts GetPaymentAmounts() => new(AmountPaid, AmountRefunded ?? 0);
+    public PaymentAmounts GetPaymentAmounts() => new(PaymentTotals.Paid, PaymentTotals.Refunded);
 
     public bool HasPendingDeletedActivityNotice { get; set; }
 

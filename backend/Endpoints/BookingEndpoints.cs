@@ -72,7 +72,15 @@ public static class BookingEndpoints
                 return Results.NotFound();
             }
 
-            var booking = new Booking { TripId = tripId, Trip = trip };
+            var core = new ItemCore { TripId = tripId };
+            var booking = new Booking
+            {
+                TripId = tripId,
+                Trip = trip,
+                ItemCore = core,
+                ItemCost = new ItemCost { ItemCore = core },
+                PaymentTotals = new ItemPaymentTotals { ItemCore = core }
+            };
             ApplyRequest(booking, request);
             database.Bookings.Add(booking);
             await database.SaveChangesAsync();
@@ -120,7 +128,14 @@ public static class BookingEndpoints
 
             ApplyRequest(booking, request);
             await LinkedRecordReviews.TrackAsync(database, booking);
-            await database.SaveChangesAsync();
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The booking changed while saving. Refresh and try again.");
+            }
             return Results.Ok(ToResponse(booking));
         }).WithName("UpdateBooking");
 
@@ -155,7 +170,8 @@ public static class BookingEndpoints
                 await database.SaveChangesAsync();
                 if (transaction is not null) await transaction.CommitAsync();
             }
-            catch (DbUpdateException)
+            catch (Exception exception) when (exception is DbUpdateException
+                || BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
             {
                 return Results.Conflict("The booking changed while saving. Refresh and try again.");
             }
@@ -181,8 +197,16 @@ public static class BookingEndpoints
             }
 
             database.Bookings.Remove(booking);
+            database.ItemCores.Remove(booking.ItemCore);
             await LinkedRecordReviews.ClearRecordAsync(database, tripId, id);
-            await database.SaveChangesAsync();
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The booking changed while deleting it. Refresh and try again.");
+            }
             return Results.NoContent();
         }).WithName("DeleteBooking");
 
@@ -360,6 +384,10 @@ public static class BookingEndpoints
                 if (paymentError is not null) return Results.Conflict(paymentError);
                 await LinkedRecordReviews.TrackAsync(database, booking);
             }
+            else
+            {
+                booking.ItemCore.Revision = Guid.NewGuid();
+            }
 
             var core = new ItemCore { TripId = tripId };
             var expense = new Expense
@@ -379,10 +407,14 @@ public static class BookingEndpoints
                 await database.SaveChangesAsync();
                 if (transaction is not null) await transaction.CommitAsync();
             }
-            catch (DbUpdateException exception) when (
+            catch (Exception exception) when (
                 BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception))
             {
                 return Results.Conflict("This booking already has a linked expense.");
+            }
+            catch (Exception exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The booking changed while adding the expense. Refresh and try again.");
             }
 
             return Results.Created(
@@ -430,6 +462,10 @@ public static class BookingEndpoints
                 if (paymentError is not null) return Results.Conflict(paymentError);
                 await LinkedRecordReviews.TrackAsync(database, booking, expense.Id);
             }
+            else
+            {
+                booking.ItemCore.Revision = Guid.NewGuid();
+            }
 
             try
             {
@@ -452,17 +488,21 @@ public static class BookingEndpoints
                     expense.BookingId = booking.Id;
                     expense.HasPendingDeletedBookingNotice = false;
                 }
+
+                await LinkedRecordReviews.ClearPairAsync(database, booking.Id, expense.Id);
+                await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
+                await database.SaveChangesAsync();
+                if (transaction is not null) await transaction.CommitAsync();
             }
             catch (Exception exception) when (
                 BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception))
             {
                 return Results.Conflict("This booking already has a linked expense.");
             }
-
-            await LinkedRecordReviews.ClearPairAsync(database, booking.Id, expense.Id);
-            await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
-            await database.SaveChangesAsync();
-            if (transaction is not null) await transaction.CommitAsync();
+            catch (Exception exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The booking changed while linking the expense. Refresh and try again.");
+            }
             return request?.PaymentUpdate is not null ? Results.Ok(ToResponse(booking)) : Results.NoContent();
         }).WithName("LinkBookingExpense");
 
@@ -545,7 +585,7 @@ public static class BookingEndpoints
         booking.Note = NormalizeOptionalText(request.Note);
         booking.TotalCost = request.TotalCost;
         booking.AmountPaid = request.AmountPaid;
-        booking.AmountRefunded = request.AmountRefunded == 0 ? null : request.AmountRefunded;
+        booking.AmountRefunded = request.AmountRefunded;
     }
 
     private static string? NormalizeOptionalText(string? value) =>

@@ -31,11 +31,17 @@ public static class LinkedRecordReviews
         if (entry.State == EntityState.Added) return;
 
         var before = entry.OriginalValues.ToObject();
-        if (source is Booking booking && before is Booking originalBooking
-            && (booking.StartDate != originalBooking.StartDate || booking.EndDate != originalBooking.EndDate
-                || booking.ReturnStartDate != originalBooking.ReturnStartDate || booking.ReturnEndDate != originalBooking.ReturnEndDate))
+        if (source is Booking booking && before is Booking originalBooking)
         {
-            booking.DismissedOutsideTripWarningKey = null;
+            originalBooking.ItemCost = (ItemCost)database.Entry(booking.ItemCost).OriginalValues.ToObject();
+            originalBooking.PaymentTotals = (ItemPaymentTotals)database.Entry(booking.PaymentTotals).OriginalValues.ToObject();
+            // Cost, payment and status edits must agree on the version of the booking they validated.
+            booking.ItemCore.Revision = Guid.NewGuid();
+            if (booking.StartDate != originalBooking.StartDate || booking.EndDate != originalBooking.EndDate
+                || booking.ReturnStartDate != originalBooking.ReturnStartDate || booking.ReturnEndDate != originalBooking.ReturnEndDate)
+            {
+                booking.DismissedOutsideTripWarningKey = null;
+            }
         }
         foreach (var edge in await GetEdges(database, source))
         {
@@ -306,6 +312,12 @@ public static class LinkedRecordReviews
         if (financialAmount is decimal amount)
         {
             snapshot[nameof(Expense.Amount)] = amount.ToString("G29", CultureInfo.InvariantCulture);
+        }
+        if (target is Booking booking)
+        {
+            snapshot[nameof(Booking.TotalCost)] = booking.TotalCost?.ToString("G29", CultureInfo.InvariantCulture);
+            snapshot[nameof(Booking.AmountPaid)] = booking.AmountPaid.ToString("G29", CultureInfo.InvariantCulture);
+            snapshot[nameof(Booking.AmountRefunded)] = booking.AmountRefunded?.ToString("G29", CultureInfo.InvariantCulture);
         }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
     }

@@ -28,9 +28,9 @@ public static class BudgetRelationshipConstraintErrors
         || IsUniqueViolation(exception, "IX_Expenses_ItemCoreId", "Expenses.ItemCoreId")
         || IsUniqueViolation(exception, "PK_ItemPaymentTotals", "ItemPaymentTotals.ItemCoreId");
 
-    public static bool IsFinancialItemWriteConflict(DbUpdateException exception) =>
+    public static bool IsFinancialItemWriteConflict(Exception exception) =>
         exception is DbUpdateConcurrencyException
-        || exception.InnerException is PostgresException
+        || (exception is DbUpdateException ? exception.InnerException : exception) is PostgresException
         {
             SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected
         };

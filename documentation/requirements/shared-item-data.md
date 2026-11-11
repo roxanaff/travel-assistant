@@ -409,6 +409,28 @@ with booking refunds. Trip deletion removed the shared records. Rollback restore
 amounts and kept the linked plan. A legacy cross-trip link failed the migration without partial
 changes. Independent review found no actionable issues.
 
+### Booking financial storage cutover
+
+Move each booking's total cost, paid amount and refunded amount into the existing cost and
+payment tables. Allocate a dedicated core per booking so legacy links can preserve differing
+booking and expense values until the linking workflow reconciles them. Keep booking IDs and
+relationships. Store zero refunds as zero and expose them as null in the existing booking API.
+Keep unknown costs distinct from explicitly free bookings.
+
+Require same-trip references and one booking per core. Use the core revision to coordinate
+booking writes that validate or change financial values across rows. Delete the dedicated core
+with its booking and retain existing linked-entry deletion behavior. Legacy reviews compare
+original values from both financial rows and restore all target values after a read-only preview.
+
+Stop old API writers before applying the migration. Rollback restores the old booking columns
+from the shared rows and removes the dedicated booking cores. Verify both directions with
+populated PostgreSQL data and exercise existing booking, refund and linked-review behavior.
+
+The 114-test backend suite and a separate stale-payment regression passed. PostgreSQL 17
+verified the populated upgrade from `main`, trip deletion, and rollback of the booking migration.
+The fixture preserved a booking refund, distinct free and unknown costs, and the linked plan and
+expense with their original amounts. Independent review found no actionable issues.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

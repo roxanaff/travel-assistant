@@ -23,16 +23,24 @@ public static class LinkedRecordReviewEndpoints
                 var edge = await LinkedRecordReviews.LoadEdge(database, review);
                 // Deleted/unlinked records no longer have a relationship to review.
                 if (edge is null) continue;
-                var target = database.Entry(edge.Target switch
+                object[] affected = edge.Target switch
                 {
-                    PlannedCost plan => plan.ItemCost,
-                    Expense expense => expense.PaymentTotals,
-                    _ => edge.Target
-                });
-                var original = target.CurrentValues.Clone();
+                    Booking booking => [booking, booking.ItemCost, booking.PaymentTotals],
+                    PlannedCost plan => [plan.ItemCost],
+                    Expense expense => [expense.PaymentTotals],
+                    _ => [edge.Target]
+                };
+                var originals = affected.Select(record =>
+                {
+                    var entry = database.Entry(record);
+                    return (Entry: entry, Values: entry.CurrentValues.Clone());
+                }).ToArray();
                 var requiresUnscheduled = await LinkedRecordReviews.NeedsUnscheduledAsync(database, review, edge);
                 var blocked = await LinkedRecordReviews.ApplyAsync(database, review, edge, requiresUnscheduled);
-                target.CurrentValues.SetValues(original);
+                foreach (var (entry, values) in originals)
+                {
+                    entry.CurrentValues.SetValues(values);
+                }
                 responses.Add(LinkedRecordReviews.Response(database, review, edge, blocked, requiresUnscheduled));
             }
             return Results.Ok(responses);
@@ -78,7 +86,8 @@ public static class LinkedRecordReviewEndpoints
                 await database.SaveChangesAsync();
                 if (transaction is not null) await transaction.CommitAsync();
             }
-            catch (DbUpdateException)
+            catch (Exception exception) when (exception is DbUpdateException
+                || BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
             {
                 return Results.Conflict("A linked record changed while this update was being saved. Refresh and try again.");
             }

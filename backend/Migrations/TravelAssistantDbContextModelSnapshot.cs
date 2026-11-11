@@ -111,16 +111,6 @@ namespace TravelAssistant.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("AmountPaid")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<decimal?>("AmountRefunded")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<string>("Category")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
@@ -159,6 +149,9 @@ namespace TravelAssistant.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
+
+                    b.Property<Guid>("ItemCoreId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Location")
                         .HasMaxLength(300)
@@ -211,16 +204,16 @@ namespace TravelAssistant.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<decimal?>("TotalCost")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<Guid>("TripId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TripId");
+                    b.HasIndex("ItemCoreId")
+                        .IsUnique();
+
+                    b.HasIndex("TripId", "ItemCoreId")
+                        .IsUnique();
 
                     b.ToTable("Bookings");
                 });
@@ -839,11 +832,36 @@ namespace TravelAssistant.Migrations
 
             modelBuilder.Entity("TravelAssistant.Models.Booking", b =>
                 {
+                    b.HasOne("TravelAssistant.Models.ItemCost", "ItemCost")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.Booking", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("TravelAssistant.Models.ItemPaymentTotals", "PaymentTotals")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.Booking", "ItemCoreId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("TravelAssistant.Models.Trip", "Trip")
                         .WithMany("Bookings")
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("TravelAssistant.Models.ItemCore", "ItemCore")
+                        .WithOne()
+                        .HasForeignKey("TravelAssistant.Models.Booking", "TripId", "ItemCoreId")
+                        .HasPrincipalKey("TravelAssistant.Models.ItemCore", "TripId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ItemCore");
+
+                    b.Navigation("ItemCost");
+
+                    b.Navigation("PaymentTotals");
 
                     b.Navigation("Trip");
                 });
