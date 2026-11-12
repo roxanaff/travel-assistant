@@ -475,6 +475,26 @@ The 119 backend tests, frontend tests, and production build passed. All 11 booki
 expense Chromium scenarios passed against the Release build. They verified edits from Expenses
 and immediate updates on the booking card. Independent review found no remaining actionable issues.
 
+### Confirm payment changes when adding an expense from a booking
+
+Always use the booking's payment totals for a newly created expense. Keep the prefilled
+net amount and the ordinary Add expense action when it matches. When it differs, show the
+change to Paid and any required increase to Total cost before submission. The submit button
+explicitly confirms the payment update and expense creation together.
+
+Require the existing payment snapshot for a different amount and validate it inside the
+creation transaction. A missing or stale confirmation cannot change the booking or create
+an expense. Remove the separate-payment creation path. Existing-expense links and persisted
+reviews remain supported until link reconciliation. No data migration is required.
+For partially refunded bookings, the form labels its input Net spending and previews the
+resulting gross Paid value. Explicit Paid and Refunded inputs are part of the later
+financial contract.
+
+All 119 backend tests, 110 frontend tests, the production build and two focused Chromium
+scenarios passed. Checks covered cancellation, required and stale confirmations, preserving
+refunds, and sharing later edits. The browser runner was stopped after the scenarios passed
+because it stalled during shutdown. Independent review found no actionable issues.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

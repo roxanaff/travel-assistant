@@ -120,7 +120,7 @@ test("linking an existing activity immediately reviews differences without synch
     expect((await browserRequest(page, `${tripApi}/expenses`)).body).toEqual([]);
 });
 
-test("expenses can record unpaid booking payments and explicitly increase the total", async ({ page }) => {
+test("adding an expense confirms changed payments and shares later edits", async ({ page }) => {
     await page.goto("/register");
     await page.getByLabel("Name").fill("Expense payment traveller");
     await page.getByLabel("Email").fill(`expense-payment-${Date.now()}@example.test`);
@@ -147,10 +147,9 @@ test("expenses can record unpaid booking payments and explicitly increase the to
     await firstCard.getByRole("button", { name: "Add new expense" }).click();
     await page.getByLabel("Amount (EUR)").fill("20");
     const updatePayment = page.getByRole("checkbox", { name: "Update booking payment" });
-    await expect(updatePayment).not.toBeChecked();
+    await expect(updatePayment).toHaveCount(0);
     await expect(firstCard).toContainText("Paid €0 → €20 · Total cost €50");
-    await updatePayment.check();
-    await page.getByRole("button", { name: "Add expense", exact: true }).click();
+    await page.getByRole("button", { name: "Update payment and add expense", exact: true }).click();
     await expect(firstCard.locator(".booking-card-price")).toHaveText("€20 / €50");
     const expenses = (await browserRequest(page, `${tripApi}/expenses`)).body;
     expect(expenses).toHaveLength(2);

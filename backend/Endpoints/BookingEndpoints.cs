@@ -407,30 +407,26 @@ public static class BookingEndpoints
                 if (paymentError is not null) return Results.Conflict(paymentError);
                 await LinkedRecordReviews.TrackAsync(database, booking);
             }
+            else if (request.Amount != booking.GetPaymentAmounts().Net)
+            {
+                return Results.Conflict("Confirm the change to the booking payment before adding this expense.");
+            }
             else
             {
                 booking.ItemCore.Revision = Guid.NewGuid();
             }
 
-            var sharePayment = request.Amount == booking.GetPaymentAmounts().Net;
-            var core = sharePayment ? booking.ItemCore : new ItemCore { TripId = tripId };
             var expense = new Expense
             {
                 TripId = tripId,
                 Booking = booking,
                 Name = NormalizeBudgetName(request.Name),
                 Category = request.Category,
-                ItemCore = core,
-                PaymentTotals = sharePayment
-                    ? booking.PaymentTotals
-                    : new ItemPaymentTotals { ItemCore = core, Paid = request.Amount },
+                ItemCore = booking.ItemCore,
+                PaymentTotals = booking.PaymentTotals,
                 ExpenseDate = request.ExpenseDate
             };
             database.Expenses.Add(expense);
-            if (!sharePayment)
-            {
-                await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
-            }
             try
             {
                 await database.SaveChangesAsync();

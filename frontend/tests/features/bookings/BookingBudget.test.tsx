@@ -267,11 +267,15 @@ describe("booking expense actions", () => {
         await user.click(screen.getByRole("button", { name: "Add new expense" }));
         expect(screen.getByLabelText("Amount (EUR)")).toHaveProperty("value", "");
         await user.type(screen.getByLabelText("Amount (EUR)"), "100");
-        const choice = screen.getByRole("checkbox", { name: "Update booking payment" });
-        expect(choice).toHaveProperty("checked", false);
+        expect(screen.queryByRole("checkbox", { name: "Update booking payment" })).toBeNull();
         expect(screen.getByText("Paid €0 → €100 · Total cost €50 → €100")).toBeTruthy();
-        await user.click(choice);
-        await user.click(screen.getByRole("button", { name: "Add expense", exact: true }));
+        await user.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+        const discard = screen.getByRole("alertdialog", { name: "Discard unsaved changes?" });
+        await user.click(within(discard).getByRole("button", { name: "Discard changes" }));
+        expect(bookingsApi.createBookingExpense).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Add new expense" }));
+        await user.type(screen.getByLabelText("Amount (EUR)"), "100");
+        await user.click(screen.getByRole("button", { name: "Update payment and add expense", exact: true }));
         await waitFor(() => expect(bookingsApi.createBookingExpense).toHaveBeenCalledWith(trip.id, hotel.id, expect.objectContaining({
             amount: 100,
             paymentUpdate: { expectedPaid: 0, expectedTotalCost: 50, expectedRefunded: null, expectedStatus: "Confirmed", expectedExpenseAmount: 100 },
@@ -279,7 +283,7 @@ describe("booking expense actions", () => {
         expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
     });
 
-    it("offers the same payment choice when linking an existing expense to an unpaid booking", async () => {
+    it("keeps the optional payment update when linking an existing expense to an unpaid booking", async () => {
         const user = userEvent.setup();
         const unpaid = { ...hotel, totalCost: 50, amountPaid: 0, netCost: 0, financialStatus: "Unpaid" as const };
         bookingsApi.getBookings.mockResolvedValue([unpaid]);
@@ -328,14 +332,15 @@ describe("booking expense actions", () => {
         const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
         expect(within(budget).getByLabelText("What did you pay for?")).toHaveProperty("value", hotel.name);
-        expect(within(budget).getByLabelText("Amount (EUR)")).toHaveProperty("value", "120");
+        expect(within(budget).getByLabelText("Net spending (EUR)")).toHaveProperty("value", "120");
         expect(within(budget).getByLabelText("Category")).toHaveProperty("value", "Accommodation");
         expect(within(budget).getByLabelText("Date")).toHaveProperty("value", localToday());
         expect(screen.queryByRole("button", { name: "Add to planned costs" })).toBeNull();
 
-        await user.clear(within(budget).getByLabelText("Amount (EUR)"));
-        await user.type(within(budget).getByLabelText("Amount (EUR)"), "125");
-        await user.click(within(budget).getByRole("button", { name: "Add expense" }));
+        await user.clear(within(budget).getByLabelText("Net spending (EUR)"));
+        await user.type(within(budget).getByLabelText("Net spending (EUR)"), "125");
+        expect(within(budget).getByText("Paid €150 → €155 · Total cost €200")).toBeTruthy();
+        await user.click(within(budget).getByRole("button", { name: "Update payment and add expense" }));
 
         await waitFor(() => expect(bookingsApi.createBookingExpense).toHaveBeenCalledWith(
             trip.id,
@@ -345,6 +350,13 @@ describe("booking expense actions", () => {
                 category: "Accommodation",
                 amount: 125,
                 expenseDate: localToday(),
+                paymentUpdate: {
+                    expectedPaid: 150,
+                    expectedTotalCost: 200,
+                    expectedRefunded: 30,
+                    expectedStatus: "Cancelled",
+                    expectedExpenseAmount: 125,
+                },
             },
         ));
         expect(await within(budget).findByRole("link", { name: hotel.name })).toBeTruthy();

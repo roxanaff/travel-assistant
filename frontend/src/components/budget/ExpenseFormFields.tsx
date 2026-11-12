@@ -4,11 +4,12 @@ import { FieldLabel, FieldRow } from "../shared/FormPrimitives";
 type Props = {
     value: NewExpenseForm;
     currency: string;
+    amountLabel?: string;
     onChange: (field: keyof NewExpenseForm, value: string) => void;
 };
 
 /** The same editable expense fields in Expenses and in a booking's prefilled form. */
-export function ExpenseFormFields({ value, currency, onChange }: Props) {
+export function ExpenseFormFields({ value, currency, amountLabel, onChange }: Props) {
     return (
         <>
             <label>
@@ -36,7 +37,9 @@ export function ExpenseFormFields({ value, currency, onChange }: Props) {
                     </select>
                 </label>
                 <label>
-                    <FieldLabel required>{value.refunded === undefined ? "Amount" : "Paid"} ({currency})</FieldLabel>
+                    <FieldLabel required>
+                        {amountLabel ?? (value.refunded === undefined ? "Amount" : "Paid")} ({currency})
+                    </FieldLabel>
                     <input
                         type="text"
                         inputMode="decimal"

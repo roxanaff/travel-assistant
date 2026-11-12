@@ -595,7 +595,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     };
 
     const hasChangedBudgetAction = () => {
-        if (budgetAction && recordExpensePayment) return true;
+        if (budgetAction?.kind === "link" && recordExpensePayment) return true;
         if (budgetAction?.kind === "create") {
             return JSON.stringify(budgetDraft) !== JSON.stringify(initialBudgetDraft);
         }
@@ -708,7 +708,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     category: budgetDraft.category || null,
                     amount,
                     expenseDate: budgetDraft.expenseDate || null,
-                    ...(recordExpensePayment ? { paymentUpdate: bookingExpensePaymentUpdate(booking, amount) } : {}),
+                    ...(amount !== booking.netCost ? { paymentUpdate: bookingExpensePaymentUpdate(booking, amount) } : {}),
                 },
             );
             setExpenses((current) => [...current.filter((expense) => expense.id !== created.id), created]);
@@ -1612,14 +1612,23 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             : expenses.find(expense => expense.id === selectedExpenseId)?.amount ?? 0;
         const proposedPaid = Math.round((proposedExpenseAmount + (booking.amountRefunded ?? 0)) * 100) / 100;
         const proposedTotal = Math.max(booking.totalCost ?? 0, proposedPaid);
-        const paymentOffer = Number.isFinite(proposedExpenseAmount) && proposedExpenseAmount > 0
-            && proposedPaid !== booking.amountPaid ? (
+        const paymentChanges = Number.isFinite(proposedExpenseAmount) && proposedExpenseAmount > 0
+            && proposedExpenseAmount !== booking.netCost;
+        const paymentOffer = paymentChanges ? (
             <div className="booking-expense-payment-offer">
-                <label>
-                    <input type="checkbox" checked={recordExpensePayment} disabled={isBudgetPending}
-                        onChange={event => setRecordExpensePayment(event.target.checked)} />
-                    Update booking payment
-                </label>
+                {budgetAction?.kind === "create" ? (
+                    <strong>Update the booking payment?</strong>
+                ) : (
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={recordExpensePayment}
+                            disabled={isBudgetPending}
+                            onChange={event => setRecordExpensePayment(event.target.checked)}
+                        />
+                        Update booking payment
+                    </label>
+                )}
                 <span>
                     Paid {formatMoney(booking.amountPaid, trip.currency)} → {formatMoney(proposedPaid, trip.currency)}
                     {` · Total cost ${formatMoney(booking.totalCost, trip.currency)}`}
@@ -2105,6 +2114,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                         <ExpenseFormFields
                                             value={budgetDraft}
                                             currency={trip.currency}
+                                            amountLabel={booking.amountRefunded ? "Net spending" : undefined}
                                             onChange={updateBudgetDraft}
                                         />
                                         {paymentOffer}
@@ -2118,7 +2128,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                                 Cancel
                                             </button>
                                             <button className="primary-button" type="submit" disabled={isBudgetPending}>
-                                                {isBudgetPending ? "Saving…" : "Add expense"}
+                                                {isBudgetPending ? "Saving…" : paymentChanges
+                                                    ? "Update payment and add expense"
+                                                    : "Add expense"}
                                             </button>
                                         </FormActions>
                                     </FormSurface>

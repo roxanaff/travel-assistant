@@ -197,7 +197,7 @@ public sealed class BookingApiTests : IAsyncLifetime
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task UnpaidBookingCanCreateOrLinkExpenseWithOptionalPayment(bool linkExisting, bool recordPayment)
+    public async Task UnpaidBookingRequiresConfirmationForNewExpensePayment(bool linkExisting, bool recordPayment)
     {
         using var client = CreateClient();
         await RegisterAsync(client, "Roxi", "expense-payment@example.com");
@@ -214,15 +214,16 @@ public sealed class BookingApiTests : IAsyncLifetime
         else
         {
             var response = await client.PostAsJsonAsync($"{trip}/bookings/{id}/expenses", new CreateBookingExpenseRequest("Payment", null, 100, null, update));
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            Assert.Equal(recordPayment ? HttpStatusCode.Created : HttpStatusCode.Conflict, response.StatusCode);
         }
         booking = await ReadJson(await client.GetAsync($"{trip}/bookings/{id}"));
         Assert.Equal(recordPayment ? 100 : 0, booking.GetProperty("amountPaid").GetDecimal());
         Assert.Equal(recordPayment ? 100 : 50, booking.GetProperty("totalCost").GetDecimal());
-        Assert.Equal(recordPayment ? 0 : 2, (await GetReviews(client, trip)).Length);
+        Assert.Equal(linkExisting && !recordPayment ? 2 : 0, (await GetReviews(client, trip)).Length);
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
-        Assert.Equal(1, await database.Expenses.CountAsync());
+        Assert.Equal(linkExisting || recordPayment ? 1 : 0, await database.Expenses.CountAsync());
+        Assert.Equal(linkExisting ? 2 : 1, await database.ItemPaymentTotals.CountAsync());
         Assert.Empty(await database.PlannedCosts.ToListAsync());
     }
 
@@ -259,7 +260,8 @@ public sealed class BookingApiTests : IAsyncLifetime
         var id = await CreateBookingAsync(client, trip, "Flight");
         await client.PutAsJsonAsync($"{trip}/bookings/{id}", CreateBookingRequest(totalCost: 200, amountPaid: 120));
         var stale = new BookingExpensePaymentUpdate(150, 200, null, BookingStatus.Confirmed, 100);
-        var response = await client.PostAsJsonAsync($"{trip}/bookings/{id}/expenses", new CreateBookingExpenseRequest("Payment", null, 100, null, stale));
+        var response = await client.PostAsJsonAsync($"{trip}/bookings/{id}/expenses",
+            new CreateBookingExpenseRequest("Payment", null, 120, null, stale with { ExpectedExpenseAmount = 120 }));
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var expense = await ReadJson(await client.PostAsJsonAsync($"{trip}/expenses", new CreateExpenseRequest("Payment", null, 130, null, null)));
         var expenseId = expense.GetProperty("id").GetGuid();
@@ -940,9 +942,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         await RegisterAsync(client, "Roxi", "mismatch-reviews@example.com");
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
-        var response = await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/expenses",
-            new CreateBookingExpenseRequest("Oversized expense", null, 250, null));
-        var expense = await ReadJson(response);
+        var expenseId = await LinkExistingExpense(client, trip, bookingId, "Oversized expense", 250);
         var reviews = await GetReviews(client, trip);
         Assert.Equal(2, reviews.Length);
         var review = reviews.Single(item => item.GetProperty("targetKind").GetString() == "Booking");
@@ -967,7 +967,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         await RegisterAsync(otherUser, "Other", "other-reviews@example.com");
         Assert.Equal(HttpStatusCode.NotFound, (await otherUser.GetAsync($"{trip}/linked-record-reviews")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await Resolve(otherUser, trip, review, "keep")).StatusCode);
-        await client.DeleteAsync($"{trip}/bookings/{bookingId}/expenses/{expense.GetProperty("id").GetGuid()}");
+        await client.DeleteAsync($"{trip}/bookings/{bookingId}/expenses/{expenseId}");
         Assert.Empty(await GetReviews(client, trip));
     }
 
@@ -1280,9 +1280,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         await RegisterAsync(client, "Roxi", "matched-amount-reviews@example.com");
         var trip = await CreateTripAsync(client);
         var bookingId = await CreateBookingAsync(client, trip, "Flight");
-        var expense = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings/{bookingId}/expenses",
-            new CreateBookingExpenseRequest("Deposit", null, 100, null)));
-        var expenseId = expense.GetProperty("id").GetGuid();
+        var expenseId = await LinkExistingExpense(client, trip, bookingId, "Deposit", 100);
         Assert.Equal(2, (await GetReviews(client, trip)).Length);
         await client.PutAsJsonAsync($"{trip}/bookings/{bookingId}", CreateBookingRequest(totalCost: 200, amountPaid: 100));
         Assert.Empty(await GetReviews(client, trip));
