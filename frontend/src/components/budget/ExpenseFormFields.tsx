@@ -36,7 +36,7 @@ export function ExpenseFormFields({ value, currency, onChange }: Props) {
                     </select>
                 </label>
                 <label>
-                    <FieldLabel required>Amount ({currency})</FieldLabel>
+                    <FieldLabel required>{value.refunded === undefined ? "Amount" : "Paid"} ({currency})</FieldLabel>
                     <input
                         type="text"
                         inputMode="decimal"
@@ -45,6 +45,17 @@ export function ExpenseFormFields({ value, currency, onChange }: Props) {
                         required
                     />
                 </label>
+                {value.refunded !== undefined && (
+                    <label>
+                        <FieldLabel>Refunded ({currency})</FieldLabel>
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={value.refunded}
+                            onChange={(event) => onChange("refunded", event.target.value)}
+                        />
+                    </label>
+                )}
                 <label>
                     <FieldLabel>Date</FieldLabel>
                     <input

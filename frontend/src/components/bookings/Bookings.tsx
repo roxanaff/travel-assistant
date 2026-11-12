@@ -1627,7 +1627,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                 <small>This sets the recorded payment total; it does not add another payment.</small>
             </div>
         ) : null;
-        const unlinkedExpenses = expenses.filter((expense) => expense.bookingId === null);
+        const unlinkedExpenses = expenses.filter((expense) => expense.bookingId === null && !expense.refunded);
         const hasAdditionalDetails = true;
         const newActivitySourceDate = newActivityRole === "Return"
             ? booking.returnStartDate

@@ -723,6 +723,43 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StandaloneExpenseKeepsItsPaymentHistoryAtZeroNetAndRejectsStaleWrites()
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "expense-refund@example.com");
+        var trip = await CreateTripAsync(client);
+        var payment = new CreateExpenseRequest("Museum ticket", null, null, null, null, Paid: 120, Refunded: 20);
+        var original = await ReadJson(await client.PostAsJsonAsync($"{trip}/expenses", payment));
+        Assert.Equal(100, original.GetProperty("amount").GetDecimal());
+        var expenseId = original.GetProperty("id").GetGuid();
+        var path = $"{trip}/expenses/{expenseId}";
+        var edit = payment with { ExpectedRevision = original.GetProperty("revision").GetGuid() };
+
+        var invalid = await client.PutAsJsonAsync(path, edit with { Refunded = 121 });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        var refunded = await ReadJson(await client.PutAsJsonAsync(path, edit with { Refunded = 120 }));
+        Assert.Equal(0, refunded.GetProperty("amount").GetDecimal());
+        Assert.Equal(120, refunded.GetProperty("paid").GetDecimal());
+        Assert.Equal(120, refunded.GetProperty("refunded").GetDecimal());
+
+        var stale = await client.PutAsJsonAsync(path, edit);
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+        var legacy = await client.PutAsJsonAsync(path, new CreateExpenseRequest("Museum ticket", null, 120, null, null));
+        Assert.Equal(HttpStatusCode.Conflict, legacy.StatusCode);
+
+        var bookingId = await CreateBookingAsync(client, trip, "Museum booking");
+        var link = await client.PostAsync($"{trip}/bookings/{bookingId}/expenses/{expenseId}", null);
+        Assert.Equal(HttpStatusCode.Conflict, link.StatusCode);
+        var expenses = await ReadJson(await client.GetAsync($"{trip}/expenses"));
+        var saved = Assert.Single(expenses.EnumerateArray());
+        Assert.Equal(expenseId, saved.GetProperty("id").GetGuid());
+        Assert.Equal(0, saved.GetProperty("amount").GetDecimal());
+        Assert.Equal(120, saved.GetProperty("refunded").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, saved.GetProperty("bookingId").ValueKind);
+    }
+
+    [Fact]
     public async Task StaleBookingPaymentRollsBackAfterCostChanges()
     {
         using var client = CreateClient();

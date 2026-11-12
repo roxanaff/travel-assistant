@@ -79,7 +79,9 @@ test("Escape and Cancel protect unsaved Add/Edit values across the shared forms"
                 if (editing) {
                     await add.click();
                     await input.fill(area.name);
-                    if (area.money) await page.getByLabel(/Amount/).fill("50");
+                    if (area.money) {
+                        await form.getByLabel(area.heading === "Expenses" ? /Paid/ : /Amount/).fill("50");
+                    }
                     await form.getByRole("button", { name: "Save", exact: true }).click();
                     await expect(form).toHaveCount(0);
                 }

@@ -8,7 +8,10 @@ namespace TravelAssistant.Contracts;
 public record CreateExpenseRequest(
     string? Name,
     ExpenseCategory? Category,
-    decimal Amount,
+    decimal? Amount,
     DateOnly? ExpenseDate,
-    Guid? PlannedCostId
+    Guid? PlannedCostId,
+    decimal? Paid = null,
+    decimal? Refunded = null,
+    Guid? ExpectedRevision = null
 );

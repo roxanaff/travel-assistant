@@ -8,6 +8,9 @@ export type Expense = {
     bookingId: string | null;
     category: string | null;
     amount: number;
+    paid?: number;
+    refunded?: number;
+    revision?: string;
     expenseDate: string | null;
     createdAtUtc: string;
 };
@@ -16,6 +19,7 @@ export type NewExpenseForm = {
     name: string;
     category: string;
     amount: string;
+    refunded?: string;
     expenseDate: string;
     plannedCostId: string | null;
 };

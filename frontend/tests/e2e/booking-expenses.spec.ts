@@ -155,7 +155,10 @@ test("expenses can record unpaid booking payments and explicitly increase the to
     const expenses = (await browserRequest(page, `${tripApi}/expenses`)).body;
     expect(expenses).toHaveLength(2);
     const created = expenses.find((expense: { bookingId: string }) => expense.bookingId === first.id);
-    await browserRequest(page, `${tripApi}/expenses/${created.id}`, { ...created, amount: 100 }, "PUT");
+    await browserRequest(page, `${tripApi}/expenses/${created.id}`, {
+        name: created.name, category: created.category, expenseDate: created.expenseDate,
+        plannedCostId: created.plannedCostId, amount: 100,
+    }, "PUT");
     await page.reload();
     const warning = firstCard.locator(".linked-record-warning");
     await expect(warning).toContainText("Paid: €20 → €100");
@@ -818,7 +821,10 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
         expenseDate: "2027-03-01", plannedCostId: plan.id,
     })).body;
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
-    await browserRequest(page, `${tripApi}/expenses/${expense.id}`, { ...expense, amount: 120 }, "PUT");
+    await browserRequest(page, `${tripApi}/expenses/${expense.id}`, {
+        name: expense.name, category: expense.category, expenseDate: expense.expenseDate,
+        plannedCostId: expense.plannedCostId, amount: 120,
+    }, "PUT");
     await page.goto(`/trips/${trip.id}/bookings`);
     const notice = page.locator(".linked-record-warning");
     await expect(notice).toContainText("Cost: €100 → €120");

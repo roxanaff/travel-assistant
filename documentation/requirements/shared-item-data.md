@@ -161,8 +161,9 @@ An expense that has been fully refunded remains visible with zero net spending. 
 the original Paid amount and the matching Refunded amount. The positive-only legacy expense
 validator must allow this result. Expense details show Cost, Paid and Refunded where applicable.
 A standalone expense can record a refund up to the amount paid. For booked items, retain the
-existing refund eligibility rule for cancelled bookings. Before the financial and linking changes,
-define how to handle a request to link an already-refunded expense to an active booking.
+existing refund eligibility rule for cancelled bookings. An active booking cannot link to an
+already-refunded expense. The future link flow should present choices for resolving this case.
+The exact choices and their presentation are open.
 
 ### Examples of the resulting records
 
@@ -430,6 +431,27 @@ The 114-test backend suite and a separate stale-payment regression passed. Postg
 verified the populated upgrade from `main`, trip deletion, and rollback of the booking migration.
 The fixture preserved a booking refund, distinct free and unknown costs, and the linked plan and
 expense with their original amounts. Independent review found no actionable issues.
+
+### Standalone expense refunds
+
+The Expenses form sends Paid and Refunded for entries without a booking, including expenses
+linked to a planned cost. Net spending is computed by the API. Paid must be positive, and an
+equal refund keeps the expense visible at zero net spending. The existing expense form and
+row show the payment breakdown for refunded entries. This step requires no database migration.
+
+Keep the amount-only adapter for existing plan conversion and booking entry points. Reject an
+amount-only update to a refunded expense to protect both values. The legacy booking link
+workflow accepts unrefunded expenses only until it can reconcile paid and refunded values
+explicitly. Expense edits and booking links check the expense core revision in the same write.
+The expense form retains the revision it loaded. The legacy plan review cannot directly
+change a refunded expense's payment. Its payment details can be edited in Expenses.
+Deploy the API before the expense form that sends the new fields.
+
+Backend verification covered existing workflows and a focused SQLite regression for full
+refunds, stale edits and booking-link eligibility. The frontend build, 110 frontend tests
+and 13 Chromium scenarios passed. The smoke test verified the zero-net expense and updated
+spending total immediately after save. The browser runner was stopped after all scenarios
+passed because it stalled during shutdown. Independent review found no remaining actionable issues.
 
 These are proposed groups, not implementation approval or promises that each fits one commit.
 

@@ -15,14 +15,34 @@ public static class ExpenseValidation
             return "Expense name cannot be longer than 150 characters.";
         }
 
-        if (request.Amount <= 0)
+        if ((request.Amount is not null && (request.Paid is not null || request.Refunded is not null))
+            || (request.Refunded is not null && request.Paid is null))
         {
-            return "Expense amount must be greater than zero.";
+            return "Enter either an expense amount or paid and refunded amounts.";
         }
 
-        if (request.Amount > MoneyValidation.MaximumAmount)
+        var paid = request.Paid ?? request.Amount;
+        if (paid is null or <= 0)
+        {
+            return request.Paid is null
+                ? "Expense amount must be greater than zero."
+                : "Paid must be greater than zero.";
+        }
+
+        if (paid > MoneyValidation.MaximumAmount)
         {
             return "Expense amount exceeds the supported maximum.";
+        }
+
+        if (request.Refunded < 0 || request.Refunded > paid)
+        {
+            return "Refunded must be between zero and the amount paid.";
+        }
+
+        if ((request.Paid is decimal gross && decimal.Round(gross, 2) != gross)
+            || (request.Refunded is decimal refund && decimal.Round(refund, 2) != refund))
+        {
+            return "Use up to two decimal places for expense payments and refunds.";
         }
 
         return null;

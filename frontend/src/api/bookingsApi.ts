@@ -2,7 +2,7 @@
 // The backend remains responsible for saving bookings and checking their rules.
 import type { Booking, BookingForm } from "../types/booking";
 import type { Expense } from "../types/expense";
-import type { ExpenseRequest } from "./expensesApi";
+import type { LegacyExpenseRequest } from "./expensesApi";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type BookingActivityRole = "General" | "Outbound" | "Return";
@@ -172,7 +172,7 @@ export async function dismissBookingActivityUpdateReview(
 export async function createBookingExpense(
     tripId: string,
     bookingId: string,
-    request: Omit<ExpenseRequest, "plannedCostId"> & {
+    request: Omit<LegacyExpenseRequest, "plannedCostId"> & {
         paymentUpdate?: ReturnType<typeof bookingExpensePaymentUpdate>;
     },
 ): Promise<Expense & { booking?: Booking }> {

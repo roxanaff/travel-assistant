@@ -106,14 +106,40 @@ describe("ExpenseTracking", () => {
         );
         await screen.findByText("Hotel");
         await user.click(screen.getByRole("button", { name: "Add expense" }));
-        await user.type(screen.getByLabelText(/Amount/), "0");
+        await user.type(screen.getByLabelText(/Paid/), "0");
         fireEvent.submit(
             screen.getByRole("button", { name: "Save" }).closest("form")!,
         );
         expect(
-            await screen.findByText("Enter an amount greater than zero."),
+            await screen.findByText("Enter a paid amount greater than zero."),
         ).toBeTruthy();
         expect(api.createExpense).not.toHaveBeenCalled();
+    });
+
+    it("keeps a fully refunded expense visible and updates total spending after save", async () => {
+        const user = userEvent.setup();
+        const original = { ...hotel, paid: 120, refunded: 0, revision: "original-revision" };
+        api.getExpenses.mockResolvedValue([original]);
+        api.updateExpense.mockResolvedValue({ ...original, amount: 0, refunded: 120, revision: "new-revision" });
+        render(expensesPage());
+
+        await user.click(await screen.findByRole("button", { name: "Edit Hotel" }));
+        const refund = screen.getByLabelText("Refunded (EUR)");
+        await user.clear(refund);
+        await user.type(refund, "120");
+        await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+        expect(api.updateExpense).toHaveBeenCalledWith(trip.id, hotel.id, {
+            name: "Hotel",
+            category: "Accommodation",
+            paid: 120,
+            refunded: 120,
+            expectedRevision: "original-revision",
+            expenseDate: hotel.expenseDate,
+            plannedCostId: null,
+        });
+        expect(await screen.findByText("Paid €120 · Refunded €120")).toBeTruthy();
+        expect(screen.getByText("Total spent").parentElement?.textContent).toContain("€0");
     });
 
     it("restores an expense when Undo is selected", async () => {

@@ -456,6 +456,12 @@ public static class BookingEndpoints
                 return Results.Conflict("This expense is already linked to another booking.");
             }
 
+            if (expense.PaymentTotals.Refunded > 0)
+            {
+                return Results.Conflict("An expense with a refund cannot be linked to a booking yet.");
+            }
+
+            expense.ItemCore.Revision = Guid.NewGuid();
             if (request?.PaymentUpdate is not null)
             {
                 var paymentError = BookingExpensePayments.Apply(booking, expense.Amount, request.PaymentUpdate);
@@ -615,6 +621,9 @@ public static class BookingEndpoints
         expense.Name,
         expense.Category,
         expense.Amount,
+        expense.PaymentTotals.Paid,
+        expense.PaymentTotals.Refunded,
+        expense.ItemCore.Revision,
         expense.ExpenseDate,
         expense.CreatedAtUtc,
         Booking = ToResponse(booking),

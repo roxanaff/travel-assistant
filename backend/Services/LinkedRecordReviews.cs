@@ -43,6 +43,10 @@ public static class LinkedRecordReviews
                 booking.DismissedOutsideTripWarningKey = null;
             }
         }
+        if (source is Expense updatedExpense)
+        {
+            updatedExpense.ItemCore.Revision = Guid.NewGuid();
+        }
         foreach (var edge in await GetEdges(database, source))
         {
             if (Id(edge.Target) == excludedTarget) continue;
@@ -303,21 +307,20 @@ public static class LinkedRecordReviews
                 property => values[property] is decimal number
                     ? number.ToString("G29", CultureInfo.InvariantCulture)
                     : values[property]);
-        var financialAmount = target switch
+        if (target is PlannedCost plan)
         {
-            PlannedCost plan => plan.Amount,
-            Expense expense => expense.Amount,
-            _ => (decimal?)null
-        };
-        if (financialAmount is decimal amount)
-        {
-            snapshot[nameof(Expense.Amount)] = amount.ToString("G29", CultureInfo.InvariantCulture);
+            snapshot[nameof(PlannedCost.Amount)] = plan.Amount.ToString("G29", CultureInfo.InvariantCulture);
         }
         if (target is Booking booking)
         {
             snapshot[nameof(Booking.TotalCost)] = booking.TotalCost?.ToString("G29", CultureInfo.InvariantCulture);
             snapshot[nameof(Booking.AmountPaid)] = booking.AmountPaid.ToString("G29", CultureInfo.InvariantCulture);
             snapshot[nameof(Booking.AmountRefunded)] = booking.AmountRefunded?.ToString("G29", CultureInfo.InvariantCulture);
+        }
+        if (target is Expense expense)
+        {
+            snapshot[nameof(ItemPaymentTotals.Paid)] = expense.PaymentTotals.Paid.ToString("G29", CultureInfo.InvariantCulture);
+            snapshot[nameof(ItemPaymentTotals.Refunded)] = expense.PaymentTotals.Refunded.ToString("G29", CultureInfo.InvariantCulture);
         }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
     }
@@ -494,6 +497,10 @@ public static class LinkedRecordReviews
         }
         else if (edge.Target is Expense expense)
         {
+            if (expense.PaymentTotals.Refunded > 0)
+            {
+                return "This expense has a refund. Edit its payment details directly.";
+            }
             var amount = Number(values["Amount"])!.Value;
             if (amount <= 0) return "Expenses require a positive amount. Keep the expense and unlink it, or delete the expense; the booking's payment and refund history will remain.";
             var error = ExpenseValidation.Validate(new CreateExpenseRequest(expense.Name, expense.Category, amount, expense.ExpenseDate, expense.PlannedCostId));

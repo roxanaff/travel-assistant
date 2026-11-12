@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense } from "../../api/expensesApi";
+import {
+    createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense, type ExpenseRequest,
+} from "../../api/expensesApi";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 import { expenseCategories, type Expense, type NewExpenseForm } from "../../types/expense";
 import { localToday } from "../../utils/localToday";
@@ -55,6 +57,7 @@ const createEmptyExpenseForm = (): NewExpenseForm => ({
     name: "",
     category: "",
     amount: "",
+    refunded: "",
     expenseDate: localToday(),
     plannedCostId: null,
 });
@@ -95,6 +98,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
     const [addingForGroup, setAddingForGroup] = useState<ExpenseAddTarget | null>(null);
     const [newExpense, setNewExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+    const [editingRevision, setEditingRevision] = useState<string>();
     const [editingExpense, setEditingExpense] = useState<NewExpenseForm>(createEmptyExpenseForm());
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [linkedExpenseToDelete, setLinkedExpenseToDelete] = useState<Expense | null>(null);
@@ -134,7 +138,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
     }, [refreshKey, trip.id]);
 
     const updateForm = (field: keyof NewExpenseForm, value: string, editing = false) => {
-        if (field === "amount") {
+        if (field === "amount" || field === "refunded") {
             const normalized = normalizeMoneyInput(value);
             if (normalized === null) return;
             value = normalized;
@@ -149,16 +153,30 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
     };
 
     /** Converts editable browser strings into the API's expense payload. */
-    const toRequest = (expense: NewExpenseForm) => ({
-        name: expense.name.trim(),
-        category: expense.category || null,
-        amount: Number(expense.amount),
-        expenseDate: expense.expenseDate || null,
-        plannedCostId: expense.plannedCostId,
-    });
+    const toRequest = (expense: NewExpenseForm, expectedRevision?: string): ExpenseRequest => {
+        const details = {
+            name: expense.name.trim(),
+            category: expense.category || null,
+            expenseDate: expense.expenseDate || null,
+            plannedCostId: expense.plannedCostId,
+        };
+        const paid = Number(expense.amount);
+        return expense.refunded === undefined
+            ? { ...details, amount: paid }
+            : { ...details, paid, refunded: Number(expense.refunded), expectedRevision };
+    };
 
     const validate = (expense: NewExpenseForm) => {
-        if (!expense.amount || Number(expense.amount) <= 0) return "Enter an amount greater than zero.";
+        const paid = Number(expense.amount);
+        if (!Number.isFinite(paid) || paid <= 0) {
+            return expense.refunded === undefined
+                ? "Enter an amount greater than zero."
+                : "Enter a paid amount greater than zero.";
+        }
+        const refunded = Number(expense.refunded ?? 0);
+        if (!Number.isFinite(refunded) || refunded < 0 || refunded > paid) {
+            return "Refunded must be between zero and the amount paid.";
+        }
         return null;
     };
 
@@ -215,10 +233,12 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
         setIsAdding(false);
         setAddingForGroup(null);
         setEditingExpenseId(expense.id);
+        setEditingRevision(expense.revision);
         setEditingExpense({
             name: expense.name,
             category: expense.category ?? "",
-            amount: expense.amount.toString(),
+            amount: (expense.paid ?? expense.amount).toString(),
+            refunded: expense.bookingId ? undefined : expense.refunded?.toString() ?? "",
             expenseDate: expense.expenseDate ?? "",
             plannedCostId: expense.plannedCostId,
         });
@@ -237,7 +257,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense));
+            const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense, editingRevision));
             setExpenses((current) => current.map((expense) => (expense.id === updated.id ? updated : expense)));
             setEditingExpenseId(null);
         } catch (exception) {
@@ -492,6 +512,12 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                         ]
                                                             .filter(Boolean)
                                                             .join(" · ")}
+                                                    </span>
+                                                )}
+                                                {Boolean(expense.refunded) && (
+                                                    <span>
+                                                        Paid {formatMoney(expense.paid ?? expense.amount, trip.currency)}
+                                                        {" · "}Refunded {formatMoney(expense.refunded ?? 0, trip.currency)}
                                                     </span>
                                                 )}
                                             </div>

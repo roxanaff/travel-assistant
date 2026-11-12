@@ -88,6 +88,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
                 .HasForeignKey<Expense>(item => item.ItemCoreId)
                 .OnDelete(DeleteBehavior.NoAction);
             expense.Navigation(item => item.PaymentTotals).AutoInclude();
+            expense.Navigation(item => item.ItemCore).AutoInclude();
             expense.Property(item => item.HasPendingDeletedBookingNotice).HasDefaultValue(false);
             // An actual expense can represent at most one planned cost.
             expense.HasIndex(item => item.PlannedCostId).IsUnique();

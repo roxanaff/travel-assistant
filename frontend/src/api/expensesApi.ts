@@ -3,13 +3,20 @@
 import type { Expense } from "../types/expense";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
-export type ExpenseRequest = {
+type ExpenseRequestDetails = {
     name: string;
     category: string | null;
-    amount: number;
     expenseDate: string | null;
     plannedCostId: string | null;
 };
+
+export type LegacyExpenseRequest = ExpenseRequestDetails & { amount: number };
+
+export type ExpenseRequest = LegacyExpenseRequest | (ExpenseRequestDetails & {
+    paid: number;
+    refunded: number;
+    expectedRevision?: string;
+});
 
 const expensesUrl = (tripId: string) =>
     `${apiBaseUrl}/api/trips/${tripId}/expenses`;

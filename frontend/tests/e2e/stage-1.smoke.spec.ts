@@ -29,9 +29,14 @@ test("a new account can plan a complete manual trip", async ({ page }) => {
     await page.getByRole("link", { name: "Budget & expenses" }).click();
     await page.getByRole("button", { name: "Add expense" }).click();
     await page.getByLabel("What did you pay for?").fill("Metro pass");
-    await page.getByLabel(/Amount/).fill("10");
+    await page.getByLabel(/Paid/).fill("10");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Metro pass")).toBeVisible();
+    await page.getByRole("button", { name: "Edit Metro pass" }).click();
+    await page.getByLabel(/Refunded/).fill("10");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("Paid €10 · Refunded €10")).toBeVisible();
+    await expect(page.getByText("Total spent").locator("..")).toContainText("€0");
 
     await page.getByRole("link", { name: "Packing" }).click();
     await page.getByRole("button", { name: "Start empty" }).click();
