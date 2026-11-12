@@ -453,6 +453,28 @@ and 13 Chromium scenarios passed. The smoke test verified the zero-net expense a
 spending total immediately after save. The browser runner was stopped after all scenarios
 passed because it stalled during shutdown. Independent review found no remaining actionable issues.
 
+### Create an expense with shared booking payments
+
+When an expense is created from a booking and its net amount matches the booking payment,
+attach it to the booking core and payment totals. This includes a match after explicitly
+accepting an update to the booking payment. Keep the existing difference reviews for
+mismatched amounts and existing-expense links until the link reconciliation workflow is ready.
+The core revision and existing uniqueness constraints protect creation and lifecycle changes.
+
+An attached expense uses the same gross payment, refund and net spending as the booking.
+Expense edits send the loaded revision and validate against the booking's confirmed cost and
+refund eligibility. Neither entry needs a review to pick up changes to its shared payment.
+A full refund keeps the expense at zero net. Clearing a mistaken payment stays guarded
+until the correction confirmation can remove the expense atomically.
+
+Unlinking copies the payment totals for the detached expense. Deleting either part keeps
+the remaining part's payment history. No data migration is required. Verify creation, edits
+from both entry points, full refunds, stale writes and unlink/delete retention.
+
+The 119 backend tests, frontend tests, and production build passed. All 11 booking and
+expense Chromium scenarios passed against the Release build. They verified edits from Expenses
+and immediate updates on the booking card. Independent review found no remaining actionable issues.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

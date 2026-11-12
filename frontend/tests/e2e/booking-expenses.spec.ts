@@ -155,17 +155,16 @@ test("expenses can record unpaid booking payments and explicitly increase the to
     const expenses = (await browserRequest(page, `${tripApi}/expenses`)).body;
     expect(expenses).toHaveLength(2);
     const created = expenses.find((expense: { bookingId: string }) => expense.bookingId === first.id);
-    await browserRequest(page, `${tripApi}/expenses/${created.id}`, {
-        name: created.name, category: created.category, expenseDate: created.expenseDate,
-        plannedCostId: created.plannedCostId, amount: 100,
-    }, "PUT");
-    await page.reload();
-    const warning = firstCard.locator(".linked-record-warning");
-    await expect(warning).toContainText("Paid: €20 → €100");
-    await expect(warning).toContainText("Total cost: €50 → €100");
-    await warning.getByRole("button", { name: "Update", exact: true }).click();
-    await expect(firstCard.locator(".booking-card-price")).toHaveText("€100");
-    await expect(warning).toHaveCount(0);
+    expect(created.sharesBookingPayment).toBe(true);
+    await page.getByRole("link", { name: "Budget & expenses" }).click();
+    const expenseRow = page.locator(`#expense-${created.id}`);
+    await expenseRow.getByRole("button", { name: /Edit/ }).click();
+    await page.getByLabel("Paid (EUR)").fill("30");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(expenseRow).toContainText("Cost €50 · Paid €30");
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await expect(firstCard.locator(".booking-card-price")).toHaveText("€30 / €50");
+    await expect(firstCard.locator(".linked-record-warning")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Expand Hotel payment details" }).click();
     const secondCard = page.locator(`#booking-${second.id}`);
@@ -400,6 +399,8 @@ test("a booking records actual spending directly and navigates to the expense", 
 
     const expenseLink = page.getByRole("link", { name: "Hotel deposit", exact: true });
     await expect(expenseLink).toBeVisible();
+    await page.getByRole("button", { name: "Mark as paid", exact: true }).click();
+    await expect(page.locator(".booking-budget-record")).toContainText("€200");
     expect((await browserRequest(page, `${tripApi}/planned-costs`)).body).toEqual([]);
     const expenses = (await browserRequest(page, `${tripApi}/expenses`)).body;
     expect(expenses).toHaveLength(1);
@@ -705,9 +706,10 @@ test("booking panels review each destination without leaving the card", async ({
         location: "Museum", cost: 200, priority: "Optional",
     })).body;
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, { role: "General" })).status).toBe(200);
-    const expense = (await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses`, {
+    const expense = (await browserRequest(page, `${tripApi}/expenses`, {
         name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100, expenseDate: "2027-04-02",
     })).body;
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
         ...booking, startDate: "2027-04-03", endDate: "2027-04-03", totalCost: 250, amountPaid: 120,
     }, "PUT")).status).toBe(200);

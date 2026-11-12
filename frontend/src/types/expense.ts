@@ -11,6 +11,8 @@ export type Expense = {
     paid?: number;
     refunded?: number;
     revision?: string;
+    sharesBookingPayment?: boolean;
+    bookingTotalCost?: number | null;
     expenseDate: string | null;
     createdAtUtc: string;
 };

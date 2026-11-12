@@ -26,41 +26,10 @@ public static class BookingValidation
             return textLengthError;
         }
 
-        if (request.TotalCost < 0 || request.AmountPaid < 0 || request.AmountRefunded < 0)
+        var paymentError = ValidatePayment(request.TotalCost, request.AmountPaid, request.AmountRefunded, request.Status);
+        if (paymentError is not null)
         {
-            return "Booking amounts cannot be negative.";
-        }
-
-        if (request.TotalCost > MoneyValidation.MaximumAmount
-            || request.AmountPaid > MoneyValidation.MaximumAmount
-            || request.AmountRefunded > MoneyValidation.MaximumAmount)
-        {
-            return "A booking amount exceeds the supported maximum.";
-        }
-
-        if (request.TotalCost is null && request.AmountPaid > 0)
-        {
-            return "Enter the total cost before entering an amount paid.";
-        }
-
-        if (request.TotalCost == 0 && (request.AmountPaid > 0 || request.AmountRefunded > 0))
-        {
-            return "A free booking cannot have payment or refund amounts.";
-        }
-
-        if (request.TotalCost is not null && request.AmountPaid > request.TotalCost)
-        {
-            return "Amount paid cannot exceed the total cost.";
-        }
-
-        if (request.AmountRefunded > request.AmountPaid)
-        {
-            return "Amount refunded cannot exceed the amount paid.";
-        }
-
-        if (request.AmountRefunded > 0 && request.Status != BookingStatus.Cancelled)
-        {
-            return "Refunds can be recorded only for a cancelled booking.";
+            return paymentError;
         }
 
         var endError = ValidateRange(
@@ -75,6 +44,55 @@ public static class BookingValidation
         }
 
         return ValidateReturnJourney(request);
+    }
+
+    public static string? ValidatePayment(decimal? totalCost, decimal paid, decimal? refunded, BookingStatus? status)
+    {
+        if (totalCost < 0 || paid < 0 || refunded < 0)
+        {
+            return "Booking amounts cannot be negative.";
+        }
+
+        if (totalCost > MoneyValidation.MaximumAmount
+            || paid > MoneyValidation.MaximumAmount
+            || refunded > MoneyValidation.MaximumAmount)
+        {
+            return "A booking amount exceeds the supported maximum.";
+        }
+
+        if ((totalCost is decimal cost && decimal.Round(cost, 2) != cost)
+            || decimal.Round(paid, 2) != paid
+            || (refunded is decimal refund && decimal.Round(refund, 2) != refund))
+        {
+            return "Use up to two decimal places for booking amounts.";
+        }
+
+        if (totalCost is null && paid > 0)
+        {
+            return "Enter the total cost before entering an amount paid.";
+        }
+
+        if (totalCost == 0 && (paid > 0 || refunded > 0))
+        {
+            return "A free booking cannot have payment or refund amounts.";
+        }
+
+        if (totalCost is not null && paid > totalCost)
+        {
+            return "Amount paid cannot exceed the total cost.";
+        }
+
+        if (refunded > paid)
+        {
+            return "Amount refunded cannot exceed the amount paid.";
+        }
+
+        if (refunded > 0 && status != BookingStatus.Cancelled)
+        {
+            return "Refunds can be recorded only for a cancelled booking.";
+        }
+
+        return null;
     }
 
     private static string? ValidateReturnJourney(SaveBookingRequest request)

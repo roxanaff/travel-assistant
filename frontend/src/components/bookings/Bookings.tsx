@@ -228,6 +228,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     } = useExpandableCards(bookings.map((booking) => booking.id), `trip:${trip.id}:bookings:related-reviews`);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loadedBudgetTripId, setLoadedBudgetTripId] = useState<string | null>(null);
+    const [budgetLoadVersion, setBudgetLoadVersion] = useState(0);
     const isBudgetLoading = loadedBudgetTripId !== trip.id;
     const [budgetLoadError, setBudgetLoadError] = useState<string | null>(null);
     const [budgetAction, setBudgetAction] = useState<{
@@ -409,7 +410,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         return () => {
             isCurrent = false;
         };
-    }, [trip.id]);
+    }, [trip.id, budgetLoadVersion]);
 
     const activeBookings = useMemo(
         () => bookings.filter((booking) => booking.status !== "Cancelled"),
@@ -710,7 +711,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     ...(recordExpensePayment ? { paymentUpdate: bookingExpensePaymentUpdate(booking, amount) } : {}),
                 },
             );
-            setExpenses((current) => [...current, created]);
+            setExpenses((current) => [...current.filter((expense) => expense.id !== created.id), created]);
             setBookings((current) => current.map((booking) => (
                 booking.id === budgetAction.bookingId
                     ? { ...booking, ...paymentFields(created.booking), expenseId: created.id }
@@ -762,6 +763,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         }
     };
 
+    const refreshDetachedExpense = (booking: Booking) => {
+        if (!booking.expenseId) return;
+        setLoadedBudgetTripId(null);
+        setBudgetLoadVersion((version) => version + 1);
+    };
+
     const unlinkExpense = async (booking: Booking) => {
         if (!booking.expenseId || isBudgetPending) return;
 
@@ -770,11 +777,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         setBudgetErrorBookingId(booking.id);
         try {
             await unlinkBookingExpense(trip.id, booking.id, booking.expenseId);
-            setExpenses((current) => current.map((expense) => (
-                expense.id === booking.expenseId
-                    ? { ...expense, bookingId: null }
-                    : expense
-            )));
+            refreshDetachedExpense(booking);
             setBookings((current) => current.map((candidate) => (
                 candidate.id === booking.id ? { ...candidate, expenseId: null } : candidate
             )));
@@ -884,9 +887,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             await deleteBooking(trip.id, booking.id);
             setBookings((current) => current.filter((item) => item.id !== booking.id));
             setPaymentUndo(current => current?.booking.id === booking.id ? null : current);
-            setExpenses((current) => current.map((expense) => (
-                expense.bookingId === booking.id ? { ...expense, bookingId: null } : expense
-            )));
+            refreshDetachedExpense(booking);
         } catch (exception) {
             setError(exception instanceof Error ? exception.message : "Could not delete this booking.");
         }
@@ -2039,7 +2040,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                                 >
                                                     {linkedExpense.name}
                                                 </Link>
-                                                <span>{formatMoney(linkedExpense.amount, trip.currency)}</span>
+                                                <span>
+                                                    {formatMoney(
+                                                        linkedExpense.sharesBookingPayment ? booking.netCost : linkedExpense.amount,
+                                                        trip.currency,
+                                                    )}
+                                                </span>
                                             </>
                                         ) : (
                                             <span>Linked expense</span>

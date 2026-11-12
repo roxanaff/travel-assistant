@@ -28,6 +28,7 @@ public static class ExpenseEndpoints
 
             var expenses = await database.Expenses
                 .Where(item => item.TripId == tripId)
+                .Include(item => item.Booking)
                 .ToListAsync();
 
             return Results.Ok(expenses.OrderBy(item => item.CreatedAtUtc).Select(ToResponse));
@@ -114,7 +115,8 @@ public static class ExpenseEndpoints
                 return Results.BadRequest(validationError);
             }
 
-            var expense = await database.Expenses.SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
+            var expense = await database.Expenses.Include(item => item.Booking)
+                .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)
             {
                 return Results.NotFound();
@@ -126,9 +128,9 @@ public static class ExpenseEndpoints
                 return Results.BadRequest("A linked planned cost cannot be changed.");
             }
 
-            if (request.Paid is null && expense.PaymentTotals.Refunded > 0)
+            if (request.Paid is null && (expense.SharesBookingPayment || expense.PaymentTotals.Refunded > 0))
             {
-                return Results.Conflict("This expense has a refund. Refresh before changing its payment details.");
+                return Results.Conflict("Refresh before changing this expense's payment details.");
             }
 
             if (request.Paid is not null && request.ExpectedRevision != expense.ItemCore.Revision)
@@ -136,15 +138,23 @@ public static class ExpenseEndpoints
                 return Results.Conflict("This expense changed. Refresh before changing its payment details.");
             }
 
-            if (expense.BookingId is not null && request.Refunded > 0)
+            var paid = (request.Paid ?? request.Amount)!.Value;
+            var refunded = request.Refunded ?? 0;
+            if (expense.SharesBookingPayment)
+            {
+                var booking = expense.Booking!;
+                var paymentError = BookingValidation.ValidatePayment(booking.TotalCost, paid, refunded, booking.Status);
+                if (paymentError is not null) return Results.BadRequest(paymentError);
+            }
+            else if (expense.BookingId is not null && refunded > 0)
             {
                 return Results.Conflict("Record refunds for this booking in Bookings.");
             }
 
             expense.Name = NormalizeName(request.Name);
             expense.Category = request.Category;
-            expense.PaymentTotals.Paid = (request.Paid ?? request.Amount)!.Value;
-            expense.PaymentTotals.Refunded = request.Refunded ?? 0;
+            expense.PaymentTotals.Paid = paid;
+            expense.PaymentTotals.Refunded = refunded;
             expense.ExpenseDate = request.ExpenseDate;
 
             await LinkedRecordReviews.TrackAsync(database, expense);
@@ -176,7 +186,11 @@ public static class ExpenseEndpoints
 
             database.Expenses.Remove(expense);
             var hasPlan = await database.PlannedCosts.AnyAsync(item => item.ItemCoreId == expense.ItemCoreId);
-            if (hasPlan)
+            if (expense.SharesBookingPayment)
+            {
+                expense.ItemCore.Revision = Guid.NewGuid();
+            }
+            else if (hasPlan)
             {
                 expense.ItemCore.Revision = Guid.NewGuid();
                 database.ItemPaymentTotals.Remove(expense.PaymentTotals);
@@ -227,6 +241,8 @@ public static class ExpenseEndpoints
         expense.PaymentTotals.Paid,
         expense.PaymentTotals.Refunded,
         expense.ItemCore.Revision,
+        expense.SharesBookingPayment,
+        BookingTotalCost = expense.SharesBookingPayment ? expense.Booking!.TotalCost : null,
         expense.ExpenseDate,
         expense.PlannedCostId,
         expense.BookingId,

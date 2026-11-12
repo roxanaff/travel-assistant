@@ -502,7 +502,7 @@ describe("booking expense actions", () => {
         expect(screen.getByRole("button", { name: "Collapse Hotel Rome details" })).toBeTruthy();
     });
 
-    it("makes a deleted booking's surviving expense immediately available to another booking", async () => {
+    it("reloads a deleted booking's surviving expense before offering it to another booking", async () => {
         const user = userEvent.setup();
         vi.spyOn(window, "confirm").mockReturnValue(true);
         bookingsApi.deleteBooking.mockResolvedValue(undefined);
@@ -510,10 +510,9 @@ describe("booking expense actions", () => {
             { ...hotel, expenseId: existingExpense.id },
             { ...hotel, id: "booking-2", name: "Second hotel" },
         ]);
-        expensesApi.getExpenses.mockResolvedValue([{
-            ...existingExpense,
-            bookingId: hotel.id,
-        }]);
+        expensesApi.getExpenses
+            .mockResolvedValueOnce([{ ...existingExpense, bookingId: hotel.id, sharesBookingPayment: true }])
+            .mockResolvedValue([{ ...existingExpense, amount: 175 }]);
         renderBookings();
 
         await user.click(await screen.findByRole("button", { name: "Expand Second hotel details" }));
@@ -522,7 +521,7 @@ describe("booking expense actions", () => {
         await waitFor(() => expect(bookingsApi.deleteBooking).toHaveBeenCalledWith(trip.id, hotel.id));
 
         await user.click(await screen.findByRole("button", { name: "Link existing expense" }));
-        expect(screen.getByRole("option", { name: /Hotel deposit/ })).toBeTruthy();
+        expect(screen.getByRole("option", { name: /Hotel deposit.*€175/ })).toBeTruthy();
     });
 
     it("does not restore an expense link from a refresh that predates a successful unlink", async () => {

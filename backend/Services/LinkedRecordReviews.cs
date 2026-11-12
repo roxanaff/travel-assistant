@@ -614,7 +614,10 @@ public static class LinkedRecordReviews
             var activities = await database.ItineraryItems.Where(item => item.TripId == tripId && item.BookingId == booking.Id).ToListAsync();
             result.AddRange(activities.Select(activity => new Edge(booking, activity, activity)));
             var bookingExpense = await database.Expenses.SingleOrDefaultAsync(item => item.TripId == tripId && item.BookingId == booking.Id);
-            if (bookingExpense is not null) result.Add(new Edge(booking, bookingExpense));
+            if (bookingExpense is not null && bookingExpense.ItemCoreId != booking.ItemCoreId)
+            {
+                result.Add(new Edge(booking, bookingExpense));
+            }
         }
         else if (source is ItineraryItem activity && activity.BookingId is Guid bookingId)
         {
@@ -626,7 +629,10 @@ public static class LinkedRecordReviews
             if (expense.BookingId is Guid linkedBookingId)
             {
                 var linkedBooking = await database.Bookings.SingleOrDefaultAsync(item => item.TripId == tripId && item.Id == linkedBookingId);
-                if (linkedBooking is not null) result.Add(new Edge(expense, linkedBooking));
+                if (linkedBooking is not null && linkedBooking.ItemCoreId != expense.ItemCoreId)
+                {
+                    result.Add(new Edge(expense, linkedBooking));
+                }
             }
             if (expense.PlannedCostId is Guid planId)
             {

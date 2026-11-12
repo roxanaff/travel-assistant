@@ -18,7 +18,8 @@ public static class BudgetRelationshipConstraintErrors
         IsUniqueViolation(
             exception,
             BookingExpenseIndex,
-            "Expenses.BookingId");
+            "Expenses.BookingId")
+        || IsUniqueViolation(exception, "IX_Expenses_ItemCoreId", "Expenses.ItemCoreId");
 
     public static bool IsPlannedCostExpenseViolation(DbUpdateException exception) =>
         IsUniqueViolation(

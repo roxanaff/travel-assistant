@@ -238,7 +238,9 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
             name: expense.name,
             category: expense.category ?? "",
             amount: (expense.paid ?? expense.amount).toString(),
-            refunded: expense.bookingId ? undefined : expense.refunded?.toString() ?? "",
+            refunded: !expense.bookingId || expense.sharesBookingPayment
+                ? expense.refunded?.toString() ?? ""
+                : undefined,
             expenseDate: expense.expenseDate ?? "",
             plannedCostId: expense.plannedCostId,
         });
@@ -514,10 +516,15 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                             .join(" · ")}
                                                     </span>
                                                 )}
-                                                {Boolean(expense.refunded) && (
+                                                {(expense.sharesBookingPayment || Boolean(expense.refunded)) && (
                                                     <span>
+                                                        {expense.bookingTotalCost != null && (
+                                                            <>Cost {formatMoney(expense.bookingTotalCost, trip.currency)}{" · "}</>
+                                                        )}
                                                         Paid {formatMoney(expense.paid ?? expense.amount, trip.currency)}
-                                                        {" · "}Refunded {formatMoney(expense.refunded ?? 0, trip.currency)}
+                                                        {Boolean(expense.refunded) && (
+                                                            <>{" · "}Refunded {formatMoney(expense.refunded ?? 0, trip.currency)}</>
+                                                        )}
                                                     </span>
                                                 )}
                                             </div>

@@ -29,6 +29,8 @@ public class Expense
 
     public Booking? Booking { get; set; }
 
+    public bool SharesBookingPayment => Booking is not null && Booking.ItemCoreId == ItemCoreId;
+
     public bool HasPendingDeletedBookingNotice { get; set; }
 
     public ExpenseCategory? Category { get; set; }
