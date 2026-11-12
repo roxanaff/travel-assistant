@@ -18,6 +18,7 @@ import {
     updateBooking,
     setBookingPayment,
     type BookingActivityRole,
+    type BookingExpensePaymentSource,
 } from "../../api/bookingsApi";
 import {
     createItineraryItem,
@@ -120,6 +121,8 @@ const financialLabels: Record<string, string> = {
 const paymentFields = (booking?: Booking | void) => booking ? {
     totalCost: booking.totalCost,
     amountPaid: booking.amountPaid,
+    amountRefunded: booking.amountRefunded,
+    revision: booking.revision,
     financialStatus: booking.financialStatus,
     netCost: booking.netCost,
 } : {};
@@ -254,9 +257,11 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     const [budgetErrorBookingId, setBudgetErrorBookingId] = useState<string | null>(null);
     const [isBudgetPending, setIsBudgetPending] = useState(false);
     const [recordExpensePayment, setRecordExpensePayment] = useState(false);
+    const [expensePaymentSource, setExpensePaymentSource] = useState<BookingExpensePaymentSource | null>(null);
     const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
     const [pendingBudgetTransition, setPendingBudgetTransition] = useState<(() => void) | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [bookingLoadVersion, setBookingLoadVersion] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(initialBookingDraft !== null);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -310,6 +315,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             setBookings(current => current.map(item => item.id === updated.id ? {
                 ...item,
                 amountPaid: updated.amountPaid,
+                revision: updated.revision,
                 financialStatus: updated.financialStatus,
                 netCost: updated.netCost,
             } : item));
@@ -374,7 +380,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             isCurrent = false;
             unsubscribe();
         };
-    }, [trip.id]);
+    }, [trip.id, bookingLoadVersion]);
 
     useEffect(() => {
         if (!budgetAction) return;
@@ -643,6 +649,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         if (isBudgetPending || paymentPendingRef.current) return;
         requestBudgetTransition(() => {
             setRecordExpensePayment(false);
+            setExpensePaymentSource(null);
             setPaymentUndo(null);
             if (kind === "create") {
                 const draft: NewExpenseForm = {
@@ -740,17 +747,33 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         try {
             const booking = bookings.find(item => item.id === budgetAction.bookingId);
             if (!booking) return;
-            const updated = recordExpensePayment
-                ? await linkBookingExpense(trip.id, booking.id, expense.id, bookingExpensePaymentUpdate(booking, expense.amount))
+            let payment: Parameters<typeof linkBookingExpense>[3];
+            if (expense.plannedCostId === null) {
+                if (!booking.revision || !expense.revision) {
+                    setBudgetError("Refresh the booking and expense before linking.");
+                    return;
+                }
+                payment = {
+                    bookingRevision: booking.revision,
+                    expenseRevision: expense.revision,
+                    paymentSource: expensePaymentSource,
+                };
+            } else if (recordExpensePayment) {
+                payment = bookingExpensePaymentUpdate(booking, expense.amount);
+            }
+            const updated = payment
+                ? await linkBookingExpense(trip.id, booking.id, expense.id, payment)
                 : await linkBookingExpense(trip.id, booking.id, expense.id);
+            const sharedExpense = updated && "booking" in updated ? updated : null;
+            const updatedBooking = updated && "booking" in updated ? updated.booking : updated;
             setExpenses((current) => current.map((item) => (
                 item.id === expense.id
-                    ? { ...item, bookingId: budgetAction.bookingId }
+                    ? sharedExpense ?? { ...item, bookingId: budgetAction.bookingId }
                     : item
             )));
             setBookings((current) => current.map((booking) => (
                 booking.id === budgetAction.bookingId
-                    ? { ...booking, ...paymentFields(updated), expenseId: expense.id }
+                    ? { ...booking, ...paymentFields(updatedBooking), expenseId: expense.id }
                     : booking
             )));
             setBudgetAction(null);
@@ -769,6 +792,11 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         setBudgetLoadVersion((version) => version + 1);
     };
 
+    const refreshBookingPayment = () => {
+        setIsLoading(true);
+        setBookingLoadVersion((version) => version + 1);
+    };
+
     const unlinkExpense = async (booking: Booking) => {
         if (!booking.expenseId || isBudgetPending) return;
 
@@ -781,6 +809,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             setBookings((current) => current.map((candidate) => (
                 candidate.id === booking.id ? { ...candidate, expenseId: null } : candidate
             )));
+            refreshBookingPayment();
         } catch (exception) {
             setBudgetError(
                 exception instanceof Error ? exception.message : "Could not unlink this expense.",
@@ -807,6 +836,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                     ? { ...booking, expenseId: null, hasPendingDeletedExpenseNotice: true }
                     : booking
             )));
+            if (expense.bookingId) {
+                refreshBookingPayment();
+            }
         } catch (exception) {
             setBudgetError(
                 exception instanceof Error ? exception.message : "Could not delete this expense.",
@@ -1607,9 +1639,16 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         const linkedExpense = expenses.find((expense) => expense.id === booking.expenseId);
         const canAddExpense = booking.totalCost !== null && booking.totalCost > 0
             && (booking.amountPaid === 0 || booking.netCost > 0);
+        const selectedExpense = expenses.find((expense) => expense.id === selectedExpenseId);
+        const standaloneExpense = selectedExpense?.plannedCostId === null ? selectedExpense : null;
+        const expensePaid = standaloneExpense?.paid ?? standaloneExpense?.amount ?? 0;
+        const expenseRefunded = standaloneExpense?.refunded ?? 0;
+        const differentPayment = Boolean(standaloneExpense
+            && (expensePaid !== booking.amountPaid || expenseRefunded !== (booking.amountRefunded ?? 0)));
+        const refundBlocksLink = expenseRefunded > 0 && booking.status !== "Cancelled";
         const proposedExpenseAmount = budgetAction?.kind === "create"
             ? Number(budgetDraft.amount)
-            : expenses.find(expense => expense.id === selectedExpenseId)?.amount ?? 0;
+            : selectedExpense?.amount ?? 0;
         const proposedPaid = Math.round((proposedExpenseAmount + (booking.amountRefunded ?? 0)) * 100) / 100;
         const proposedTotal = Math.max(booking.totalCost ?? 0, proposedPaid);
         const paymentChanges = Number.isFinite(proposedExpenseAmount) && proposedExpenseAmount > 0
@@ -1637,7 +1676,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                 <small>This sets the recorded payment total; it does not add another payment.</small>
             </div>
         ) : null;
-        const unlinkedExpenses = expenses.filter((expense) => expense.bookingId === null && !expense.refunded);
+        const unlinkedExpenses = expenses.filter((expense) =>
+            expense.bookingId === null && (expense.plannedCostId === null || !expense.refunded),
+        );
         const hasAdditionalDetails = true;
         const newActivitySourceDate = newActivityRole === "Return"
             ? booking.returnStartDate
@@ -2088,7 +2129,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                                 <button
                                                     className="text-button"
                                                     type="button"
-                                                    disabled={isBudgetPending || isPaymentPending}
+                                                    disabled={isBudgetPending || isPaymentPending || isLoading}
                                                     onClick={() => openBudgetAction(booking, "link")}
                                                 >
                                                     Link existing expense
@@ -2143,15 +2184,70 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                             value: expense.id,
                                             label: `${expense.name} · ${formatMoney(expense.amount, trip.currency)}`,
                                         }))}
-                                        onChange={setSelectedExpenseId}
+                                        onChange={(value) => {
+                                            setSelectedExpenseId(value);
+                                            setExpensePaymentSource(null);
+                                            setRecordExpensePayment(false);
+                                            setBudgetError(null);
+                                        }}
                                         placeholder="Select an expense"
                                         actionLabel="Link expense"
                                         pendingActionLabel="Linking…"
                                         isPending={isBudgetPending}
+                                        canSubmit={!refundBlocksLink
+                                            && (!differentPayment || (expensePaymentSource !== null
+                                                && (expensePaymentSource !== "Booking" || booking.amountPaid > 0)))}
+                                        cancelLabel={standaloneExpense ? "Keep separate" : "Cancel"}
                                         onSubmit={() => void linkSelectedExpense()}
-                                        onCancel={() => requestBudgetTransition(() => {})}
+                                        onCancel={() => {
+                                            if (!standaloneExpense) {
+                                                requestBudgetTransition(() => {});
+                                                return;
+                                            }
+                                            setBudgetError(null);
+                                            setBudgetAction(null);
+                                        }}
                                     >
-                                        {paymentOffer}
+                                        {refundBlocksLink ? (
+                                            <InlineMessage variant="warning">
+                                                Only a cancelled booking can link to an expense with a refund.
+                                            </InlineMessage>
+                                        ) : differentPayment ? (
+                                            <fieldset className="booking-expense-payment-offer" disabled={isBudgetPending}>
+                                                <legend>Which payment should both entries use?</legend>
+                                                <label>
+                                                    <input
+                                                        type="radio"
+                                                        name={`expense-payment-${booking.id}`}
+                                                        checked={expensePaymentSource === "Booking"}
+                                                        disabled={booking.amountPaid <= 0}
+                                                        onChange={() => setExpensePaymentSource("Booking")}
+                                                    />
+                                                    Booking · Paid {formatMoney(booking.amountPaid, trip.currency)}
+                                                    {Boolean(booking.amountRefunded) &&
+                                                        ` · Refunded ${formatMoney(booking.amountRefunded, trip.currency)}`}
+                                                </label>
+                                                <label>
+                                                    <input
+                                                        type="radio"
+                                                        name={`expense-payment-${booking.id}`}
+                                                        checked={expensePaymentSource === "Expense"}
+                                                        onChange={() => setExpensePaymentSource("Expense")}
+                                                    />
+                                                    Expense · Paid {formatMoney(expensePaid, trip.currency)}
+                                                    {expenseRefunded > 0 && ` · Refunded ${formatMoney(expenseRefunded, trip.currency)}`}
+                                                </label>
+                                                {booking.amountPaid <= 0 && (
+                                                    <small>An expense needs a recorded payment.</small>
+                                                )}
+                                                {expensePaymentSource === "Expense" && expensePaid > (booking.totalCost ?? 0) && (
+                                                    <span>
+                                                        Total cost {formatMoney(booking.totalCost, trip.currency)}
+                                                        {" → "}{formatMoney(expensePaid, trip.currency)}
+                                                    </span>
+                                                )}
+                                            </fieldset>
+                                        ) : standaloneExpense ? null : paymentOffer}
                                     </ExistingRecordLinkForm>
                                 )}
                                 {budgetError && budgetErrorBookingId === booking.id && (

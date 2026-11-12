@@ -467,7 +467,7 @@ public static class BookingEndpoints
 
             if (expense.BookingId == booking.Id && expense.ItemCoreId == booking.ItemCoreId)
             {
-                return request?.PaymentUpdate is not null ? Results.Ok(ToResponse(booking)) : Results.NoContent();
+                return Results.Ok(ToExpenseResponse(expense, booking));
             }
 
             var eligibilityError = ValidateExpenseEligibility(booking);
@@ -486,47 +486,46 @@ public static class BookingEndpoints
                 return Results.Conflict("This expense is already linked to another booking.");
             }
 
-            if (expense.PaymentTotals.Refunded > 0)
+            var sharesPayment = expense.PlannedCostId is null;
+            if (!sharesPayment && expense.PaymentTotals.Refunded > 0)
             {
                 return Results.Conflict("An expense with a refund cannot be linked to a booking yet.");
             }
 
-            expense.ItemCore.Revision = Guid.NewGuid();
-            if (request?.PaymentUpdate is not null)
+            if (!sharesPayment && request?.Selection is not null)
             {
-                var paymentError = BookingExpensePayments.Apply(booking, expense.Amount, request.PaymentUpdate);
-                if (paymentError is not null) return Results.Conflict(paymentError);
-                await LinkedRecordReviews.TrackAsync(database, booking, expense.Id);
-            }
-            else
-            {
-                booking.ItemCore.Revision = Guid.NewGuid();
+                return Results.Conflict("This expense is now linked to a planned cost. Refresh before linking it.");
             }
 
             try
             {
-                // Do not overwrite a relationship another request established after this one loaded.
-                if (database.Database.IsRelational())
+                if (sharesPayment)
                 {
-                    var updated = await database.Expenses
-                        .Where(item => item.Id == expense.Id && item.TripId == tripId
-                            && (item.BookingId == null || item.BookingId == booking.Id))
-                        .ExecuteUpdateAsync(update => update
-                            .SetProperty(item => item.BookingId, booking.Id)
-                            .SetProperty(item => item.HasPendingDeletedBookingNotice, false));
-                    if (updated == 0)
-                        return Results.Conflict("This expense is already linked to another booking.");
-                    await database.Entry(expense).ReloadAsync();
+                    var error = await PrepareSharedExpenseLink(database, booking, expense, request?.Selection);
+                    if (error is not null) return Results.Conflict(error);
                 }
                 else
                 {
-                    // The isolated browser-test store does not implement relational bulk updates.
-                    expense.BookingId = booking.Id;
+                    expense.ItemCore.Revision = Guid.NewGuid();
+                    if (request?.PaymentUpdate is not null)
+                    {
+                        var error = BookingExpensePayments.Apply(booking, expense.Amount, request.PaymentUpdate);
+                        if (error is not null) return Results.Conflict(error);
+                        await LinkedRecordReviews.TrackAsync(database, booking, expense.Id);
+                    }
+                    else
+                    {
+                        booking.ItemCore.Revision = Guid.NewGuid();
+                    }
+                    expense.Booking = booking;
                     expense.HasPendingDeletedBookingNotice = false;
                 }
 
                 await LinkedRecordReviews.ClearPairAsync(database, booking.Id, expense.Id);
-                await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
+                if (!sharesPayment)
+                {
+                    await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, booking, expense);
+                }
                 await database.SaveChangesAsync();
                 if (transaction is not null) await transaction.CommitAsync();
             }
@@ -539,6 +538,7 @@ public static class BookingEndpoints
             {
                 return Results.Conflict("The booking changed while linking the expense. Refresh and try again.");
             }
+            if (sharesPayment) return Results.Ok(ToExpenseResponse(expense, booking));
             return request?.PaymentUpdate is not null ? Results.Ok(ToResponse(booking)) : Results.NoContent();
         }).WithName("LinkBookingExpense");
 
@@ -654,6 +654,60 @@ public static class BookingEndpoints
     private static string NormalizeBudgetName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Cost item" : name.Trim();
 
+    private static async Task<string?> PrepareSharedExpenseLink(
+        TravelAssistantDbContext database,
+        Booking booking,
+        Expense expense,
+        BookingExpenseLinkSelection? selection)
+    {
+        var bookingPayment = booking.GetPaymentAmounts();
+        var expensePayment = new PaymentAmounts(expense.PaymentTotals.Paid, expense.PaymentTotals.Refunded);
+        if (expensePayment.Refunded > 0 && booking.Status != BookingStatus.Cancelled)
+        {
+            return "Only a cancelled booking can link to an expense with a refund.";
+        }
+
+        if (selection is null || selection.BookingRevision != booking.ItemCore.Revision
+            || selection.ExpenseRevision != expense.ItemCore.Revision)
+        {
+            return "Refresh the booking and expense before confirming which payment to keep.";
+        }
+
+        var payment = selection.PaymentSource switch
+        {
+            BookingExpensePaymentSource.Booking => bookingPayment,
+            BookingExpensePaymentSource.Expense => expensePayment,
+            null when bookingPayment == expensePayment => bookingPayment,
+            _ => (PaymentAmounts?)null
+        };
+        if (payment is not PaymentAmounts selected)
+        {
+            return "Choose which payment to keep before linking this expense.";
+        }
+        if (selected.Paid <= 0)
+        {
+            return "An expense needs a recorded payment. Choose the expense payment or keep the records separate.";
+        }
+
+        var total = Math.Max(booking.TotalCost ?? 0, selected.Paid);
+        var error = BookingValidation.ValidatePayment(total, selected.Paid, selected.Refunded, booking.Status);
+        if (error is not null) return error;
+
+        booking.TotalCost = total;
+        booking.AmountPaid = selected.Paid;
+        booking.AmountRefunded = selected.Refunded;
+        await LinkedRecordReviews.TrackAsync(database, booking, expense.Id);
+
+        var previousCore = expense.ItemCore;
+        expense.Booking = booking;
+        expense.ItemCore = booking.ItemCore;
+        expense.PaymentTotals = booking.PaymentTotals;
+        expense.HasPendingDeletedBookingNotice = false;
+        database.ChangeTracker.DetectChanges();
+        database.ItemCores.Remove(previousCore);
+        return null;
+    }
+
     private static object ToExpenseResponse(Expense expense, Booking booking) => new
     {
         expense.Id,
@@ -746,6 +800,7 @@ public static class BookingEndpoints
         booking.TotalCost,
         booking.AmountPaid,
         booking.AmountRefunded,
+        booking.ItemCore.Revision,
         booking.HasPendingDeletedActivityNotice,
         booking.HasPendingDeletedExpenseNotice,
         FinancialStatus = GetFinancialStatus(booking),

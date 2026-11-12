@@ -495,6 +495,28 @@ scenarios passed. Checks covered cancellation, required and stale confirmations,
 refunds, and sharing later edits. The browser runner was stopped after the scenarios passed
 because it stalled during shutdown. Independent review found no actionable issues.
 
+### Link an existing standalone expense to a booking
+
+Compare the booking and expense's recorded Paid and Refunded amounts. If they differ,
+require an explicit selection of one record's payment values. Keeping the expense values can
+increase the booking total, with the increase shown before submission. Keep separate leaves
+both entries intact. An unpaid booking cannot supply payment for an existing expense.
+An active booking cannot link a refunded expense. On a cancelled booking eligible for linking,
+the payment selection can include the expense's refund.
+
+Send both core revisions with the selection. In the existing link transaction, recheck ownership,
+revisions and payment validity, attach the expense to the booking's payment totals, preserve
+its ID and local details, and remove the now-unused expense core and the pair's old reviews.
+Retries of an already shared link return the saved result. Keep plan-linked expenses on the
+existing path until plan attachment and retention are implemented together. Existing legacy
+links are preserved. Deploy the API and picker together. No schema change is required.
+
+The 121 backend tests, 111 frontend tests, production build and 11 booking/expense Chromium
+scenarios passed. Checks covered both payment choices, matching values, stale requests, refund
+eligibility, and immediate relinking after unlinking. The browser runner was stopped after
+the scenarios passed because it stalled during shutdown. Independent review found no
+actionable issues.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

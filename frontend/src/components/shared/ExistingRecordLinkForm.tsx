@@ -20,6 +20,8 @@ interface ExistingRecordLinkFormProps extends ExistingRecordLinkSelect {
     actionLabel: string;
     pendingActionLabel: string;
     isPending: boolean;
+    canSubmit?: boolean;
+    cancelLabel?: string;
     onSubmit: () => void;
     onCancel: () => void;
     secondarySelect?: ExistingRecordLinkSelect;
@@ -36,6 +38,8 @@ export function ExistingRecordLinkForm({
     actionLabel,
     pendingActionLabel,
     isPending,
+    canSubmit = true,
+    cancelLabel = "Cancel",
     onSubmit,
     onCancel,
     secondarySelect,
@@ -47,6 +51,7 @@ export function ExistingRecordLinkForm({
                 className="existing-record-link-select"
                 aria-label={ariaLabel}
                 value={value}
+                disabled={isPending}
                 onChange={(event) => onChange(event.target.value)}
             >
                 <option value="" disabled hidden>{placeholder}</option>
@@ -75,7 +80,7 @@ export function ExistingRecordLinkForm({
                 <button
                     className="primary-button"
                     type="button"
-                    disabled={!value || isPending}
+                    disabled={!value || !canSubmit || isPending}
                     onClick={onSubmit}
                 >
                     {isPending ? pendingActionLabel : actionLabel}
@@ -86,7 +91,7 @@ export function ExistingRecordLinkForm({
                     disabled={isPending}
                     onClick={onCancel}
                 >
-                    Cancel
+                    {cancelLabel}
                 </button>
             </div>
         </div>

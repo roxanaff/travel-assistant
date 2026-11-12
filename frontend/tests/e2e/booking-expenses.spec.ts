@@ -137,9 +137,8 @@ test("adding an expense confirms changed payments and shares later edits", async
     const second = (await browserRequest(page, `${tripApi}/bookings`, {
         name: "Hotel payment", startDate: "2027-04-02", totalCost: 200, amountPaid: 0,
     })).body;
-    const plan = (await browserRequest(page, `${tripApi}/planned-costs`, { name: "Hotel budget", amount: 80 })).body;
     const existing = (await browserRequest(page, `${tripApi}/expenses`, {
-        name: "Hotel deposit", amount: 80, plannedCostId: plan.id,
+        name: "Hotel deposit", amount: 240,
     })).body;
     await page.goto(`/trips/${trip.id}/bookings`);
     await page.getByRole("button", { name: "Expand Flight payment details" }).click();
@@ -169,17 +168,26 @@ test("adding an expense confirms changed payments and shares later edits", async
     const secondCard = page.locator(`#booking-${second.id}`);
     await secondCard.getByRole("button", { name: "Link existing expense" }).click();
     await page.getByLabel("Expense", { exact: true }).selectOption(existing.id);
-    await expect(secondCard).toContainText("Paid €0 → €80 · Total cost €200");
+    await expect(secondCard.getByRole("button", { name: "Link expense", exact: true })).toBeDisabled();
+    await expect(secondCard.getByRole("radio", { name: "Booking · Paid €0" })).toBeDisabled();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("expense-payment-offer-mobile.png"), fullPage: true });
-    await updatePayment.check();
+    await secondCard.getByRole("radio", { name: "Expense · Paid €240" }).check();
+    await expect(secondCard).toContainText("Total cost €200 → €240");
     await page.getByRole("button", { name: "Link expense", exact: true }).click();
-    await expect(secondCard.locator(".booking-card-price")).toHaveText("€80 / €200");
+    await expect(secondCard.locator(".booking-card-price")).toHaveText("€240");
     const linked = (await browserRequest(page, `${tripApi}/expenses`)).body.find((expense: { id: string }) => expense.id === existing.id);
-    expect(linked.plannedCostId).toBe(plan.id);
+    expect(linked.sharesBookingPayment).toBe(true);
     expect(linked.bookingId).toBe(second.id);
     expect((await browserRequest(page, `${tripApi}/linked-record-reviews`)).body).toEqual([]);
+
+    await secondCard.getByRole("button", { name: "Unlink", exact: true }).click();
+    await secondCard.getByRole("button", { name: "Link existing expense" }).click();
+    await secondCard.getByLabel("Expense", { exact: true }).selectOption(existing.id);
+    await expect(secondCard.getByRole("radio")).toHaveCount(0);
+    await secondCard.getByRole("button", { name: "Link expense", exact: true }).click();
+    await expect(secondCard.getByRole("link", { name: "Hotel deposit" })).toBeVisible();
 });
 
 test("bookings can be marked paid and undone without creating an expense", async ({ page }) => {
@@ -705,8 +713,12 @@ test("booking panels review each destination without leaving the card", async ({
         location: "Museum", cost: 200, priority: "Optional",
     })).body;
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/activities/${activity.id}`, { role: "General" })).status).toBe(200);
+    const plan = (await browserRequest(page, `${tripApi}/planned-costs`, {
+        name: "Museum budget", category: "ActivitiesAndMuseums", amount: 100,
+    })).body;
     const expense = (await browserRequest(page, `${tripApi}/expenses`, {
-        name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100, expenseDate: "2027-04-02",
+        name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100,
+        expenseDate: "2027-04-02", plannedCostId: plan.id,
     })).body;
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {

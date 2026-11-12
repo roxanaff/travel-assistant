@@ -60,6 +60,7 @@ export type Booking = {
     totalCost: number | null;
     amountPaid: number;
     amountRefunded: number | null;
+    revision?: string;
     financialStatus: BookingFinancialStatus | null;
     netCost: number;
     activityLinks: BookingActivityLink[];

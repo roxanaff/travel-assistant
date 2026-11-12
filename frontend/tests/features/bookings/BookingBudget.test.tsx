@@ -364,6 +364,27 @@ describe("booking expense actions", () => {
         expect(within(budget).queryByRole("button", { name: "Add new expense" })).toBeNull();
     });
 
+    it("lets a refunded expense stay separate from an active booking", async () => {
+        const user = userEvent.setup();
+        expensesApi.getExpenses.mockResolvedValue([{
+            ...existingExpense,
+            plannedCostId: null,
+            paid: 100,
+            refunded: 20,
+            amount: 80,
+        }]);
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Link existing expense" }));
+        await user.selectOptions(screen.getByLabelText("Expense"), existingExpense.id);
+        const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
+        expect(within(budget).getByRole("status").textContent).toContain("Only a cancelled booking");
+        expect(screen.getByRole("button", { name: "Link expense" })).toHaveProperty("disabled", true);
+        await user.click(screen.getByRole("button", { name: "Keep separate" }));
+        expect(screen.queryByLabelText("Expense")).toBeNull();
+        expect(bookingsApi.linkBookingExpense).not.toHaveBeenCalled();
+    });
+
     it("links an existing expense with a planned cost and can unlink it without deleting either", async () => {
         const user = userEvent.setup();
         expensesApi.getExpenses.mockResolvedValue([existingExpense]);
@@ -399,7 +420,7 @@ describe("booking expense actions", () => {
 
     it("confirms expense deletion separately from unlinking and keeps the booking", async () => {
         const user = userEvent.setup();
-        bookingsApi.getBookings.mockResolvedValue([{ ...hotel, expenseId: existingExpense.id }]);
+        bookingsApi.getBookings.mockResolvedValueOnce([{ ...hotel, expenseId: existingExpense.id }]);
         expensesApi.getExpenses.mockResolvedValue([{ ...existingExpense, bookingId: hotel.id }]);
         expensesApi.deleteExpense.mockResolvedValue(true);
         renderBookings();
@@ -427,7 +448,7 @@ describe("booking expense actions", () => {
 
     it("keeps the linked expense on deletion failure and allows a retry", async () => {
         const user = userEvent.setup();
-        bookingsApi.getBookings.mockResolvedValue([{ ...hotel, expenseId: existingExpense.id }]);
+        bookingsApi.getBookings.mockResolvedValueOnce([{ ...hotel, expenseId: existingExpense.id }]);
         expensesApi.getExpenses.mockResolvedValue([{ ...existingExpense, bookingId: hotel.id, plannedCostId: null }]);
         expensesApi.deleteExpense.mockRejectedValueOnce(new Error("Could not delete this expense."));
         renderBookings();

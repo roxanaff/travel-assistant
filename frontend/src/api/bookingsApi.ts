@@ -6,6 +6,13 @@ import type { LegacyExpenseRequest } from "./expensesApi";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type BookingActivityRole = "General" | "Outbound" | "Return";
+export type BookingExpensePaymentSource = "Booking" | "Expense";
+
+type BookingExpenseLinkSelection = {
+    bookingRevision: string;
+    expenseRevision: string;
+    paymentSource: BookingExpensePaymentSource | null;
+};
 
 export const bookingExpensePaymentUpdate = (booking: Booking, amount: number) => ({
     expectedPaid: booking.amountPaid,
@@ -189,14 +196,15 @@ export async function linkBookingExpense(
     tripId: string,
     bookingId: string,
     expenseId: string,
-    paymentUpdate?: ReturnType<typeof bookingExpensePaymentUpdate>,
-): Promise<Booking | void> {
+    payment?: ReturnType<typeof bookingExpensePaymentUpdate> | BookingExpenseLinkSelection,
+): Promise<Booking | (Expense & { booking: Booking }) | void> {
+    const body = payment && ("bookingRevision" in payment ? { selection: payment } : { paymentUpdate: payment });
     const response = await apiFetch(
         `${bookingsUrl(tripId)}/${bookingId}/expenses/${expenseId}`,
         {
             method: "POST",
-            headers: paymentUpdate ? { "Content-Type": "application/json" } : undefined,
-            body: paymentUpdate ? JSON.stringify({ paymentUpdate }) : undefined,
+            headers: body ? { "Content-Type": "application/json" } : undefined,
+            body: body ? JSON.stringify(body) : undefined,
         },
     );
     await throwIfApiError(response, "Could not link this expense.");

@@ -446,6 +446,13 @@
     gap: 8px;
 }
 
+fieldset.booking-expense-payment-offer {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
 .booking-expense-payment-offer input {
     width: auto;
 }
