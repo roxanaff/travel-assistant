@@ -17,7 +17,7 @@ import {
 import { formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
-import { FieldLabel, FieldRow, FormActions, FormSurface } from "../shared/FormPrimitives";
+import { FormActions, FormSurface } from "../shared/FormPrimitives";
 import { FormDiscardDialog } from "../shared/FormDiscardDialog";
 import { GroupHeading } from "../shared/GroupHeading";
 import { GroupAddButton } from "../shared/GroupAddButton";
@@ -29,6 +29,7 @@ import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteracti
 import { localToday } from "../../utils/localToday";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 import { BudgetRecordLink } from "./BudgetRecordLink";
+import { PlannedCostFormFields } from "./PlannedCostFormFields";
 
 import "./PlannedBudget.css";
 import "./BudgetItem.css";
@@ -291,40 +292,11 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
         editing = false,
     ) => (
         <FormSurface formRef={formRef} className="budget-item-form" onKeyDown={onFormKeyDown} onSubmit={submit}>
-            <label>
-                <FieldLabel>Name</FieldLabel>
-                <input
-                    value={cost.name}
-                    onChange={(event) => updateForm("name", event.target.value, editing)}
-                    placeholder="Cost item"
-                />
-            </label>
-            <FieldRow>
-                <label>
-                    <FieldLabel required>Amount ({trip.currency})</FieldLabel>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        value={cost.amount}
-                        onChange={(event) => updateForm("amount", event.target.value, editing)}
-                        required
-                    />
-                </label>
-                <label>
-                    <FieldLabel>Category</FieldLabel>
-                    <select
-                        value={cost.category}
-                        onChange={(event) => updateForm("category", event.target.value, editing)}
-                    >
-                        <option value="">Not specified</option>
-                        {plannedCostCategories.map((category) => (
-                            <option key={category.value} value={category.value}>
-                                {category.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-            </FieldRow>
+            <PlannedCostFormFields
+                value={cost}
+                currency={trip.currency}
+                onChange={(field, value) => updateForm(field, value, editing)}
+            />
             {formError && <p className="form-error">{formError}</p>}
             <FormActions>
                 <button className="text-button" type="button" onClick={cancelForm}>

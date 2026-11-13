@@ -14,6 +14,9 @@ public static class BudgetRelationshipConstraintErrors
     private const string BookingExpenseIndex = "IX_Expenses_BookingId";
     private const string PlannedCostExpenseIndex = "IX_Expenses_PlannedCostId";
 
+    public static bool IsBookingPlannedCostViolation(DbUpdateException exception) =>
+        IsUniqueViolation(exception, "IX_PlannedCosts_ItemCoreId", "PlannedCosts.ItemCoreId");
+
     public static bool IsBookingExpenseViolation(Exception exception) =>
         IsUniqueViolation(
             exception,

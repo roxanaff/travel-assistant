@@ -3,6 +3,11 @@ using TravelAssistant.Models;
 
 namespace TravelAssistant.Contracts;
 
+public record CreateBookingPlannedCostRequest(
+    string? Name,
+    PlannedCostCategory? Category,
+    Guid ExpectedRevision);
+
 /// <summary>
 /// Creates an actual expense linked directly to a booking, without creating a plan.
 /// </summary>

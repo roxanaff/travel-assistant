@@ -549,6 +549,24 @@ expense clears that booking link and retains any existing plan on the expense's 
 When both sides already have a planned cost, leave the entries separate until the duplicate
 selection and retention choices are available.
 
+### Add a new planned cost from a booking
+
+Offer the action for a saved booking with a positive total and an empty planned-cost slot.
+Prefill the planned cost's independent name and category, and show the booking total as the
+read-only amount. Use the existing planned cost form fields and booking draft controls.
+The owned booking route checks the loaded revision, then adds the plan to the booking's core
+and cost. If the booking already shares an expense, attach it to the new plan in the same
+save. Leave legacy separate-core expenses unchanged, and reject creation if one already has
+a separate plan. Advance the core revision and handle duplicate and stale writes without
+changing any amounts. Return the booking projection for immediate link display. No schema
+change is required. Linking existing plans remains a separate flow.
+
+All 133 backend tests and 112 frontend tests passed. After the form layout and pending-state
+adjustments, 32 focused frontend tests and the production build passed. Chromium verified
+creation with an existing expense, both Budget links and planned-cost highlighting. The
+browser runner was stopped after the scenario passed. Independent review found no remaining
+actionable issues.
+
 Keep reviews for old separate-core links. Shared booking, plan and expense values need
 no review to propagate. Deploy the matching API and forms together. No migration is required.
 

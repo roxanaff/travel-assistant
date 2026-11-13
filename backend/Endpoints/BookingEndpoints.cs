@@ -367,6 +367,61 @@ public static class BookingEndpoints
             return Results.NoContent();
         }).WithName("DismissActivityUpdateReview");
 
+        routes.MapPost("/bookings/{id:guid}/planned-costs", async (
+            Guid tripId,
+            Guid id,
+            CreateBookingPlannedCostRequest request,
+            TravelAssistantDbContext database) =>
+        {
+            var booking = await FindBooking(tripId, id, database);
+            if (booking is null) return Results.NotFound();
+
+            const string staleMessage = "The booking or a related entry changed. Refresh before adding a planned cost.";
+            if (request.ExpectedRevision != booking.ItemCore.Revision) return Results.Conflict(staleMessage);
+            if (booking.ItemCost.PlannedCost is not null)
+            {
+                return Results.Conflict("This booking already has a linked planned cost.");
+            }
+
+            var expense = booking.Expense;
+            if (expense is { PlannedCostId: not null })
+            {
+                return Results.Conflict("The linked expense already has a planned cost.");
+            }
+
+            var validationError = PlannedCostValidation.Validate(
+                new CreatePlannedCostRequest(request.Name, request.Category, booking.TotalCost ?? 0));
+            if (validationError is not null) return Results.BadRequest(validationError);
+
+            var plan = new PlannedCost
+            {
+                TripId = tripId,
+                Name = NormalizeBudgetName(request.Name),
+                Category = request.Category,
+                ItemCore = booking.ItemCore,
+                ItemCost = booking.ItemCost
+            };
+            database.PlannedCosts.Add(plan);
+            if (expense is { SharesBookingPayment: true })
+            {
+                expense.PlannedCost = plan;
+            }
+            booking.ItemCore.Revision = Guid.NewGuid();
+
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (
+                BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(exception)
+                || BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict(staleMessage);
+            }
+
+            return Results.Created($"/api/trips/{tripId}/planned-costs/{plan.Id}", ToResponse(booking));
+        }).WithName("CreateBookingPlannedCost");
+
         routes.MapPost("/bookings/{id:guid}/expenses", async (
             Guid tripId,
             Guid id,

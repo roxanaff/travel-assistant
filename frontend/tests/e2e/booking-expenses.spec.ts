@@ -393,7 +393,6 @@ test("a booking records actual spending directly and navigates to the expense", 
 
     await page.goto(`/trips/${trip.id}/bookings`);
     await page.getByRole("button", { name: "Expand Rome hotel details" }).click();
-    await expect(page.getByRole("button", { name: "Add to planned costs" })).toHaveCount(0);
     const activityAction = await page.getByRole("button", { name: "Add new activity", exact: true }).boundingBox();
     const expenseAction = await page.getByRole("button", { name: "Add new expense", exact: true }).boundingBox();
     expect(expenseAction!.y - (activityAction!.y + activityAction!.height)).toBeLessThan(14);
@@ -478,6 +477,19 @@ test("a booking records actual spending directly and navigates to the expense", 
     releaseDeletion();
     await expect(page.getByText("A linked activity was deleted. This booking was kept.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Hotel check-in", exact: true })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Add new planned cost" }).click();
+    const planForm = page.getByRole("region", { name: "Planned cost for Rome hotel" });
+    await expect(planForm.getByLabel("Booking total (EUR)")).toHaveValue("200");
+    await planForm.getByLabel("Name").fill("Rome lodging");
+    await planForm.getByRole("button", { name: "Add planned cost", exact: true }).click();
+    await planForm.getByRole("link", { name: "Rome lodging" }).click();
+    const plans = (await browserRequest(page, `${tripApi}/planned-costs`)).body;
+    expect(plans).toHaveLength(1);
+    const planRow = page.locator(`#planned-cost-${plans[0].id}`);
+    await expect(planRow).toHaveClass(/budget-record-highlighted/);
+    await expect(planRow.getByRole("link", { name: "Hotel deposit", exact: true })).toBeVisible();
+    await expect(highlightedExpense.getByRole("link", { name: "Rome lodging", exact: true })).toBeVisible();
 });
 
 test("saved booking columns and budget amounts stay aligned", async ({ page }) => {

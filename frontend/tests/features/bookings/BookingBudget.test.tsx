@@ -15,6 +15,7 @@ import { suggestedBudgetCategory } from "../../../src/utils/bookingBudget";
 const bookingsApi = vi.hoisted(() => ({
     createBooking: vi.fn(),
     createBookingExpense: vi.fn(),
+    createBookingPlannedCost: vi.fn(),
     deleteBooking: vi.fn(),
     dismissBookingActivityUpdateReview: vi.fn(),
     dismissBookingDeletedLinkNotices: vi.fn(),
@@ -322,6 +323,38 @@ describe("booking expense actions", () => {
         expect(await screen.findByText("Partially paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
     });
 
+    it("adds a planned cost with the booking total and shows the link immediately", async () => {
+        const user = userEvent.setup();
+        bookingsApi.createBookingPlannedCost.mockResolvedValue({
+            ...hotel,
+            plannedCost: { id: "plan-1", name: "Rome lodging" },
+        });
+
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Add new planned cost" }));
+        const plan = within(screen.getByRole("region", { name: "Planned cost for Hotel Rome" }));
+        const total = plan.getByLabelText("Booking total (EUR)") as HTMLInputElement;
+        expect(total.value).toBe("200");
+        expect(total.readOnly).toBe(true);
+        expect(plan.getByLabelText("Category")).toHaveProperty("value", "Accommodation");
+        const name = plan.getByLabelText("Name");
+        expect(name).toHaveProperty("value", hotel.name);
+        await user.clear(name);
+        await user.type(name, "Rome lodging");
+        await user.click(plan.getByRole("button", { name: "Add planned cost" }));
+
+        expect(await plan.findByRole("link", { name: "Rome lodging" })).toHaveProperty(
+            "pathname", `/trips/${trip.id}/budget`,
+        );
+        expect(bookingsApi.createBookingPlannedCost).toHaveBeenCalledWith(trip.id, hotel.id, {
+            name: "Rome lodging",
+            category: "Accommodation",
+            expectedRevision: hotel.revision,
+        });
+        expect(bookingsApi.createBookingExpense).not.toHaveBeenCalled();
+    });
+
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {
         const user = userEvent.setup();
         bookingsApi.getBookings.mockResolvedValue([{
@@ -350,7 +383,6 @@ describe("booking expense actions", () => {
         expect(within(budget).getByLabelText("Net spending (EUR)")).toHaveProperty("value", "120");
         expect(within(budget).getByLabelText("Category")).toHaveProperty("value", "Accommodation");
         expect(within(budget).getByLabelText("Date")).toHaveProperty("value", localToday());
-        expect(screen.queryByRole("button", { name: "Add to planned costs" })).toBeNull();
 
         await user.clear(within(budget).getByLabelText("Net spending (EUR)"));
         await user.type(within(budget).getByLabelText("Net spending (EUR)"), "125");

@@ -2,6 +2,7 @@
 // The backend remains responsible for saving bookings and checking their rules.
 import type { Booking, BookingForm } from "../types/booking";
 import type { Expense } from "../types/expense";
+import type { PlannedCostCategory } from "../types/plannedCost";
 import type { LegacyExpenseRequest } from "./expensesApi";
 import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
@@ -70,6 +71,20 @@ export const toBookingRequest = (form: BookingForm) => ({
 export async function getBookings(tripId: string): Promise<Booking[]> {
     const response = await apiFetch(bookingsUrl(tripId));
     await throwIfApiError(response, "Could not load bookings.");
+    return response.json();
+}
+
+export async function createBookingPlannedCost(
+    tripId: string,
+    bookingId: string,
+    request: { name: string; category: PlannedCostCategory | null; expectedRevision: string },
+): Promise<Booking> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/planned-costs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+    });
+    await throwIfApiError(response, "Could not add this planned cost.");
     return response.json();
 }
 

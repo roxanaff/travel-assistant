@@ -6,6 +6,7 @@ import {
     createBooking,
     bookingExpensePaymentUpdate,
     createBookingExpense,
+    createBookingPlannedCost,
     deleteBooking,
     dismissBookingActivityUpdateReview,
     dismissBookingDeletedLinkNotices,
@@ -29,7 +30,9 @@ import { deleteExpense, getExpenses } from "../../api/expensesApi";
 import type { Booking, BookingCategory, BookingForm } from "../../types/booking";
 import { createEmptyBookingForm } from "../../types/booking";
 import type { Expense, NewExpenseForm } from "../../types/expense";
+import { createEmptyPlannedCostForm, type PlannedCostForm } from "../../types/plannedCost";
 import { ExpenseFormFields } from "../budget/ExpenseFormFields";
+import { PlannedCostFormFields } from "../budget/PlannedCostFormFields";
 import { localToday } from "../../utils/localToday";
 import { subscribeToActivityDeletions } from "../../utils/activityDeletionEvents";
 import type { ItineraryItem, ItineraryItemForm } from "../../types/itineraryItem";
@@ -235,10 +238,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     const [budgetLoadVersion, setBudgetLoadVersion] = useState(0);
     const isBudgetLoading = loadedBudgetTripId !== trip.id;
     const [budgetLoadError, setBudgetLoadError] = useState<string | null>(null);
-    const [budgetAction, setBudgetAction] = useState<{
-        bookingId: string;
-        kind: "create" | "link";
-    } | null>(null);
+    const [budgetAction, setBudgetAction] = useState<
+        | { bookingId: string; kind: "create" | "link" }
+        | { bookingId: string; kind: "create-plan"; revision: string; initialDraft: PlannedCostForm }
+        | null
+    >(null);
+    const [planDraft, setPlanDraft] = useState(createEmptyPlannedCostForm);
     const [budgetDraft, setBudgetDraft] = useState<NewExpenseForm>({
         name: "",
         category: "",
@@ -387,7 +392,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         if (!budgetAction) return;
 
         const frame = window.requestAnimationFrame(() => {
-            const control = budgetAction.kind === "create"
+            const control = budgetAction.kind !== "link"
                 ? budgetFormRef.current?.querySelector<HTMLElement>("input")
                 : document.querySelector<HTMLElement>(
                     `#booking-${budgetAction.bookingId} select[aria-label="Expense"]`,
@@ -606,6 +611,11 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             return JSON.stringify(budgetDraft) !== JSON.stringify(initialBudgetDraft);
         }
 
+        if (budgetAction?.kind === "create-plan") {
+            return planDraft.name !== budgetAction.initialDraft.name
+                || planDraft.category !== budgetAction.initialDraft.category;
+        }
+
         return budgetAction?.kind === "link" && selectedExpenseId !== "";
     };
 
@@ -645,7 +655,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         ));
     };
 
-    const openBudgetAction = (booking: Booking, kind: "create" | "link") => {
+    const openBudgetAction = (booking: Booking, kind: "create" | "link" | "create-plan") => {
         if (isBudgetPending || paymentPendingRef.current) return;
         requestBudgetTransition(() => {
             setExpensePaymentSource(null);
@@ -666,12 +676,53 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             setSelectedExpenseId("");
             setBudgetError(null);
             setBudgetErrorBookingId(null);
-            setBudgetAction({ bookingId: booking.id, kind });
+            if (kind === "create-plan") {
+                if (!booking.revision || !booking.totalCost) return;
+                const initialDraft: PlannedCostForm = {
+                    name: booking.name,
+                    category: suggestedBudgetCategory(booking.category) ?? "",
+                    amount: String(booking.totalCost),
+                };
+                setPlanDraft(initialDraft);
+                setBudgetAction({ bookingId: booking.id, kind, revision: booking.revision, initialDraft });
+            } else {
+                setBudgetAction({ bookingId: booking.id, kind });
+            }
             setCreatingActivityForBookingId(null);
             setNewActivity(null);
             setLinkingBookingId(null);
             expand(booking.id);
         });
+    };
+
+    const saveBookingPlan = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (budgetAction?.kind !== "create-plan" || isBudgetPending) return;
+
+        const name = planDraft.name.trim();
+        if (name.length > 150) {
+            setBudgetError("Planned cost name cannot be longer than 150 characters.");
+            return;
+        }
+
+        setIsBudgetPending(true);
+        setBudgetError(null);
+        try {
+            const updated = await createBookingPlannedCost(trip.id, budgetAction.bookingId, {
+                name,
+                category: planDraft.category || null,
+                expectedRevision: budgetAction.revision,
+            });
+            setBookings((current) => current.map((booking) => booking.id === updated.id ? updated : booking));
+            if (updated.expenseId) {
+                setBudgetLoadVersion((version) => version + 1);
+            }
+            setBudgetAction(null);
+        } catch (exception) {
+            setBudgetError(exception instanceof Error ? exception.message : "Could not add this planned cost.");
+        } finally {
+            setIsBudgetPending(false);
+        }
     };
 
     const updateBudgetDraft = (field: keyof NewExpenseForm, value: string) => {
@@ -1636,6 +1687,9 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         const relatedReviewPanelId = `booking-related-reviews-${booking.id}`;
         const linkedExpense = expenses.find((expense) => expense.id === booking.expenseId);
         const linkedPlan = booking.plannedCost;
+        const isCreatingPlan = budgetAction?.bookingId === booking.id && budgetAction.kind === "create-plan";
+        const canAddPlan = !linkedPlan && booking.revision && (booking.totalCost ?? 0) > 0
+            && !linkedExpense?.plannedCostId && !isBudgetLoading && !budgetLoadError;
         const canAddExpense = booking.totalCost !== null && booking.totalCost > 0
             && (booking.amountPaid === 0 || booking.netCost > 0);
         const selectedExpense = expenses.find((expense) => expense.id === selectedExpenseId);
@@ -2058,22 +2112,6 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                 />
                                 </div>
                         )}
-                        {linkedPlan && (
-                            <section className="booking-related-budget" aria-label={`Planned cost for ${booking.name}`}>
-                                <strong>Planned cost</strong>
-                                <div className="booking-budget-record">
-                                    <Link
-                                        className="internal-record-link"
-                                        to={`/trips/${trip.id}/budget`}
-                                        state={createCardFocusState(linkedPlan.id)}
-                                        onClick={(event) => handleRelatedRecordNavigation(event, "budget", linkedPlan.id)}
-                                    >
-                                        {linkedPlan.name}
-                                    </Link>
-                                    <span>{formatMoney(booking.totalCost, trip.currency)}</span>
-                                </div>
-                            </section>
-                        )}
                         {(canAddExpense || booking.expenseId !== null) && (
                             <section
                                 className="booking-related-budget"
@@ -2298,6 +2336,76 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                 )}
                                 {budgetError && budgetErrorBookingId === booking.id && (
                                     <InlineMessage variant="error">{budgetError}</InlineMessage>
+                                )}
+                            </section>
+                        )}
+                        {(linkedPlan || canAddPlan || isCreatingPlan) && (
+                            <section className="booking-related-budget" aria-label={`Planned cost for ${booking.name}`}>
+                                {linkedPlan && (
+                                    <>
+                                        <strong>Planned cost</strong>
+                                        <div className="booking-budget-record">
+                                            <Link
+                                                className="internal-record-link"
+                                                to={`/trips/${trip.id}/budget`}
+                                                state={createCardFocusState(linkedPlan.id)}
+                                                onClick={(event) => handleRelatedRecordNavigation(event, "budget", linkedPlan.id)}
+                                            >
+                                                {linkedPlan.name}
+                                            </Link>
+                                            <span>{formatMoney(booking.totalCost, trip.currency)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {canAddPlan && !isCreatingPlan && !creatingActivityForBookingId && !linkingBookingId && (
+                                    <div className="booking-budget-actions">
+                                        <button
+                                            className="text-button"
+                                            type="button"
+                                            disabled={isBudgetPending || isPaymentPending}
+                                            onClick={() => openBudgetAction(booking, "create-plan")}
+                                        >
+                                            Add new planned cost
+                                        </button>
+                                    </div>
+                                )}
+                                {isCreatingPlan && (
+                                    <FormSurface
+                                        formRef={budgetFormRef}
+                                        className="booking-budget-form"
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Escape") {
+                                                event.preventDefault();
+                                                requestBudgetTransition(() => {});
+                                            }
+                                        }}
+                                        onSubmit={(event) => void saveBookingPlan(event)}
+                                    >
+                                        <PlannedCostFormFields
+                                            value={planDraft}
+                                            currency={trip.currency}
+                                            sharedAmount
+                                            disabled={isBudgetPending}
+                                            onChange={(field, value) => {
+                                                setPlanDraft((current) => ({ ...current, [field]: value }));
+                                                setBudgetError(null);
+                                            }}
+                                        />
+                                        {budgetError && <InlineMessage variant="error">{budgetError}</InlineMessage>}
+                                        <FormActions>
+                                            <button
+                                                className="text-button"
+                                                type="button"
+                                                disabled={isBudgetPending}
+                                                onClick={() => requestBudgetTransition(() => {})}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button className="primary-button" type="submit" disabled={isBudgetPending}>
+                                                {isBudgetPending ? "Saving…" : "Add planned cost"}
+                                            </button>
+                                        </FormActions>
+                                    </FormSurface>
                                 )}
                             </section>
                         )}
