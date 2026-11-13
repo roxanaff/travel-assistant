@@ -92,6 +92,7 @@ const hotel: Booking = {
     totalCost: 200,
     amountPaid: 150,
     amountRefunded: null,
+    revision: "booking-revision",
     financialStatus: "PartiallyPaid",
     netCost: 150,
     activityLinks: [],
@@ -106,6 +107,8 @@ const existingExpense: Expense = {
     tripId: trip.id,
     bookingId: null,
     plannedCostId: "plan-1",
+    revision: "expense-revision",
+    plannedAmount: 120,
     name: "Hotel deposit",
     category: "Accommodation",
     amount: 100,
@@ -283,12 +286,16 @@ describe("booking expense actions", () => {
         expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
     });
 
-    it("keeps the optional payment update when linking an existing expense to an unpaid booking", async () => {
+    it("previews payment and planned cost changes when linking an expense from a plan", async () => {
         const user = userEvent.setup();
-        const unpaid = { ...hotel, totalCost: 50, amountPaid: 0, netCost: 0, financialStatus: "Unpaid" as const };
+        const unpaid = { ...hotel, totalCost: 150, amountPaid: 0, netCost: 0, financialStatus: "Unpaid" as const };
         bookingsApi.getBookings.mockResolvedValue([unpaid]);
         expensesApi.getExpenses.mockResolvedValue([existingExpense]);
-        bookingsApi.linkBookingExpense.mockResolvedValue({ ...unpaid, totalCost: 100, amountPaid: 100, netCost: 100, financialStatus: "Paid" });
+        bookingsApi.linkBookingExpense.mockResolvedValue({
+            ...existingExpense,
+            bookingId: hotel.id,
+            booking: { ...unpaid, amountPaid: 100, netCost: 100, financialStatus: "PartiallyPaid" },
+        });
         renderBookings();
         await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
         const actions = screen.getByRole("region", { name: "Expenses for Hotel Rome" })
@@ -299,12 +306,20 @@ describe("booking expense actions", () => {
         ]);
         await user.click(screen.getByRole("button", { name: "Link existing expense" }));
         await user.selectOptions(screen.getByLabelText("Expense"), existingExpense.id);
-        await user.click(screen.getByRole("checkbox", { name: "Update booking payment" }));
-        await user.click(screen.getByRole("button", { name: "Link expense", exact: true }));
+        await user.click(screen.getByRole("radio", { name: "Expense · Paid €100" }));
+        const link = screen.getByRole("button", { name: "Link expense", exact: true });
+        expect(link).toHaveProperty("disabled", true);
+        await user.click(screen.getByRole("radio", { name: "Booking · Total €150" }));
+        expect(screen.getByText("Planned cost €120 → €150")).toBeTruthy();
+        expect(screen.getByText("Booking paid €0 → €100")).toBeTruthy();
+        await user.click(link);
         await waitFor(() => expect(bookingsApi.linkBookingExpense).toHaveBeenCalledWith(trip.id, hotel.id, existingExpense.id, {
-            expectedPaid: 0, expectedTotalCost: 50, expectedRefunded: null, expectedStatus: "Confirmed", expectedExpenseAmount: 100,
+            bookingRevision: hotel.revision,
+            expenseRevision: existingExpense.revision,
+            paymentSource: "Expense",
+            totalSource: "Booking",
         }));
-        expect(await screen.findByText("Paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
+        expect(await screen.findByText("Partially paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
     });
 
     it("prefills an expense with the net paid amount without creating a planned cost", async () => {
@@ -388,7 +403,11 @@ describe("booking expense actions", () => {
     it("links an existing expense with a planned cost and can unlink it without deleting either", async () => {
         const user = userEvent.setup();
         expensesApi.getExpenses.mockResolvedValue([existingExpense]);
-        bookingsApi.linkBookingExpense.mockResolvedValue(undefined);
+        bookingsApi.linkBookingExpense.mockResolvedValue({
+            ...existingExpense,
+            bookingId: hotel.id,
+            booking: { ...hotel, totalCost: 120, amountPaid: 100, netCost: 100 },
+        });
         bookingsApi.unlinkBookingExpense.mockResolvedValue(undefined);
 
         renderBookings();
@@ -397,9 +416,19 @@ describe("booking expense actions", () => {
         const budget = screen.getByRole("region", { name: "Expenses for Hotel Rome" });
 
         await user.selectOptions(within(budget).getByLabelText("Expense"), existingExpense.id);
+        await user.click(within(budget).getByRole("radio", { name: "Planned cost · Total €120" }));
+        await user.click(within(budget).getByRole("radio", { name: "Booking · Paid €150" }));
+        expect(within(budget).getByText("Choose a total cost that covers the amount paid.")).toBeTruthy();
+        await user.click(within(budget).getByRole("radio", { name: "Expense · Paid €100" }));
+        expect(within(budget).getByText("Booking total €200 → €120")).toBeTruthy();
         await user.click(within(budget).getByRole("button", { name: "Link expense" }));
         await waitFor(() => expect(bookingsApi.linkBookingExpense).toHaveBeenCalledWith(
-            trip.id, hotel.id, existingExpense.id,
+            trip.id, hotel.id, existingExpense.id, {
+                bookingRevision: hotel.revision,
+                expenseRevision: existingExpense.revision,
+                paymentSource: "Expense",
+                totalSource: "PlannedCost",
+            },
         ));
         expect(await within(budget).findByRole("link", { name: existingExpense.name })).toBeTruthy();
 

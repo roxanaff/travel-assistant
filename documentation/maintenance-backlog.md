@@ -20,6 +20,8 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
 
 ## Usability and interaction improvements
 
+- [P2] Sign-in form — During the UI pass, add more vertical space between the form-level error
+  message and the first field. Check the spacing when the message wraps on a narrow screen.
 - [P2] Expenses — Within each category, keep entries ordered by expense date. Add user-selectable sorting options
   later; implement this separately from the booking work.
 - [P1] Workspace view state — Remember view choices when moving between workspace tabs instead of resetting them.

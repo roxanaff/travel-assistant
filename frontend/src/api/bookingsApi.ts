@@ -7,11 +7,13 @@ import { apiBaseUrl, apiFetch, throwIfApiError } from "./travelAssistantApi";
 
 export type BookingActivityRole = "General" | "Outbound" | "Return";
 export type BookingExpensePaymentSource = "Booking" | "Expense";
+export type BookingExpenseTotalSource = "Booking" | "PlannedCost";
 
 type BookingExpenseLinkSelection = {
     bookingRevision: string;
     expenseRevision: string;
     paymentSource: BookingExpensePaymentSource | null;
+    totalSource: BookingExpenseTotalSource | null;
 };
 
 export const bookingExpensePaymentUpdate = (booking: Booking, amount: number) => ({
@@ -196,19 +198,18 @@ export async function linkBookingExpense(
     tripId: string,
     bookingId: string,
     expenseId: string,
-    payment?: ReturnType<typeof bookingExpensePaymentUpdate> | BookingExpenseLinkSelection,
-): Promise<Booking | (Expense & { booking: Booking }) | void> {
-    const body = payment && ("bookingRevision" in payment ? { selection: payment } : { paymentUpdate: payment });
+    selection: BookingExpenseLinkSelection,
+): Promise<Expense & { booking: Booking }> {
     const response = await apiFetch(
         `${bookingsUrl(tripId)}/${bookingId}/expenses/${expenseId}`,
         {
             method: "POST",
-            headers: body ? { "Content-Type": "application/json" } : undefined,
-            body: body ? JSON.stringify(body) : undefined,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ selection }),
         },
     );
     await throwIfApiError(response, "Could not link this expense.");
-    if (response.status !== 204) return response.json();
+    return response.json();
 }
 
 export async function unlinkBookingExpense(
@@ -221,5 +222,13 @@ export async function unlinkBookingExpense(
         { method: "DELETE" },
     );
     await throwIfApiError(response, "Could not unlink this expense.");
+}
+
+export async function unlinkBookingPlannedCost(tripId: string, bookingId: string, planId: string): Promise<void> {
+    const response = await apiFetch(
+        `${bookingsUrl(tripId)}/${bookingId}/planned-costs/${planId}`,
+        { method: "DELETE" },
+    );
+    await throwIfApiError(response, "Could not unlink this planned cost.");
 }
 

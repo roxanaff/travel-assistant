@@ -6,10 +6,12 @@ import { Pencil, Trash2 } from "lucide-react";
 import {
     createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense, type ExpenseRequest,
 } from "../../api/expensesApi";
+import { unlinkBookingExpense } from "../../api/bookingsApi";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 import { expenseCategories, type Expense, type NewExpenseForm } from "../../types/expense";
 import { localToday } from "../../utils/localToday";
 import { ExpenseFormFields } from "./ExpenseFormFields";
+import { BudgetBookingLink } from "./BudgetBookingLink";
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
@@ -33,6 +35,7 @@ type ExpenseTrackingProps = {
     trip: Trip;
     onFormOpenChange: (isOpen: boolean) => void;
     refreshKey: number;
+    onLinkedPlanChange?: () => void;
 };
 
 type PendingDeletion = {
@@ -82,8 +85,9 @@ export function ExpenseTracking(props: ExpenseTrackingProps) {
     return <ExpenseTrackingContent key={props.trip.id} {...props} />;
 }
 
-function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseTrackingProps) {
+function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey, onLinkedPlanChange }: ExpenseTrackingProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenseLoadVersion, setExpenseLoadVersion] = useState(0);
     const linkedReviews = useLinkedRecordReviews(trip.id, "Expense", expenses);
     const highlightedExpenseId = useNavigationCardFocus({
         availableIds: expenses.map((expense) => expense.id),
@@ -135,7 +139,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
         return () => {
             isCurrent = false;
         };
-    }, [refreshKey, trip.id]);
+    }, [expenseLoadVersion, refreshKey, trip.id]);
 
     const updateForm = (field: keyof NewExpenseForm, value: string, editing = false) => {
         if (field === "amount" || field === "refunded") {
@@ -261,6 +265,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
         try {
             const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense, editingRevision));
             setExpenses((current) => current.map((expense) => (expense.id === updated.id ? updated : expense)));
+            if (updated.sharesBookingPayment && updated.plannedCostId) onLinkedPlanChange?.();
             setEditingExpenseId(null);
         } catch (exception) {
             setFormError(
@@ -275,6 +280,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
     const commitDelete = async (expense: Expense) => {
         try {
             const wasDeleted = await deleteExpenseApi(trip.id, expense.id);
+            if (expense.plannedCostId) onLinkedPlanChange?.();
 
             // A linked planned-cost Undo may already have deleted this same expense.
             // Treat that result as a successful final state rather than restoring stale data.
@@ -527,6 +533,19 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
                                                         )}
                                                     </span>
                                                 )}
+                                                {expense.bookingId && (
+                                                    <BudgetBookingLink
+                                                        tripId={trip.id}
+                                                        bookingId={expense.bookingId}
+                                                        bookingName={expense.bookingName}
+                                                        onUnlink={async () => {
+                                                            await unlinkBookingExpense(trip.id, expense.bookingId!, expense.id);
+                                                            setIsLoading(true);
+                                                            setExpenseLoadVersion((version) => version + 1);
+                                                            if (expense.plannedCostId) onLinkedPlanChange?.();
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
                                             <strong className="budget-item-amount">
                                                 {formatMoney(expense.amount, trip.currency)}
@@ -574,12 +593,14 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey }: ExpenseT
                 onConfirm={confirmLinkedExpenseDeletion}
             >
                 <p>
-                    Delete {linkedExpenseToDelete?.name}? Its linked
-                    {linkedExpenseToDelete?.bookingId && linkedExpenseToDelete?.plannedCostId
-                        ? " booking and planned cost will be kept and unlinked."
+                    Delete {linkedExpenseToDelete?.name}?
+                    {linkedExpenseToDelete?.plannedCostId && linkedExpenseToDelete.sharesBookingPayment
+                        ? " The booking and planned cost will stay linked."
+                        : linkedExpenseToDelete?.bookingId && linkedExpenseToDelete?.plannedCostId
+                        ? " Its booking and planned cost will be kept and unlinked."
                         : linkedExpenseToDelete?.bookingId
-                            ? " booking will be kept and unlinked."
-                            : " planned cost will be kept and unlinked."}
+                            ? " Its booking will be kept and unlinked."
+                            : " Its planned cost will be kept and unlinked."}
                 </p>
             </ConfirmDialog>
             <FormDiscardDialog

@@ -7,6 +7,7 @@ export type PlannedCostRequest = {
     name: string | null;
     category: PlannedCostCategory | null;
     amount: number;
+    expectedRevision?: string;
 };
 
 const plannedCostsUrl = (tripId: string) =>

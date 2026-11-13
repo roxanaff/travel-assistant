@@ -29,6 +29,7 @@ public static class ExpenseEndpoints
             var expenses = await database.Expenses
                 .Where(item => item.TripId == tripId)
                 .Include(item => item.Booking)
+                .Include(item => item.PlannedCost)
                 .ToListAsync();
 
             return Results.Ok(expenses.OrderBy(item => item.CreatedAtUtc).Select(ToResponse));
@@ -50,15 +51,32 @@ public static class ExpenseEndpoints
 
             // A planned cost may be converted into only one actual expense for the same trip.
             PlannedCost? plan = null;
+            Booking? booking = null;
             if (request.PlannedCostId is Guid planId)
             {
-                plan = await database.PlannedCosts.Include(cost => cost.ItemCore)
+                plan = await database.PlannedCosts
                     .SingleOrDefaultAsync(cost => cost.Id == planId && cost.TripId == tripId);
-                var expenseAlreadyAdded = await database.Expenses.AnyAsync(item =>
-                    item.TripId == tripId && item.PlannedCostId == planId);
-                if (plan is null || expenseAlreadyAdded)
+                if (plan is null)
                 {
                     return Results.Conflict("This planned cost has already been added to expenses.");
+                }
+                booking = await database.Bookings.SingleOrDefaultAsync(item => item.ItemCoreId == plan.ItemCoreId);
+                var existing = await database.Expenses.SingleOrDefaultAsync(item =>
+                    item.TripId == tripId && item.PlannedCostId == planId);
+                if (existing is not null)
+                {
+                    return booking is not null && existing.SharesBookingPayment
+                        ? Results.Ok(ToResponse(existing))
+                        : Results.Conflict("This planned cost has already been added to expenses.");
+                }
+                if ((booking is not null || request.ExpectedRevision is not null)
+                    && request.ExpectedRevision != plan.ItemCore.Revision)
+                {
+                    return Results.Conflict("The planned cost or booking changed. Refresh before adding an expense.");
+                }
+                if (booking is not null && booking.AmountPaid <= 0)
+                {
+                    return Results.Conflict("Record a payment in Bookings before adding this planned cost to Expenses.");
                 }
             }
 
@@ -71,10 +89,11 @@ public static class ExpenseEndpoints
             {
                 TripId = tripId,
                 Name = NormalizeName(request.Name),
-                PlannedCostId = request.PlannedCostId,
+                PlannedCost = plan,
+                Booking = booking,
                 Category = request.Category,
                 ItemCore = core,
-                PaymentTotals = new ItemPaymentTotals
+                PaymentTotals = booking?.PaymentTotals ?? new ItemPaymentTotals
                 {
                     ItemCore = core,
                     Paid = (request.Paid ?? request.Amount)!.Value,
@@ -84,7 +103,7 @@ public static class ExpenseEndpoints
             };
 
             database.Expenses.Add(expense);
-            if (plan is not null)
+            if (plan is not null && booking is null)
             {
                 await LinkedRecordReviews.InitialiseExpenseLinkAsync(database, plan, expense);
             }
@@ -93,7 +112,8 @@ public static class ExpenseEndpoints
                 await database.SaveChangesAsync();
             }
             catch (DbUpdateException exception) when (
-                plan is not null && BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception))
+                plan is not null && (BudgetRelationshipConstraintErrors.IsPlannedCostExpenseViolation(exception)
+                    || BudgetRelationshipConstraintErrors.IsBookingExpenseViolation(exception)))
             {
                 return Results.Conflict("This planned cost has already been added to expenses.");
             }
@@ -115,7 +135,7 @@ public static class ExpenseEndpoints
                 return Results.BadRequest(validationError);
             }
 
-            var expense = await database.Expenses.Include(item => item.Booking)
+            var expense = await database.Expenses.Include(item => item.Booking).Include(item => item.PlannedCost)
                 .SingleOrDefaultAsync(item => item.Id == id && item.TripId == tripId);
             if (expense is null)
             {
@@ -242,10 +262,12 @@ public static class ExpenseEndpoints
         expense.PaymentTotals.Refunded,
         expense.ItemCore.Revision,
         expense.SharesBookingPayment,
+        PlannedAmount = expense.PlannedCost?.Amount,
         BookingTotalCost = expense.SharesBookingPayment ? expense.Booking!.TotalCost : null,
         expense.ExpenseDate,
         expense.PlannedCostId,
         expense.BookingId,
+        BookingName = expense.Booking?.Name,
         expense.HasPendingDeletedBookingNotice,
         expense.CreatedAtUtc
     };

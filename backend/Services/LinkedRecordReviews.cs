@@ -47,6 +47,10 @@ public static class LinkedRecordReviews
         {
             updatedExpense.ItemCore.Revision = Guid.NewGuid();
         }
+        if (source is PlannedCost updatedPlan)
+        {
+            updatedPlan.ItemCore.Revision = Guid.NewGuid();
+        }
         foreach (var edge in await GetEdges(database, source))
         {
             if (Id(edge.Target) == excludedTarget) continue;
@@ -464,6 +468,11 @@ public static class LinkedRecordReviews
             {
                 return "Unlink or delete the related expense before clearing this booking's cost.";
             }
+            if (booking.TotalCost is null or 0
+                && await database.PlannedCosts.AnyAsync(item => item.ItemCoreId == booking.ItemCoreId))
+            {
+                return "Remove the related planned cost before clearing this booking's cost.";
+            }
         }
         else if (edge.Target is ItineraryItem activity)
         {
@@ -634,13 +643,15 @@ public static class LinkedRecordReviews
                     result.Add(new Edge(expense, linkedBooking));
                 }
             }
-            if (expense.PlannedCostId is Guid planId)
+            if (expense.PlannedCostId is Guid planId
+                && !await database.Bookings.AnyAsync(item => item.ItemCoreId == expense.ItemCoreId))
             {
                 var plan = await database.PlannedCosts.SingleOrDefaultAsync(item => item.TripId == tripId && item.Id == planId);
                 if (plan is not null) result.Add(new Edge(expense, plan));
             }
         }
-        else if (source is PlannedCost plan)
+        else if (source is PlannedCost plan
+            && !await database.Bookings.AnyAsync(item => item.ItemCoreId == plan.ItemCoreId))
         {
             var planExpense = await database.Expenses.SingleOrDefaultAsync(item => item.TripId == tripId && item.PlannedCostId == plan.Id);
             if (planExpense is not null) result.Add(new Edge(plan, planExpense));

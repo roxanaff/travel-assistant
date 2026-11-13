@@ -517,6 +517,44 @@ eligibility, and immediate relinking after unlinking. The browser runner was sto
 the scenarios passed because it stalled during shutdown. Independent review found no
 actionable issues.
 
+### Link an expense that already has a planned cost
+
+Use the same payment selection for any expense. If the source planned amount differs from
+the booking total, require a separate choice between those totals. Preview changes to the
+booking, planned cost and expense before linking. A selected total must cover the selected
+gross payment. When the totals agree, an increase needed to cover payment is shown before
+confirmation. Keep the plan and expense IDs and their link. The confirmed total and payment
+then have one owner each. Editing a booked plan updates the confirmed total, subject to
+the booking's payment rules and the loaded revision. Standalone planned costs continue to
+represent expected spending.
+
+Move the plan and expense together and check the revisions in the link transaction.
+Unlinking from the booking keeps the plan and expense together and copies the current
+cost and payment. Deletion retains whichever shared financial values the remaining parts
+use. Adding an expense from either the plan or booking uses the same payment and expense
+slot. A booked plan needs a recorded payment before it can add an expense.
+Budget and Expenses show a labelled link that opens and highlights the booking.
+Unlink separates the financial entries from the booking and preserves their current
+values. A plan and its expense stay together. A plan that survives expense deletion can
+also be unlinked directly from Budget.
+When both sides already have a planned cost, leave the entries separate until the duplicate
+selection and retention choices are available.
+
+Keep reviews for old separate-core links. Shared booking, plan and expense values need
+no review to propagate. Deploy the matching API and forms together. No migration is required.
+
+All 127 backend tests, 111 frontend tests, the production build and three focused Chromium
+scenarios passed with the separate total and payment choices. Tests covered incompatible
+choices, shared cost edits, keeping parts after deletion, unlinking with a plan, and rejecting
+a stale Add expense after the booking was deleted. The browser runner stalled during shutdown
+after the scenarios passed. Independent review found no remaining actionable issues.
+
+The booking links passed the production build, six focused backend cases, 41 focused
+frontend tests and a Chromium scenario covering booking focus and the plan link after
+expense deletion. The browser runner was stopped after the scenario passed.
+Budget unlinking passed nine focused backend cases and 41 frontend tests. The Chromium
+scenario also verified unlinking a plan after deleting its expense and keeping its total.
+
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
 | Group | Deliverable | Checks and gate |

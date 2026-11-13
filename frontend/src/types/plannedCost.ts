@@ -9,6 +9,10 @@ export type PlannedCost = {
     createdAtUtc: string;
     expenseAdded?: boolean;
     expenseId?: string | null;
+    revision?: string;
+    bookingId?: string | null;
+    bookingName?: string | null;
+    bookingPaid?: number | null;
 };
 
 export type PlannedCostCategory =

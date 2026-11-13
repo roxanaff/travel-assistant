@@ -8,6 +8,7 @@ type ExpenseRequestDetails = {
     category: string | null;
     expenseDate: string | null;
     plannedCostId: string | null;
+    expectedRevision?: string;
 };
 
 export type LegacyExpenseRequest = ExpenseRequestDetails & { amount: number };
@@ -15,7 +16,6 @@ export type LegacyExpenseRequest = ExpenseRequestDetails & { amount: number };
 export type ExpenseRequest = LegacyExpenseRequest | (ExpenseRequestDetails & {
     paid: number;
     refunded: number;
-    expectedRevision?: string;
 });
 
 const expensesUrl = (tripId: string) =>

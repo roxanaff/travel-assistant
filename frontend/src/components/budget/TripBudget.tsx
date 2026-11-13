@@ -13,6 +13,7 @@ export function TripBudget({ trip, setHasUnsavedForm }: TripWorkspaceContext) {
     const [hasPlannedCostForm, setHasPlannedCostForm] = useState(false);
     const [hasExpenseForm, setHasExpenseForm] = useState(false);
     const [expenseRefreshKey, setExpenseRefreshKey] = useState(0);
+    const [planRefreshKey, setPlanRefreshKey] = useState(0);
 
     useEffect(() => {
         setHasUnsavedForm(hasPlannedCostForm || hasExpenseForm);
@@ -24,6 +25,7 @@ export function TripBudget({ trip, setHasUnsavedForm }: TripWorkspaceContext) {
             <PlannedBudget
                 trip={trip}
                 onFormOpenChange={setHasPlannedCostForm}
+                refreshKey={planRefreshKey}
                 onExpenseAdded={() =>
                     setExpenseRefreshKey((current) => current + 1)
                 }
@@ -32,6 +34,7 @@ export function TripBudget({ trip, setHasUnsavedForm }: TripWorkspaceContext) {
                 trip={trip}
                 onFormOpenChange={setHasExpenseForm}
                 refreshKey={expenseRefreshKey}
+                onLinkedPlanChange={() => setPlanRefreshKey((current) => current + 1)}
             />
         </div>
     );

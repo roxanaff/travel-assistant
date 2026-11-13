@@ -21,14 +21,19 @@ public record BookingExpensePaymentUpdate(
     BookingStatus? ExpectedStatus,
     decimal ExpectedExpenseAmount);
 
-public record LinkBookingExpenseRequest(
-    BookingExpensePaymentUpdate? PaymentUpdate = null,
-    BookingExpenseLinkSelection? Selection = null);
+public record LinkBookingExpenseRequest(BookingExpenseLinkSelection? Selection = null);
 
 public record BookingExpenseLinkSelection(
     Guid BookingRevision,
     Guid ExpenseRevision,
-    BookingExpensePaymentSource? PaymentSource);
+    BookingExpensePaymentSource? PaymentSource,
+    BookingExpenseTotalSource? TotalSource = null);
+
+public enum BookingExpenseTotalSource
+{
+    Booking,
+    PlannedCost
+}
 
 public enum BookingExpensePaymentSource
 {

@@ -174,7 +174,7 @@ test("adding an expense confirms changed payments and shares later edits", async
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("expense-payment-offer-mobile.png"), fullPage: true });
     await secondCard.getByRole("radio", { name: "Expense · Paid €240" }).check();
-    await expect(secondCard).toContainText("Total cost €200 → €240");
+    await expect(secondCard).toContainText("Booking total €200 → €240");
     await page.getByRole("button", { name: "Link expense", exact: true }).click();
     await expect(secondCard.locator(".booking-card-price")).toHaveText("€240");
     const linked = (await browserRequest(page, `${tripApi}/expenses`)).body.find((expense: { id: string }) => expense.id === existing.id);
@@ -720,7 +720,9 @@ test("booking panels review each destination without leaving the card", async ({
         name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100,
         expenseDate: "2027-04-02", plannedCostId: plan.id,
     })).body;
-    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
+    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {
+        selection: { bookingRevision: booking.revision, expenseRevision: expense.revision, paymentSource: null, totalSource: "Booking" },
+    })).status).toBe(200);
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
         ...booking, startDate: "2027-04-03", endDate: "2027-04-03", totalCost: 250, amountPaid: 120,
     }, "PUT")).status).toBe(200);
@@ -730,16 +732,14 @@ test("booking panels review each destination without leaving the card", async ({
 
     await page.goto(`/trips/${trip.id}/bookings`);
     await expect(page.getByRole("button", { name: "Expand Museum booking details" })).toBeVisible();
-    await page.getByRole("button", { name: "Review related changes (2)", exact: true }).click();
+    await page.getByRole("button", { name: "Review related changes (1)", exact: true }).click();
     const panel = page.getByRole("region", { name: "Related changes for Museum booking" });
     const activityNotice = panel.getByRole("status").filter({ hasText: "Activity “Museum visit”" });
-    const expenseNotice = panel.getByRole("status").filter({ hasText: "Expense “Museum payment”" });
     await expect(activityNotice).toContainText("Date: 2 Apr 2027 → 3 Apr 2027");
     await expect(activityNotice).toContainText("Total cost: €200 → €250");
-    await expect(expenseNotice).toContainText("Net cost: €100 → €120");
+    await expect(panel.getByText("Expense “Museum payment”")).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(panel.locator(".inline-message-warning")).toHaveCount(0);
-    await expect(panel.locator(".linked-record-review").nth(1)).toHaveCSS("border-top-width", "1px");
     await expect(panel.locator(".related-review-toggle")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     const themeColors = await page.evaluate(() => {
         const swatch = document.createElement("span");
@@ -757,8 +757,6 @@ test("booking panels review each destination without leaving the card", async ({
     await expect(panel.locator(".related-review-list")).toHaveCSS("background-color", themeColors.reviewBackground);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("related-review-panel-mobile.png"), fullPage: true });
-    await expenseNotice.getByRole("button", { name: "Keep as is", exact: true }).click();
-    await expect(panel.getByRole("button", { name: "Review related changes (1)", exact: true })).toBeVisible();
     await activityNotice.getByRole("button", { name: "Update", exact: true }).click();
     await expect(panel).toHaveCount(0);
     // Accepting the outgoing date/cost leaves the unrelated incoming location pending.
@@ -767,7 +765,7 @@ test("booking panels review each destination without leaving the card", async ({
     expect(updatedActivity.date).toBe("2027-04-03");
     expect(updatedActivity.cost).toBe(250);
     expect(updatedActivity.location).toBe("New entrance");
-    expect((await browserRequest(page, `${tripApi}/expenses`)).body[0].amount).toBe(100);
+    expect((await browserRequest(page, `${tripApi}/expenses`)).body[0].amount).toBe(120);
     await page.getByRole("link", { name: "Itinerary", exact: true }).click();
     await expect(page.locator(".linked-record-warning")).toHaveCount(0);
 
@@ -833,29 +831,22 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
         name: "Museum payment", category: "ActivitiesAndMuseums", amount: 100,
         expenseDate: "2027-03-01", plannedCostId: plan.id,
     })).body;
-    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}/expenses/${expense.id}`, {})).status).toBe(204);
     await browserRequest(page, `${tripApi}/expenses/${expense.id}`, {
         name: expense.name, category: expense.category, expenseDate: expense.expenseDate,
         plannedCostId: expense.plannedCostId, amount: 120,
     }, "PUT");
-    await page.goto(`/trips/${trip.id}/bookings`);
+    await page.goto(`/trips/${trip.id}/budget`);
     const notice = page.locator(".linked-record-warning");
-    await expect(notice).toContainText("Cost: €100 → €120");
-    await expect(page.getByRole("button", { name: "Expand Museum booking details" })).toBeVisible();
-    const content = await notice.locator(".linked-record-warning-content").boundingBox();
-    const actions = await notice.locator(".linked-review-actions").boundingBox();
+    const planRow = page.locator(`#planned-cost-${plan.id}`);
+    const planNotice = planRow.locator(".linked-record-warning");
+    await expect(planNotice).toContainText("Cost: €100 → €120");
+    const content = await planNotice.locator(".linked-record-warning-content").boundingBox();
+    const actions = await planNotice.locator(".linked-review-actions").boundingBox();
     expect(actions!.x).toBeGreaterThan(content!.x + content!.width);
-    const update = await notice.getByRole("button", { name: "Update", exact: true }).boundingBox();
-    const keep = await notice.getByRole("button", { name: "Keep as is", exact: true }).boundingBox();
+    const update = await planNotice.getByRole("button", { name: "Update", exact: true }).boundingBox();
+    const keep = await planNotice.getByRole("button", { name: "Keep as is", exact: true }).boundingBox();
     expect(keep!.y).toBeGreaterThan(update!.y);
     await page.screenshot({ path: test.info().outputPath("financial-warning-desktop.png"), fullPage: true });
-    await notice.getByRole("button", { name: "Update", exact: true }).click();
-    await expect(notice).toHaveCount(0);
-    expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.amountPaid).toBe(120);
-
-    await page.getByRole("link", { name: "Budget & expenses", exact: true }).click();
-    const planRow = page.locator(`#planned-cost-${plan.id}`);
-    await expect(planRow.locator(".linked-record-warning")).toContainText("Cost: €100 → €120");
     await planRow.getByRole("button", { name: "Update", exact: true }).click();
     await expect(planRow.locator(".budget-item-amount")).toHaveText("€120");
     await browserRequest(page, `${tripApi}/planned-costs/${plan.id}`, { ...plan, amount: 140 }, "PUT");
@@ -879,9 +870,24 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await expenseRow.getByRole("button", { name: "Update", exact: true }).click();
     await expect(expenseRow.locator(".budget-item-amount")).toHaveText("€160");
     await page.getByRole("link", { name: "Bookings", exact: true }).click();
-    await expect(notice).toContainText("Cost: €120 → €160");
-    await notice.getByRole("button", { name: "Update", exact: true }).click();
+    await page.getByRole("button", { name: "Expand Museum booking details" }).click();
+    await page.getByRole("button", { name: "Link existing expense" }).click();
+    await page.getByLabel("Expense", { exact: true }).selectOption(expense.id);
+    await page.getByRole("radio", { name: "Booking · Total €200" }).check();
+    await page.getByRole("radio", { name: "Expense · Paid €160" }).check();
+    await expect(page.getByText("Planned cost €160 → €200")).toBeVisible();
+    await expect(page.getByText("Booking paid €100 → €160")).toBeVisible();
+    await page.getByRole("button", { name: "Link expense", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Museum payment" })).toBeVisible();
     await expect(notice).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Budget & expenses", exact: true }).click();
+    await expect(expenseRow.getByRole("link", { name: "Museum booking", exact: true })).toBeVisible();
+    await expect(planRow.getByText("Booking", { exact: true })).toBeVisible();
+    await planRow.getByRole("link", { name: "Museum booking", exact: true }).click();
+    const bookingCard = page.locator(`#booking-${booking.id}`);
+    await expect(bookingCard).toHaveClass(/booking-card-highlighted/);
+    await expect(bookingCard.getByRole("button", { name: "Collapse Museum booking details" })).toBeVisible();
 
     const updatedBooking = (await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body;
     await browserRequest(page, `${tripApi}/bookings/${booking.id}`, {
@@ -925,4 +931,18 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await notice.getByRole("button", { name: "Update", exact: true }).click();
     await expect(notice).toHaveCount(0);
     expect((await browserRequest(page, `${tripApi}/bookings/${booking.id}`)).body.location).toBe("New museum entrance");
+
+    await page.getByRole("link", { name: "Budget & expenses", exact: true }).click();
+    await expenseRow.getByRole("button", { name: "Delete Museum payment" }).click();
+    const deleteDialog = page.getByRole("alertdialog", { name: "Delete linked expense?" });
+    await expect(deleteDialog).toContainText("The booking and planned cost will stay linked.");
+    await deleteDialog.getByRole("button", { name: "Delete expense", exact: true }).click();
+    await expect(expenseRow).toHaveCount(0);
+    await expect(planRow.getByRole("link", { name: "Museum booking", exact: true })).toBeVisible();
+    const unlinkPlan = page.waitForResponse((response) => response.request().method() === "DELETE"
+        && response.url().endsWith(`/bookings/${booking.id}/planned-costs/${plan.id}`));
+    await planRow.getByRole("button", { name: "Unlink", exact: true }).click();
+    expect((await unlinkPlan).status()).toBe(204);
+    await expect(planRow.locator(".budget-item-amount")).toHaveText("€250");
+    await expect(planRow.getByRole("link", { name: "Museum booking", exact: true })).toHaveCount(0);
 });

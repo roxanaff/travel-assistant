@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { createPlannedCost, deletePlannedCost, getPlannedCosts, updatePlannedCost } from "../../api/plannedCostsApi";
 import { createExpense, deleteExpense } from "../../api/expensesApi";
+import { unlinkBookingPlannedCost } from "../../api/bookingsApi";
 import type { Trip } from "../../types/trip";
 import {
     createEmptyPlannedCostForm,
@@ -27,6 +28,7 @@ import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import { localToday } from "../../utils/localToday";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
+import { BudgetBookingLink } from "./BudgetBookingLink";
 
 import "./PlannedBudget.css";
 import "./BudgetItem.css";
@@ -35,6 +37,7 @@ type PlannedBudgetProps = {
     trip: Trip;
     onFormOpenChange: (isOpen: boolean) => void;
     onExpenseAdded: () => void;
+    refreshKey?: number;
 };
 
 type PendingDeletion = {
@@ -44,7 +47,7 @@ type PendingDeletion = {
 /**
  * Manages estimated spending by category and can copy one plan into actual expenses exactly once.
  */
-export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: PlannedBudgetProps) {
+export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshKey = 0 }: PlannedBudgetProps) {
     const [costs, setCosts] = useState<PlannedCost[]>([]);
     const linkedReviews = useLinkedRecordReviews(trip.id, "PlannedCost", costs);
     const highlightedCostId = useNavigationCardFocus({
@@ -59,6 +62,8 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     const [isAdding, setIsAdding] = useState(false);
     const [addingForCategory, setAddingForCategory] = useState<PlannedCostCategory | null>(null);
     const [editingCostId, setEditingCostId] = useState<string | null>(null);
+    const [editingRevision, setEditingRevision] = useState<string>();
+    const [expenseChangeVersion, setExpenseChangeVersion] = useState(0);
     const [editingCost, setEditingCost] = useState<PlannedCostForm>(createEmptyPlannedCostForm());
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [copyingCostId, setCopyingCostId] = useState<string | null>(null);
@@ -71,18 +76,22 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     }, [editingCostId, isAdding, onFormOpenChange]);
 
     useEffect(() => {
+        let isCurrent = true;
+        setIsLoading(true);
         const loadCosts = async () => {
             try {
-                setCosts(await getPlannedCosts(trip.id));
+                const loaded = await getPlannedCosts(trip.id);
+                if (isCurrent) setCosts(loaded);
             } catch {
-                setError("Could not load planned costs.");
+                if (isCurrent) setError("Could not load planned costs.");
             } finally {
-                setIsLoading(false);
+                if (isCurrent) setIsLoading(false);
             }
         };
 
         void loadCosts();
-    }, [trip.id]);
+        return () => { isCurrent = false; };
+    }, [trip.id, refreshKey, expenseChangeVersion]);
 
     const updateForm = (field: keyof PlannedCostForm, value: string, editing = false) => {
         if (field === "amount") {
@@ -165,6 +174,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
         setIsAdding(false);
         setAddingForCategory(null);
         setEditingCostId(cost.id);
+        setEditingRevision(cost.bookingId ? cost.revision : undefined);
         setEditingCost({
             name: cost.name === "Cost item" ? "" : cost.name,
             category: cost.category ?? "",
@@ -185,8 +195,12 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
         setIsSaving(true);
         setFormError(null);
         try {
-            const updated = await updatePlannedCost(trip.id, editingCostId, toRequest(editingCost));
+            const updated = await updatePlannedCost(trip.id, editingCostId, {
+                ...toRequest(editingCost),
+                ...(editingRevision ? { expectedRevision: editingRevision } : {}),
+            });
             setCosts((current) => current.map((cost) => (cost.id === updated.id ? updated : cost)));
+            if (updated.bookingId) onExpenseAdded();
             setEditingCostId(null);
         } catch (exception) {
             setFormError(
@@ -200,6 +214,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
     const commitDelete = async (cost: PlannedCost) => {
         try {
             await deletePlannedCost(trip.id, cost.id);
+            if (cost.expenseAdded) onExpenseAdded();
         } catch {
             setCosts((current) => [...current, cost]);
             setError("Could not delete this planned cost. It was restored.");
@@ -241,6 +256,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                 amount: cost.amount,
                 expenseDate: localToday(),
                 plannedCostId: cost.id,
+                ...(cost.revision ? { expectedRevision: cost.revision } : {}),
             });
             setCosts((current) =>
                 current.map((currentCost) =>
@@ -249,13 +265,14 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                               ...currentCost,
                               expenseAdded: true,
                               expenseId: expense.id,
+                              revision: expense.revision ?? currentCost.revision,
                           }
                         : currentCost,
                 ),
             );
             onExpenseAdded();
-        } catch {
-            setError("Could not add this planned cost to expenses.");
+        } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Could not add this planned cost to expenses.");
         } finally {
             setCopyingCostId(null);
         }
@@ -284,6 +301,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                 ),
             );
             onExpenseAdded();
+            if (cost.bookingId) setExpenseChangeVersion((version) => version + 1);
         } catch {
             setError("Could not undo the expense addition.");
         } finally {
@@ -432,6 +450,8 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                                                 {undoingExpenseCostId === cost.id ? "Undoing…" : "Undo"}
                                                             </button>
                                                         </span>
+                                                    ) : cost.bookingId && !cost.bookingPaid ? (
+                                                        <span>Record a payment in Bookings to add an expense.</span>
                                                     ) : (
                                                         <button
                                                             className="text-button planned-cost-expense-action"
@@ -442,6 +462,19 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded }: Planne
                                                             {copyingCostId === cost.id ? "Adding…" : "Add expense"}
                                                         </button>
                                                     ))}
+                                                {cost.bookingId && (
+                                                    <BudgetBookingLink
+                                                        tripId={trip.id}
+                                                        bookingId={cost.bookingId}
+                                                        bookingName={cost.bookingName}
+                                                        onUnlink={async () => {
+                                                            await unlinkBookingPlannedCost(trip.id, cost.bookingId!, cost.id);
+                                                            setIsLoading(true);
+                                                            setExpenseChangeVersion((version) => version + 1);
+                                                            onExpenseAdded();
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
                                             <strong className="budget-item-amount">
                                                 {formatMoney(cost.amount, trip.currency)}

@@ -8,5 +8,6 @@ namespace TravelAssistant.Contracts;
 public record CreatePlannedCostRequest(
     string? Name,
     PlannedCostCategory? Category,
-    decimal Amount
+    decimal Amount,
+    Guid? ExpectedRevision = null
 );

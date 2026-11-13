@@ -121,6 +121,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
                 .HasForeignKey<PlannedCost>(item => item.ItemCoreId)
                 .OnDelete(DeleteBehavior.NoAction);
             plannedCost.Navigation(item => item.ItemCost).AutoInclude();
+            plannedCost.Navigation(item => item.ItemCore).AutoInclude();
             plannedCost.HasOne(item => item.Trip)
                 .WithMany(trip => trip.PlannedCosts)
                 .HasForeignKey(item => item.TripId)

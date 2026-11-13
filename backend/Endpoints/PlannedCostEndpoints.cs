@@ -28,22 +28,18 @@ public static class PlannedCostEndpoints
 
             var plannedCosts = await database.PlannedCosts
                 .Where(cost => cost.TripId == tripId)
-                .OrderBy(cost => cost.CreatedAtUtc)
-                .Select(cost => new
-                {
-                    cost.Id,
-                    cost.TripId,
-                    cost.Name,
-                    cost.Category,
-                    Amount = cost.ItemCost.Cost!.Value,
-                    cost.CreatedAtUtc,
-                    // The UI uses this derived flag to show whether a planned cost has been spent.
-                    ExpenseAdded = cost.Expense != null,
-                    ExpenseId = cost.Expense != null ? cost.Expense.Id : (Guid?)null
-                })
+                .Include(cost => cost.Expense)
                 .ToListAsync();
+            var bookings = await database.Bookings
+                .Where(booking => booking.TripId == tripId)
+                .Select(booking => new { booking.ItemCoreId, booking.Id, booking.Name, booking.PaymentTotals.Paid })
+                .ToDictionaryAsync(booking => booking.ItemCoreId);
 
-            return Results.Ok(plannedCosts);
+            return Results.Ok(plannedCosts.OrderBy(cost => cost.CreatedAtUtc).Select(cost =>
+            {
+                var booking = bookings.GetValueOrDefault(cost.ItemCoreId);
+                return ToResponse(cost, booking?.Id, booking?.Name, booking?.Paid);
+            }));
         }).WithName("GetPlannedCosts");
 
         routes.MapPost("/planned-costs", async (Guid tripId, CreatePlannedCostRequest request, TravelAssistantDbContext database) =>
@@ -84,26 +80,45 @@ public static class PlannedCostEndpoints
             }
 
             var plannedCost = await database.PlannedCosts
+                .Include(cost => cost.Expense)
                 .SingleOrDefaultAsync(cost => cost.Id == id && cost.TripId == tripId);
             if (plannedCost is null)
             {
                 return Results.NotFound();
             }
 
+            var booking = await database.Bookings.SingleOrDefaultAsync(item => item.ItemCoreId == plannedCost.ItemCoreId);
+            if ((booking is not null || request.ExpectedRevision is not null)
+                && request.ExpectedRevision != plannedCost.ItemCore.Revision)
+            {
+                return Results.Conflict("The planned cost or booking changed. Refresh before saving.");
+            }
+            if (booking is not null)
+            {
+                var error = BookingValidation.ValidatePayment(request.Amount, booking.AmountPaid, booking.AmountRefunded, booking.Status);
+                if (error is not null) return Results.BadRequest(error);
+            }
+
             plannedCost.Name = NormalizeName(request.Name);
             plannedCost.Category = request.Category;
             plannedCost.ItemCost.Cost = request.Amount;
 
-            await LinkedRecordReviews.TrackAsync(database, plannedCost);
-            await database.SaveChangesAsync();
-            return Results.Ok(ToResponse(plannedCost));
+            await LinkedRecordReviews.TrackAsync(database, (object?)booking ?? plannedCost);
+            try
+            {
+                await database.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict("The planned cost or booking changed. Refresh before saving.");
+            }
+            return Results.Ok(ToResponse(plannedCost, booking?.Id, booking?.Name, booking?.AmountPaid));
         }).WithName("UpdatePlannedCost");
 
         routes.MapDelete("/planned-costs/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var plannedCost = await database.PlannedCosts
                 .Include(cost => cost.Expense)
-                .Include(cost => cost.ItemCore)
                 .SingleOrDefaultAsync(cost => cost.Id == id && cost.TripId == tripId);
             if (plannedCost is null)
             {
@@ -111,11 +126,12 @@ public static class PlannedCostEndpoints
             }
 
             database.PlannedCosts.Remove(plannedCost);
+            var hasBooking = await database.Bookings.AnyAsync(item => item.ItemCoreId == plannedCost.ItemCoreId);
             var hasExpense = await database.Expenses.AnyAsync(item => item.ItemCoreId == plannedCost.ItemCoreId);
-            if (hasExpense)
+            if (hasBooking || hasExpense)
             {
                 plannedCost.ItemCore.Revision = Guid.NewGuid();
-                database.ItemCosts.Remove(plannedCost.ItemCost);
+                if (!hasBooking) database.ItemCosts.Remove(plannedCost.ItemCost);
             }
             else
             {
@@ -136,13 +152,18 @@ public static class PlannedCostEndpoints
         return app;
     }
 
-    private static object ToResponse(PlannedCost cost) => new
+    private static object ToResponse(
+        PlannedCost cost, Guid? bookingId = null, string? bookingName = null, decimal? bookingPaid = null) => new
     {
         cost.Id,
         cost.TripId,
         cost.Name,
         cost.Category,
         cost.Amount,
+        cost.ItemCore.Revision,
+        BookingId = bookingId,
+        BookingName = bookingName,
+        BookingPaid = bookingPaid,
         cost.CreatedAtUtc,
         ExpenseAdded = cost.Expense is not null,
         ExpenseId = cost.Expense?.Id
