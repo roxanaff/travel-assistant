@@ -65,6 +65,7 @@ export type Booking = {
     netCost: number;
     activityLinks: BookingActivityLink[];
     expenseId: string | null;
+    plannedCost?: { id: string; name: string } | null;
     hasPendingDeletedActivityNotice: boolean;
     hasPendingDeletedExpenseNotice: boolean;
     outsideTripWarning?: {

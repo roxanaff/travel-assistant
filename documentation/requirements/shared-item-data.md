@@ -222,8 +222,10 @@ linked only to a planned cost is still eligible to link to a booking.
 
 ### Unlink and delete
 
-Detach requests identify the part or set of parts to separate, not just a scalar FK to clear.
-Clone only the shared facts those parts actually use into a new item/schedule/financial record;
+Unlink requests identify one entry to detach from its entire shared group. Every other entry
+stays in the group. Related navigation derives from group membership, so no pairwise link
+remains between the detached entry and any of the remaining entries.
+Clone only the shared facts the detached entry uses into a new item/schedule/financial record;
 keep original entry IDs and local data. Remaining parts keep their current values. An event activity
 gets its current event facts. Detaching a pass visit or hotel check-in preserves its title, dates
 and location. A check-in keeps its own task duration. The overall cost and payment stay with
@@ -529,14 +531,18 @@ the booking's payment rules and the loaded revision. Standalone planned costs co
 represent expected spending.
 
 Move the plan and expense together and check the revisions in the link transaction.
-Unlinking from the booking keeps the plan and expense together and copies the current
-cost and payment. Deletion retains whichever shared financial values the remaining parts
+Deletion retains whichever shared financial values the remaining parts
 use. Adding an expense from either the plan or booking uses the same payment and expense
 slot. A booked plan needs a recorded payment before it can add an expense.
 Budget and Expenses show a labelled link that opens and highlights the booking.
-Unlink separates the financial entries from the booking and preserves their current
-values. A plan and its expense stay together. A plan that survives expense deletion can
-also be unlinked directly from Budget.
+The expanded booking shows its shared planned cost by name, including when no expense
+exists. The link opens Budget and highlights the planned cost.
+The financial unlink routes detach the selected entry from the booking's shared core.
+An expense copies Paid and Refunded and clears both relationship references. A planned
+cost copies Cost and clears the expense's reference to that plan. The booking and any
+remaining financial entry keep their existing values and core. A plan without an expense
+can also be detached. For a legacy booking link across separate cores, unlinking the
+expense clears that booking link and retains any existing plan on the expense's core.
 When both sides already have a planned cost, leave the entries separate until the duplicate
 selection and retention choices are available.
 
@@ -554,6 +560,14 @@ frontend tests and a Chromium scenario covering booking focus and the plan link 
 expense deletion. The browser runner was stopped after the scenario passed.
 Budget unlinking passed nine focused backend cases and 41 frontend tests. The Chromium
 scenario also verified unlinking a plan after deleting its expense and keeping its total.
+Single-entry unlinking passed all 127 backend tests and both focused Chromium scenarios.
+The API tests verify that each unlink preserves the other booking relationship and amounts.
+The browser runner was stopped after both scenarios passed. Independent review found no
+actionable issues.
+
+The booking-to-plan link passed all 127 backend tests, 29 focused frontend tests, the
+production build, and a Chromium scenario covering immediate display, navigation and
+retention after expense deletion. The browser runner was stopped after the scenario passed.
 
 These are proposed groups, not implementation approval or promises that each fits one commit.
 
@@ -577,8 +591,8 @@ included merely because this branch touches those components.
 
 1. **Duration details:** preserve undated duration and partial end information when applying the
    agreed shared-end rule.
-2. **Detach scope:** selecting which related parts stay together when detaching a group of entries.
-   One-expense uniqueness applies within one item.
+2. **Related links UI:** agree the label, layout and confirmation wording for the expandable
+   links section. Single-entry unlinking is agreed above.
 3. **Dates:** verify the agreed schedule behavior with a multi-day tour example. Define how the
    boundary-update action handles a legacy trip with only one date. The existing trip form requires
    both dates or neither.

@@ -6,4 +6,5 @@ public class ItemCost
     public Guid ItemCoreId { get; set; }
     public ItemCore ItemCore { get; set; } = null!;
     public decimal? Cost { get; set; }
+    public PlannedCost? PlannedCost { get; set; }
 }

@@ -290,7 +290,7 @@ public sealed class BookingApiTests : IAsyncLifetime
     [Theory]
     [InlineData(BookingExpenseTotalSource.Booking, 150, false)]
     [InlineData(BookingExpenseTotalSource.PlannedCost, 110, true)]
-    public async Task BookedPlanSharesConfirmedCostAndDetachesWithItsExpense(
+    public async Task UnlinkDetachesOnlyTheSelectedFinancialEntry(
         BookingExpenseTotalSource source, int expectedTotal, bool unlinkFromPlan)
     {
         using var client = CreateClient();
@@ -326,6 +326,7 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal(planId, expense.GetProperty("plannedCostId").GetGuid());
         Assert.Equal(expectedTotal, expense.GetProperty("plannedAmount").GetDecimal());
         Assert.Equal(expectedTotal, expense.GetProperty("booking").GetProperty("totalCost").GetDecimal());
+        Assert.Equal(planId, expense.GetProperty("booking").GetProperty("plannedCost").GetProperty("id").GetGuid());
         Assert.Equal(80, expense.GetProperty("amount").GetDecimal());
         Assert.Empty(await GetReviews(client, trip));
 
@@ -341,10 +342,28 @@ public sealed class BookingApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(unlinkPath)).StatusCode);
         var listedPlan = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/planned-costs"))).EnumerateArray());
         Assert.Equal(200, listedPlan.GetProperty("amount").GetDecimal());
-        Assert.Equal(JsonValueKind.Null, listedPlan.GetProperty("bookingId").ValueKind);
         var listedExpense = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/expenses"))).EnumerateArray());
-        Assert.Equal(planId, listedExpense.GetProperty("plannedCostId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, listedExpense.GetProperty("plannedCostId").ValueKind);
         Assert.Equal(80, listedExpense.GetProperty("amount").GetDecimal());
+        var bookingId = booking.GetProperty("id").GetGuid();
+        booking = await ReadJson(await client.GetAsync(bookingPath));
+        Assert.Equal(200, booking.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(80, booking.GetProperty("amountPaid").GetDecimal());
+        if (unlinkFromPlan)
+        {
+            Assert.Equal(JsonValueKind.Null, booking.GetProperty("plannedCost").ValueKind);
+            Assert.Equal(JsonValueKind.Null, listedPlan.GetProperty("bookingId").ValueKind);
+            Assert.Equal(bookingId, listedExpense.GetProperty("bookingId").GetGuid());
+            Assert.True(listedExpense.GetProperty("sharesBookingPayment").GetBoolean());
+            Assert.Equal(listedExpense.GetProperty("id").GetGuid(), booking.GetProperty("expenseId").GetGuid());
+        }
+        else
+        {
+            Assert.Equal(planId, booking.GetProperty("plannedCost").GetProperty("id").GetGuid());
+            Assert.Equal(bookingId, listedPlan.GetProperty("bookingId").GetGuid());
+            Assert.Equal(JsonValueKind.Null, listedExpense.GetProperty("bookingId").ValueKind);
+            Assert.Equal(JsonValueKind.Null, booking.GetProperty("expenseId").ValueKind);
+        }
         Assert.Empty(await GetReviews(client, trip));
     }
 

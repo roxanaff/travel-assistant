@@ -879,9 +879,12 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await expect(page.getByText("Booking paid €100 → €160")).toBeVisible();
     await page.getByRole("button", { name: "Link expense", exact: true }).click();
     await expect(page.getByRole("link", { name: "Museum payment" })).toBeVisible();
+    const planLink = page.getByRole("link", { name: "Museum budget", exact: true });
+    await expect(planLink).toBeVisible();
     await expect(notice).toHaveCount(0);
 
-    await page.getByRole("link", { name: "Budget & expenses", exact: true }).click();
+    await planLink.click();
+    await expect(planRow).toHaveClass(/budget-record-highlighted/);
     await expect(expenseRow.getByRole("link", { name: "Museum booking", exact: true })).toBeVisible();
     await expect(planRow.getByText("Booking", { exact: true })).toBeVisible();
     await planRow.getByRole("link", { name: "Museum booking", exact: true }).click();
@@ -936,9 +939,16 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await expenseRow.getByRole("button", { name: "Delete Museum payment" }).click();
     const deleteDialog = page.getByRole("alertdialog", { name: "Delete linked expense?" });
     await expect(deleteDialog).toContainText("The booking and planned cost will stay linked.");
+    const deletedExpense = page.waitForResponse((response) => response.request().method() === "DELETE"
+        && response.url().endsWith(`/expenses/${expense.id}`));
     await deleteDialog.getByRole("button", { name: "Delete expense", exact: true }).click();
+    expect((await deletedExpense).status()).toBe(204);
     await expect(expenseRow).toHaveCount(0);
     await expect(planRow.getByRole("link", { name: "Museum booking", exact: true })).toBeVisible();
+    await planRow.getByRole("link", { name: "Museum booking", exact: true }).click();
+    await expect(planLink).toBeVisible();
+    await expect(page.getByRole("link", { name: "Museum payment", exact: true })).toHaveCount(0);
+    await planLink.click();
     const unlinkPlan = page.waitForResponse((response) => response.request().method() === "DELETE"
         && response.url().endsWith(`/bookings/${booking.id}/planned-costs/${plan.id}`));
     await planRow.getByRole("button", { name: "Unlink", exact: true }).click();

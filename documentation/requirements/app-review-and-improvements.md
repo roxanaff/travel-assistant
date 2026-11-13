@@ -161,12 +161,20 @@ field, with their source for context, and radio choices. Example: €20 — Acti
 Validate and apply the selected combination together. Cancel linking leaves entries independent.
 Continuing to keep different copies is not a shared-value link.
 
+An activity, booking, planned cost or expense in a shared group can navigate to every other
+entry in that group. Each link names its destination and opens and highlights that entry.
+An activity and expense in the same group are related even if they were each added from the
+booking. During the UI pass, put these links behind an expandable control on each entry.
+The label, layout and confirmation wording remain open.
+
 Deleting one part removes its own details; the other parts and their values remain.
 Only delete shared records when nothing needs them, and remove an empty core when no parts remain.
 
-Unlinking separates identities and copies the required current facts into independent shared-data
-records. For example, two references to one schedule become references to two schedules with
-initially equal dates. Do not erase dates because individual parts have no date columns.
+Unlinking removes the selected entry from the entire shared group. The action is available
+from the entry itself and from any related entry that displays its link. For example, unlinking
+an activity from the planned-cost row leaves the booking, planned cost and expense connected.
+The activity keeps its current details, with the required shared facts copied into independent
+records.
 
 Preserving local booking links is low priority; resetting them is an acceptable migration option.
 This is not permission to erase deployed/account data or unrelated planned-cost/expense links.

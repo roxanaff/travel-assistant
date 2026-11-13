@@ -766,7 +766,12 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
             )));
             setBookings((current) => current.map((booking) => (
                 booking.id === budgetAction.bookingId
-                    ? { ...booking, ...paymentFields(updated.booking), expenseId: expense.id }
+                    ? {
+                        ...booking,
+                        ...paymentFields(updated.booking),
+                        expenseId: expense.id,
+                        plannedCost: updated.booking.plannedCost,
+                    }
                     : booking
             )));
             setBudgetAction(null);
@@ -902,7 +907,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
     };
 
     const remove = async (booking: Booking) => {
-        const hasLinks = booking.activityLinks.length > 0 || booking.expenseId !== null;
+        const hasLinks = booking.activityLinks.length > 0 || booking.expenseId !== null || Boolean(booking.plannedCost);
         const message = hasLinks
             ? "Delete this booking? Its related activities and budget entries will be kept and unlinked."
             : "Delete this booking?";
@@ -1630,6 +1635,7 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
         const outgoingReviews = linkedReviews.outgoingReviews.filter((review) => review.sourceId === booking.id);
         const relatedReviewPanelId = `booking-related-reviews-${booking.id}`;
         const linkedExpense = expenses.find((expense) => expense.id === booking.expenseId);
+        const linkedPlan = booking.plannedCost;
         const canAddExpense = booking.totalCost !== null && booking.totalCost > 0
             && (booking.amountPaid === 0 || booking.netCost > 0);
         const selectedExpense = expenses.find((expense) => expense.id === selectedExpenseId);
@@ -2051,6 +2057,22 @@ export function Bookings({ trip, setHasUnsavedForm, embeddedDraft }: Props) {
                                     onSubmit={(event) => void saveActivityFromBooking(event, booking)}
                                 />
                                 </div>
+                        )}
+                        {linkedPlan && (
+                            <section className="booking-related-budget" aria-label={`Planned cost for ${booking.name}`}>
+                                <strong>Planned cost</strong>
+                                <div className="booking-budget-record">
+                                    <Link
+                                        className="internal-record-link"
+                                        to={`/trips/${trip.id}/budget`}
+                                        state={createCardFocusState(linkedPlan.id)}
+                                        onClick={(event) => handleRelatedRecordNavigation(event, "budget", linkedPlan.id)}
+                                    >
+                                        {linkedPlan.name}
+                                    </Link>
+                                    <span>{formatMoney(booking.totalCost, trip.currency)}</span>
+                                </div>
+                            </section>
                         )}
                         {(canAddExpense || booking.expenseId !== null) && (
                             <section

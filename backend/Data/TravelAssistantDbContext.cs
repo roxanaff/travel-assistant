@@ -117,7 +117,7 @@ public class TravelAssistantDbContext(DbContextOptions<TravelAssistantDbContext>
                 .HasPrincipalKey(item => new { item.TripId, item.Id })
                 .OnDelete(DeleteBehavior.NoAction);
             plannedCost.HasOne(item => item.ItemCost)
-                .WithOne()
+                .WithOne(cost => cost.PlannedCost)
                 .HasForeignKey<PlannedCost>(item => item.ItemCoreId)
                 .OnDelete(DeleteBehavior.NoAction);
             plannedCost.Navigation(item => item.ItemCost).AutoInclude();

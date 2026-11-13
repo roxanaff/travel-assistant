@@ -40,6 +40,7 @@ public static class BookingEndpoints
                 .Include(booking => booking.Trip)
                 .Include(booking => booking.Activities)
                 .Include(booking => booking.Expense)
+                .Include(booking => booking.ItemCost).ThenInclude(cost => cost.PlannedCost)
                 .ToListAsync();
 
             var ordered = bookings
@@ -523,12 +524,33 @@ public static class BookingEndpoints
             await using var transaction = database.Database.IsRelational()
                 ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
                 : null;
-            var expense = await database.Expenses.Include(item => item.Booking).Include(item => item.PlannedCost).SingleOrDefaultAsync(item =>
+            var expense = await database.Expenses.Include(item => item.Booking).SingleOrDefaultAsync(item =>
                 item.Id == expenseId && item.TripId == tripId && item.BookingId == id);
             if (expense is null) return Results.NotFound();
 
-            return await SaveFinancialUnlink(database, transaction, id, expense.ItemCore, expense,
-                expense.SharesBookingPayment, expense.SharesBookingPayment ? expense.PlannedCost : null);
+            var core = expense.ItemCore;
+            core.Revision = Guid.NewGuid();
+            if (expense.SharesBookingPayment)
+            {
+                var detachedCore = new ItemCore { TripId = tripId };
+                var payment = new ItemPaymentTotals
+                {
+                    ItemCore = detachedCore,
+                    Paid = expense.PaymentTotals.Paid,
+                    Refunded = expense.PaymentTotals.Refunded
+                };
+                database.ItemPaymentTotals.Add(payment);
+                expense.ItemCore = detachedCore;
+                expense.PaymentTotals = payment;
+                if (expense.PlannedCostId is Guid planId)
+                {
+                    expense.PlannedCostId = null;
+                    await LinkedRecordReviews.ClearPairAsync(database, planId, expense.Id);
+                }
+            }
+            expense.BookingId = null;
+            await LinkedRecordReviews.ClearPairAsync(database, id, expense.Id);
+            return await SaveFinancialUnlink(database, transaction);
         }).WithName("UnlinkBookingExpense");
 
         routes.MapDelete("/bookings/{id:guid}/planned-costs/{planId:guid}", async (
@@ -548,9 +570,24 @@ public static class BookingEndpoints
             }
 
             var expense = await database.Expenses.SingleOrDefaultAsync(item =>
-                item.TripId == tripId && item.BookingId == id && item.ItemCoreId == plan.ItemCoreId
-                && item.PlannedCostId == plan.Id);
-            return await SaveFinancialUnlink(database, transaction, id, plan.ItemCore, expense, true, plan);
+                item.TripId == tripId && item.PlannedCostId == plan.Id);
+            var core = plan.ItemCore;
+            core.Revision = Guid.NewGuid();
+            var detachedCore = new ItemCore { TripId = tripId };
+            var cost = new ItemCost { ItemCore = detachedCore, Cost = plan.Amount };
+            database.ItemCosts.Add(cost);
+            plan.ItemCore = detachedCore;
+            plan.ItemCost = cost;
+            if (expense is not null)
+            {
+                if (expense.ItemCoreId != core.Id)
+                {
+                    expense.ItemCore.Revision = Guid.NewGuid();
+                }
+                expense.PlannedCostId = null;
+                await LinkedRecordReviews.ClearPairAsync(database, plan.Id, expense.Id);
+            }
+            return await SaveFinancialUnlink(database, transaction);
         }).WithName("UnlinkBookingPlannedCost");
 
         routes.MapPost("/bookings/{id:guid}/dismiss-outside-trip-warning", async (
@@ -577,46 +614,13 @@ public static class BookingEndpoints
             .Include(booking => booking.Trip)
             .Include(booking => booking.Activities)
             .Include(booking => booking.Expense)
+            .Include(booking => booking.ItemCost).ThenInclude(cost => cost.PlannedCost)
             .SingleOrDefaultAsync(booking => booking.Id == id && booking.TripId == tripId);
 
     private static async Task<IResult> SaveFinancialUnlink(
         TravelAssistantDbContext database,
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction,
-        Guid bookingId,
-        ItemCore core,
-        Expense? expense,
-        bool detachFromCore,
-        PlannedCost? plan)
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction)
     {
-        core.Revision = Guid.NewGuid();
-        if (detachFromCore)
-        {
-            var detachedCore = new ItemCore { TripId = core.TripId };
-            if (expense is not null)
-            {
-                var payment = new ItemPaymentTotals
-                {
-                    ItemCore = detachedCore,
-                    Paid = expense.PaymentTotals.Paid,
-                    Refunded = expense.PaymentTotals.Refunded
-                };
-                database.ItemPaymentTotals.Add(payment);
-                expense.ItemCore = detachedCore;
-                expense.PaymentTotals = payment;
-            }
-            if (plan is not null)
-            {
-                var cost = new ItemCost { ItemCore = detachedCore, Cost = plan.Amount };
-                database.ItemCosts.Add(cost);
-                plan.ItemCore = detachedCore;
-                plan.ItemCost = cost;
-            }
-        }
-        if (expense is not null)
-        {
-            expense.BookingId = null;
-            await LinkedRecordReviews.ClearPairAsync(database, bookingId, expense.Id);
-        }
         try
         {
             await database.SaveChangesAsync();
@@ -867,6 +871,9 @@ public static class BookingEndpoints
             activity.PendingActivityChangeFields
         }),
         ExpenseId = booking.Expense?.Id,
+        PlannedCost = booking.ItemCost.PlannedCost is PlannedCost plan
+            ? new { plan.Id, plan.Name }
+            : null,
         booking.CreatedAtUtc
     };
 
