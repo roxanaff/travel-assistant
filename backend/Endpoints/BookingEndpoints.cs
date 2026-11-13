@@ -422,6 +422,80 @@ public static class BookingEndpoints
             return Results.Created($"/api/trips/{tripId}/planned-costs/{plan.Id}", ToResponse(booking));
         }).WithName("CreateBookingPlannedCost");
 
+        routes.MapPost("/bookings/{id:guid}/planned-costs/{planId:guid}", async (
+            Guid tripId,
+            Guid id,
+            Guid planId,
+            LinkBookingPlannedCostRequest request,
+            TravelAssistantDbContext database) =>
+        {
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
+            var booking = await FindBooking(tripId, id, database);
+            var plan = await database.PlannedCosts.Include(item => item.Expense)
+                .SingleOrDefaultAsync(item => item.TripId == tripId && item.Id == planId);
+            if (booking is null || plan is null) return Results.NotFound();
+            if (plan.ItemCoreId == booking.ItemCoreId) return Results.Ok(ToResponse(booking));
+
+            const string staleMessage = "The booking or planned cost changed. Refresh before linking.";
+            if (request.BookingRevision != booking.ItemCore.Revision
+                || request.PlannedCostRevision != plan.ItemCore.Revision)
+            {
+                return Results.Conflict(staleMessage);
+            }
+
+            if (booking.ItemCost.PlannedCost is not null || booking.Expense?.PlannedCostId is not null)
+            {
+                return Results.Conflict("The booking or its expense already has a planned cost.");
+            }
+            if (plan.Expense is not null
+                || await database.Expenses.AnyAsync(item => item.ItemCoreId == plan.ItemCoreId)
+                || await database.Bookings.AnyAsync(item => item.ItemCoreId == plan.ItemCoreId))
+            {
+                return Results.Conflict("Only a standalone planned cost can be linked here.");
+            }
+
+            var total = request.TotalSource switch
+            {
+                BookingExpenseTotalSource.Booking => booking.TotalCost,
+                BookingExpenseTotalSource.PlannedCost => plan.Amount,
+                null when booking.TotalCost is null || booking.TotalCost == plan.Amount => plan.Amount,
+                _ => null
+            };
+            if (total is null or <= 0)
+            {
+                return Results.BadRequest("Choose a total cost greater than zero before linking.");
+            }
+            var paymentError = BookingValidation.ValidatePayment(total, booking.AmountPaid, booking.AmountRefunded, booking.Status);
+            if (paymentError is not null) return Results.BadRequest(paymentError);
+
+            booking.TotalCost = total;
+            await LinkedRecordReviews.TrackAsync(database, booking);
+            var previousCore = plan.ItemCore;
+            plan.ItemCore = booking.ItemCore;
+            plan.ItemCost = booking.ItemCost;
+            if (booking.Expense is { SharesBookingPayment: true } expense)
+            {
+                expense.PlannedCost = plan;
+            }
+            database.ChangeTracker.DetectChanges();
+            database.ItemCores.Remove(previousCore);
+
+            try
+            {
+                await database.SaveChangesAsync();
+                if (transaction is not null) await transaction.CommitAsync();
+            }
+            catch (Exception exception) when (
+                (exception is DbUpdateException update && BudgetRelationshipConstraintErrors.IsBookingPlannedCostViolation(update))
+                || BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
+            {
+                return Results.Conflict(staleMessage);
+            }
+            return Results.Ok(ToResponse(booking));
+        }).WithName("LinkBookingPlannedCost");
+
         routes.MapPost("/bookings/{id:guid}/expenses", async (
             Guid tripId,
             Guid id,

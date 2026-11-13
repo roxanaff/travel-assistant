@@ -174,6 +174,64 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Theory]
+    [InlineData(200, BookingExpenseTotalSource.Booking, 200)]
+    [InlineData(200, BookingExpenseTotalSource.PlannedCost, 175)]
+    [InlineData(null, null, 175)]
+    public async Task LinkStandalonePlanKeepsItsIdentityAndSharesTheChosenTotal(
+        int? originalTotal, BookingExpenseTotalSource? source, int expectedTotal)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "link-booking-plan@example.com");
+        var trip = await CreateTripAsync(client);
+        var booking = await ReadJson(await client.PostAsJsonAsync($"{trip}/bookings",
+            CreateBookingRequest(totalCost: originalTotal, amountPaid: originalTotal is null ? 0 : 150)));
+        var bookingId = booking.GetProperty("id").GetGuid();
+        var bookingPath = $"{trip}/bookings/{bookingId}";
+        if (originalTotal is not null)
+        {
+            await ReadJson(await client.PostAsJsonAsync($"{bookingPath}/expenses",
+                new CreateBookingExpenseRequest("Flight deposit", null, 150, null)));
+            booking = await ReadJson(await client.GetAsync(bookingPath));
+        }
+        var plan = await ReadJson(await client.PostAsJsonAsync($"{trip}/planned-costs",
+            new CreatePlannedCostRequest("Flight plan", PlannedCostCategory.TravelToFrom, 175)));
+        var planId = plan.GetProperty("id").GetGuid();
+        var linkPath = $"{bookingPath}/planned-costs/{planId}";
+        var request = new LinkBookingPlannedCostRequest(
+            booking.GetProperty("revision").GetGuid(), plan.GetProperty("revision").GetGuid(), source);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(linkPath,
+            request with { PlannedCostRevision = Guid.NewGuid() })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(linkPath,
+            request with { BookingRevision = Guid.NewGuid() })).StatusCode);
+        if (originalTotal is not null)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(linkPath,
+                request with { TotalSource = null })).StatusCode);
+        }
+
+        var updated = await ReadJson(await client.PostAsJsonAsync(linkPath, request));
+        Assert.Equal(expectedTotal, updated.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(planId, updated.GetProperty("plannedCost").GetProperty("id").GetGuid());
+        var retried = await ReadJson(await client.PostAsJsonAsync(linkPath, request));
+        Assert.Equal(updated.GetProperty("revision").GetGuid(), retried.GetProperty("revision").GetGuid());
+        Assert.Equal(expectedTotal, retried.GetProperty("totalCost").GetDecimal());
+        var saved = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/planned-costs"))).EnumerateArray());
+        Assert.Equal(bookingId, saved.GetProperty("bookingId").GetGuid());
+        Assert.Equal("Flight plan", saved.GetProperty("name").GetString());
+        Assert.Equal(expectedTotal, saved.GetProperty("amount").GetDecimal());
+        if (originalTotal is not null)
+        {
+            var expense = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/expenses"))).EnumerateArray());
+            Assert.Equal(planId, expense.GetProperty("plannedCostId").GetGuid());
+            Assert.Equal(150, expense.GetProperty("amount").GetDecimal());
+        }
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<TravelAssistantDbContext>();
+        Assert.Equal(1, await database.ItemCores.CountAsync());
+        Assert.Equal(1, await database.ItemCosts.CountAsync());
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData(0)]
     public async Task AddBookingPlanRequiresAPositiveTotal(int? total)

@@ -23,6 +23,7 @@ const bookingsApi = vi.hoisted(() => ({
     getBookings: vi.fn(),
     linkBookingActivity: vi.fn(),
     linkBookingExpense: vi.fn(),
+    linkBookingPlannedCost: vi.fn(),
     unlinkBookingActivity: vi.fn(),
     unlinkBookingExpense: vi.fn(),
     updateBooking: vi.fn(),
@@ -36,6 +37,7 @@ const expensesApi = vi.hoisted(() => ({
     deleteExpense: vi.fn(),
     getExpenses: vi.fn(),
 }));
+const plannedCostsApi = vi.hoisted(() => ({ getPlannedCosts: vi.fn() }));
 
 vi.mock("../../../src/api/bookingsApi", async importOriginal => ({
     ...await importOriginal<typeof import("../../../src/api/bookingsApi")>(),
@@ -43,6 +45,7 @@ vi.mock("../../../src/api/bookingsApi", async importOriginal => ({
 }));
 vi.mock("../../../src/api/itineraryApi", () => itineraryApi);
 vi.mock("../../../src/api/expensesApi", () => expensesApi);
+vi.mock("../../../src/api/plannedCostsApi", () => plannedCostsApi);
 vi.mock("../../../src/api/linkedRecordReviewsApi", () => ({
     getLinkedRecordReviews: vi.fn().mockResolvedValue([]),
     resolveLinkedRecordReview: vi.fn(),
@@ -321,6 +324,39 @@ describe("booking expense actions", () => {
             totalSource: "Booking",
         }));
         expect(await screen.findByText("Partially paid", { selector: ".booking-financial-status-pill" })).toBeTruthy();
+    });
+
+    it("requires a total choice before linking a standalone plan and previews the affected entry", async () => {
+        const user = userEvent.setup();
+        const plan = { id: "plan-1", name: "Rome lodging", revision: "plan-revision", amount: 125.5 };
+        plannedCostsApi.getPlannedCosts.mockResolvedValue([
+            plan,
+            { ...plan, id: "plan-2", name: "Already has an expense", expenseId: "expense-2" },
+            { ...plan, id: "plan-3", name: "Already booked", bookingId: "booking-2" },
+        ]);
+        bookingsApi.linkBookingPlannedCost.mockResolvedValue({ ...hotel, plannedCost: plan });
+
+        renderBookings();
+        await user.click(await screen.findByRole("button", { name: "Expand Hotel Rome details" }));
+        await user.click(screen.getByRole("button", { name: "Link existing planned cost" }));
+        const section = within(screen.getByRole("region", { name: "Planned cost for Hotel Rome" }));
+        await section.findByRole("option", { name: "Rome lodging · €125.5" });
+        expect(section.queryByRole("option", { name: /Already/ })).toBeNull();
+        await user.selectOptions(section.getByRole("combobox"), plan.id);
+        const submit = section.getByRole("button", { name: "Link planned cost" }) as HTMLButtonElement;
+        expect(submit.disabled).toBe(true);
+        await user.click(section.getByRole("radio", { name: "Planned cost · Total €125.5" }));
+        expect(section.getByText("Choose a total cost that covers the amount paid.")).toBeTruthy();
+        expect(submit.disabled).toBe(true);
+        await user.click(section.getByRole("radio", { name: "Booking · Total €200" }));
+        expect(section.getByText("Planned cost €125.5 → €200")).toBeTruthy();
+        await user.click(submit);
+        expect(await section.findByRole("link", { name: plan.name })).toBeTruthy();
+        expect(bookingsApi.linkBookingPlannedCost).toHaveBeenCalledWith(trip.id, hotel.id, plan.id, {
+            bookingRevision: hotel.revision,
+            plannedCostRevision: plan.revision,
+            totalSource: "Booking",
+        });
     });
 
     it("adds a planned cost with the booking total and shows the link immediately", async () => {

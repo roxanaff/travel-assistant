@@ -8,6 +8,11 @@ public record CreateBookingPlannedCostRequest(
     PlannedCostCategory? Category,
     Guid ExpectedRevision);
 
+public record LinkBookingPlannedCostRequest(
+    Guid BookingRevision,
+    Guid PlannedCostRevision,
+    BookingExpenseTotalSource? TotalSource);
+
 /// <summary>
 /// Creates an actual expense linked directly to a booking, without creating a plan.
 /// </summary>

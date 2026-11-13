@@ -490,6 +490,16 @@ test("a booking records actual spending directly and navigates to the expense", 
     await expect(planRow).toHaveClass(/budget-record-highlighted/);
     await expect(planRow.getByRole("link", { name: "Hotel deposit", exact: true })).toBeVisible();
     await expect(highlightedExpense.getByRole("link", { name: "Rome lodging", exact: true })).toBeVisible();
+
+    await planRow.getByRole("button", { name: "Unlink", exact: true }).last().click();
+    await expect(planRow.getByRole("link", { name: "Rome hotel", exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Bookings", exact: true }).click();
+    await page.getByRole("button", { name: "Link existing planned cost" }).click();
+    await planForm.getByRole("combobox", { name: "Planned cost" }).selectOption(plans[0].id);
+    await planForm.getByRole("button", { name: "Link planned cost", exact: true }).click();
+    await planForm.getByRole("link", { name: "Rome lodging" }).click();
+    await expect(planRow).toHaveClass(/budget-record-highlighted/);
+    await expect(planRow.getByRole("link", { name: "Hotel deposit", exact: true })).toBeVisible();
 });
 
 test("saved booking columns and budget amounts stay aligned", async ({ page }) => {

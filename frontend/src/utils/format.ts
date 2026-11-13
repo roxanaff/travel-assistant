@@ -23,12 +23,14 @@ export const formatDateRange = (
 export const formatMoney = (
     amount: number | null | undefined,
     currency: string,
+    maximumFractionDigits = 0,
 ) => {
     if (amount == null) return "—";
 
     return new Intl.NumberFormat("en-GB", {
         style: "currency",
         currency,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+        maximumFractionDigits,
     }).format(amount);
 };

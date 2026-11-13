@@ -561,6 +561,30 @@ a separate plan. Advance the core revision and handle duplicate and stale writes
 changing any amounts. Return the booking projection for immediate link display. No schema
 change is required. Linking existing plans remains a separate flow.
 
+### Link an existing standalone planned cost to a booking
+
+For an empty booking plan slot, offer the existing-record selector with unbooked plans
+that have no expense. Keep the plan ID, name and category. When the amounts differ, use
+actual-value radio choices and show which entry's amount will change. An unknown booking
+total takes the planned amount with a preview. The chosen total must be positive and
+cover the existing gross payment. Existing plans with an expense continue through the
+expense-linking flow; occupied plan slots remain subject to the duplicate-entry work.
+
+In the owned booking route, validate both revisions and the source and target slots
+in a serializable transaction. Reparent the standalone plan to the booking's cost and
+core and remove its old core. Track the booking's total change for legacy activity
+reviews. Attach an existing shared booking expense in the same transaction and keep
+its payment unchanged. Leave a legacy separate-core expense alone; reject a booking
+whose legacy expense already has a plan. Return the updated booking for immediate
+navigation. No schema change is required.
+
+Three focused API cases passed, covering both total choices, an unknown total, stale
+revisions and a repeated link. All 113 frontend tests passed, and the final build and
+31 focused booking tests passed after the review fixes. Chromium verified detaching and
+relinking the same plan, keeping the expense link and highlighting the plan in Budget.
+The runner was stopped after the scenario passed. Independent review found no remaining
+actionable issues.
+
 All 133 backend tests and 112 frontend tests passed. After the form layout and pending-state
 adjustments, 32 focused frontend tests and the production build passed. Chromium verified
 creation with an existing expense, both Budget links and planned-cost highlighting. The

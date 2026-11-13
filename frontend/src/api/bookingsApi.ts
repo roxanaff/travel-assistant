@@ -88,6 +88,25 @@ export async function createBookingPlannedCost(
     return response.json();
 }
 
+export async function linkBookingPlannedCost(
+    tripId: string,
+    bookingId: string,
+    planId: string,
+    request: {
+        bookingRevision: string;
+        plannedCostRevision: string;
+        totalSource: BookingExpenseTotalSource | null;
+    },
+): Promise<Booking> {
+    const response = await apiFetch(`${bookingsUrl(tripId)}/${bookingId}/planned-costs/${planId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+    });
+    await throwIfApiError(response, "Could not link this planned cost.");
+    return response.json();
+}
+
 export async function setBookingPayment(tripId: string, booking: Booking, amountPaid: number): Promise<Booking> {
     const response = await apiFetch(`${bookingsUrl(tripId)}/${booking.id}/payment`, {
         method: "POST",
