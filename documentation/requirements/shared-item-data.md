@@ -537,6 +537,9 @@ slot. A booked plan needs a recorded payment before it can add an expense.
 Budget and Expenses show a labelled link that opens and highlights the booking.
 The expanded booking shows its shared planned cost by name, including when no expense
 exists. The link opens Budget and highlights the planned cost.
+The plan and expense rows link to each other by name and highlight the destination in
+Budget. Unlink detaches the entry named beside the button and preserves both records.
+An independent legacy booking link remains when a separate-core expense detaches from a plan.
 The financial unlink routes detach the selected entry from the booking's shared core.
 An expense copies Paid and Refunded and clears both relationship references. A planned
 cost copies Cost and clears the expense's reference to that plan. The booking and any
@@ -568,6 +571,10 @@ actionable issues.
 The booking-to-plan link passed all 127 backend tests, 29 focused frontend tests, the
 production build, and a Chromium scenario covering immediate display, navigation and
 retention after expense deletion. The browser runner was stopped after the scenario passed.
+
+Direct plan and expense links passed all 129 backend tests, 111 frontend tests, and the
+production build. A Chromium scenario verified navigation and highlighting in both directions.
+The runner was stopped after the scenario passed. Independent review found no actionable issues.
 
 These are proposed groups, not implementation approval or promises that each fits one commit.
 

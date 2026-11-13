@@ -15,7 +15,7 @@ const plannedCostsApi = vi.hoisted(() => ({
 }));
 const expensesApi = vi.hoisted(() => ({
     createExpense: vi.fn(),
-    deleteExpense: vi.fn(),
+    unlinkPlannedCostExpense: vi.fn(),
 }));
 
 vi.mock("../../../src/api/plannedCostsApi", () => plannedCostsApi);
@@ -59,8 +59,8 @@ describe("PlannedBudget", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         plannedCostsApi.getPlannedCosts.mockResolvedValue([hotel]);
-        expensesApi.createExpense.mockResolvedValue({ id: "expense-1" });
-        expensesApi.deleteExpense.mockResolvedValue(undefined);
+        expensesApi.createExpense.mockResolvedValue({ id: "expense-1", name: "Hotel deposit" });
+        expensesApi.unlinkPlannedCostExpense.mockResolvedValue(undefined);
     });
 
     it("shows planned totals and remaining target budget", async () => {
@@ -83,7 +83,7 @@ describe("PlannedBudget", () => {
         );
     });
 
-    it("adds a planned cost to expenses and can undo it", async () => {
+    it("links to the added expense and can detach it", async () => {
         const user = userEvent.setup();
         const onExpenseAdded = vi.fn();
         render(
@@ -108,10 +108,10 @@ describe("PlannedBudget", () => {
                 plannedCostId: hotel.id,
             }),
         );
-        expect(await screen.findByText(/Added/)).toBeTruthy();
+        expect(await screen.findByRole("link", { name: "Hotel deposit" })).toBeTruthy();
 
-        await user.click(screen.getByRole("button", { name: "Undo" }));
-        expect(expensesApi.deleteExpense).toHaveBeenCalledWith(trip.id, "expense-1");
+        await user.click(screen.getByRole("button", { name: "Unlink" }));
+        expect(expensesApi.unlinkPlannedCostExpense).toHaveBeenCalledWith(trip.id, hotel.id, "expense-1", "expense");
         expect(await screen.findByRole("button", { name: "Add expense" })).toBeTruthy();
         expect(onExpenseAdded).toHaveBeenCalledTimes(2);
     });

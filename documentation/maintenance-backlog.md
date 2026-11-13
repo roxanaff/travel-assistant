@@ -30,9 +30,9 @@ Add confirmed bugs here with a concise description, affected area, reproduction 
   decide preference scope and persistence before implementation.
 - [P2] Planned budget — Add **Ungrouped** viewing alongside categories, and remember the selected grouping. Documentation
   only for now; implement after the booking work.
-- [P2] Planned cost to expense — Replace **Added** with a navigation control naming the created expense, alongside
-  **Undo**. Selecting it should scroll to and briefly highlight that expense. This is separate maintenance work,
-  not part of booking-feature completion.
+- [P2] Planned budget — During the Budget UI pass, clarify **Add expense** when the planned cost is linked to a booking.
+  Suggested label: **Add expense from booking payment**. A €150 planned cost with €80 paid on the booking creates an
+  €80 expense.
 - [P2] Expenses — Add an inline disclosure for related records, showing the linked planned cost and/or booking with
   navigation controls. A shared expense can have both relationships. Proposed treatment is two clearly labelled rows
   within one disclosure, rather than choosing a single source. Final disclosure layout is still to be decided;
@@ -114,6 +114,9 @@ Add accessibility refinements, performance work, test-coverage gaps, dependency 
 and documentation corrections here.
 
 ## Done
+
+- Planned cost and expense navigation — Both rows show the related entry by name and highlight it on selection.
+  **Unlink** detaches the selected entry and keeps both records.
 
 - Packing/To-do touch dragging — Shared handle gestures no longer require sideways movement, and pointer cancellation
   clears without saving. All 109 frontend tests, lint/build and 15 browser checks pass; acceptance confirmed and changes committed.

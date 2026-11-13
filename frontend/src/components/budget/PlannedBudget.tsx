@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { createPlannedCost, deletePlannedCost, getPlannedCosts, updatePlannedCost } from "../../api/plannedCostsApi";
-import { createExpense, deleteExpense } from "../../api/expensesApi";
+import { createExpense, unlinkPlannedCostExpense } from "../../api/expensesApi";
 import { unlinkBookingPlannedCost } from "../../api/bookingsApi";
 import type { Trip } from "../../types/trip";
 import {
@@ -28,7 +28,7 @@ import { normalizeMoneyInput } from "../../utils/numberInput";
 import { useFormKeyboardInteraction } from "../../utils/useFormKeyboardInteraction";
 import { localToday } from "../../utils/localToday";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
-import { BudgetBookingLink } from "./BudgetBookingLink";
+import { BudgetRecordLink } from "./BudgetRecordLink";
 
 import "./PlannedBudget.css";
 import "./BudgetItem.css";
@@ -67,7 +67,6 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
     const [editingCost, setEditingCost] = useState<PlannedCostForm>(createEmptyPlannedCostForm());
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [copyingCostId, setCopyingCostId] = useState<string | null>(null);
-    const [undoingExpenseCostId, setUndoingExpenseCostId] = useState<string | null>(null);
     const deleteTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -200,7 +199,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
                 ...(editingRevision ? { expectedRevision: editingRevision } : {}),
             });
             setCosts((current) => current.map((cost) => (cost.id === updated.id ? updated : cost)));
-            if (updated.bookingId) onExpenseAdded();
+            if (updated.expenseId) onExpenseAdded();
             setEditingCostId(null);
         } catch (exception) {
             setFormError(
@@ -245,6 +244,12 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
         deleteTimerRef.current = null;
     };
 
+    const refreshRelatedCosts = () => {
+        setIsLoading(true);
+        setExpenseChangeVersion((version) => version + 1);
+        onExpenseAdded();
+    };
+
     /** Creates an actual expense from a plan, then asks the sibling expense section to reload. */
     const copyToExpenses = async (cost: PlannedCost) => {
         setCopyingCostId(cost.id);
@@ -265,6 +270,7 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
                               ...currentCost,
                               expenseAdded: true,
                               expenseId: expense.id,
+                              expenseName: expense.name,
                               revision: expense.revision ?? currentCost.revision,
                           }
                         : currentCost,
@@ -275,37 +281,6 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
             setError(exception instanceof Error ? exception.message : "Could not add this planned cost to expenses.");
         } finally {
             setCopyingCostId(null);
-        }
-    };
-
-    /** Removes the one expense created from a planned cost and makes that plan available again. */
-    const undoExpenseAdded = async (cost: PlannedCost) => {
-        if (!cost.expenseId) {
-            setError("Could not find the linked expense to undo.");
-            return;
-        }
-
-        setUndoingExpenseCostId(cost.id);
-        setError(null);
-        try {
-            await deleteExpense(trip.id, cost.expenseId);
-            setCosts((current) =>
-                current.map((currentCost) =>
-                    currentCost.id === cost.id
-                        ? {
-                              ...currentCost,
-                              expenseAdded: false,
-                              expenseId: null,
-                          }
-                        : currentCost,
-                ),
-            );
-            onExpenseAdded();
-            if (cost.bookingId) setExpenseChangeVersion((version) => version + 1);
-        } catch {
-            setError("Could not undo the expense addition.");
-        } finally {
-            setUndoingExpenseCostId(null);
         }
     };
 
@@ -437,20 +412,19 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
                                         >
                                             <div className="budget-item-description">
                                                 <strong>{cost.name}</strong>
-                                                {cost.category !== "EmergencyBuffer" &&
-                                                    (cost.expenseAdded ? (
-                                                        <span className="planned-cost-expense-added">
-                                                            Added ·{" "}
-                                                            <button
-                                                                className="text-button"
-                                                                type="button"
-                                                                onClick={() => void undoExpenseAdded(cost)}
-                                                                disabled={undoingExpenseCostId === cost.id}
-                                                            >
-                                                                {undoingExpenseCostId === cost.id ? "Undoing…" : "Undo"}
-                                                            </button>
-                                                        </span>
-                                                    ) : cost.bookingId && !cost.bookingPaid ? (
+                                                {cost.expenseId ? (
+                                                    <BudgetRecordLink
+                                                        tripId={trip.id}
+                                                        recordId={cost.expenseId}
+                                                        name={cost.expenseName}
+                                                        label="Expense"
+                                                        onUnlink={async () => {
+                                                            await unlinkPlannedCostExpense(trip.id, cost.id, cost.expenseId!, "expense");
+                                                            refreshRelatedCosts();
+                                                        }}
+                                                    />
+                                                ) : cost.category !== "EmergencyBuffer" && (
+                                                    cost.bookingId && !cost.bookingPaid ? (
                                                         <span>Record a payment in Bookings to add an expense.</span>
                                                     ) : (
                                                         <button
@@ -461,17 +435,17 @@ export function PlannedBudget({ trip, onFormOpenChange, onExpenseAdded, refreshK
                                                         >
                                                             {copyingCostId === cost.id ? "Adding…" : "Add expense"}
                                                         </button>
-                                                    ))}
+                                                    )
+                                                )}
                                                 {cost.bookingId && (
-                                                    <BudgetBookingLink
+                                                    <BudgetRecordLink
                                                         tripId={trip.id}
-                                                        bookingId={cost.bookingId}
-                                                        bookingName={cost.bookingName}
+                                                        recordId={cost.bookingId}
+                                                        name={cost.bookingName}
+                                                        label="Booking"
                                                         onUnlink={async () => {
                                                             await unlinkBookingPlannedCost(trip.id, cost.bookingId!, cost.id);
-                                                            setIsLoading(true);
-                                                            setExpenseChangeVersion((version) => version + 1);
-                                                            onExpenseAdded();
+                                                            refreshRelatedCosts();
                                                         }}
                                                     />
                                                 )}

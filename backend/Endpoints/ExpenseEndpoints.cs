@@ -189,6 +189,31 @@ public static class ExpenseEndpoints
             return Results.Ok(ToResponse(expense));
         }).WithName("UpdateExpense");
 
+        routes.MapDelete("/planned-costs/{planId:guid}/expenses/{expenseId:guid}/link", async (
+            Guid tripId, Guid planId, Guid expenseId, bool detachPlan, TravelAssistantDbContext database) =>
+        {
+            await using var transaction = database.Database.IsRelational()
+                ? await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+                : null;
+            var expense = await database.Expenses.Include(item => item.Booking).Include(item => item.PlannedCost)
+                .SingleOrDefaultAsync(item => item.TripId == tripId && item.Id == expenseId && item.PlannedCostId == planId);
+            if (expense?.PlannedCost is not PlannedCost plan || plan.TripId != tripId)
+            {
+                return Results.NotFound();
+            }
+
+            if (detachPlan)
+            {
+                var bookingOwnsCost = await database.Bookings.AnyAsync(item => item.ItemCoreId == plan.ItemCoreId);
+                await FinancialUnlink.DetachPlanAsync(database, plan, expense, bookingOwnsCost);
+            }
+            else
+            {
+                await FinancialUnlink.DetachExpenseAsync(database, expense, expense.SharesBookingPayment);
+            }
+            return await FinancialUnlink.SaveAsync(database, transaction);
+        }).WithName("UnlinkPlannedCostExpense");
+
         routes.MapDelete("/expenses/{id:guid}", async (Guid tripId, Guid id, TravelAssistantDbContext database) =>
         {
             var expense = await database.Expenses
@@ -263,6 +288,7 @@ public static class ExpenseEndpoints
         expense.ItemCore.Revision,
         expense.SharesBookingPayment,
         PlannedAmount = expense.PlannedCost?.Amount,
+        PlannedCostName = expense.PlannedCost?.Name,
         BookingTotalCost = expense.SharesBookingPayment ? expense.Booking!.TotalCost : null,
         expense.ExpenseDate,
         expense.PlannedCostId,

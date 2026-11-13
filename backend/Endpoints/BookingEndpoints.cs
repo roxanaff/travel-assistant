@@ -528,29 +528,16 @@ public static class BookingEndpoints
                 item.Id == expenseId && item.TripId == tripId && item.BookingId == id);
             if (expense is null) return Results.NotFound();
 
-            var core = expense.ItemCore;
-            core.Revision = Guid.NewGuid();
             if (expense.SharesBookingPayment)
             {
-                var detachedCore = new ItemCore { TripId = tripId };
-                var payment = new ItemPaymentTotals
-                {
-                    ItemCore = detachedCore,
-                    Paid = expense.PaymentTotals.Paid,
-                    Refunded = expense.PaymentTotals.Refunded
-                };
-                database.ItemPaymentTotals.Add(payment);
-                expense.ItemCore = detachedCore;
-                expense.PaymentTotals = payment;
-                if (expense.PlannedCostId is Guid planId)
-                {
-                    expense.PlannedCostId = null;
-                    await LinkedRecordReviews.ClearPairAsync(database, planId, expense.Id);
-                }
+                await FinancialUnlink.DetachExpenseAsync(database, expense, keepBookingCostAndPayment: true);
             }
-            expense.BookingId = null;
-            await LinkedRecordReviews.ClearPairAsync(database, id, expense.Id);
-            return await SaveFinancialUnlink(database, transaction);
+            else
+            {
+                expense.ItemCore.Revision = Guid.NewGuid();
+                await FinancialUnlink.ClearBookingLinkAsync(database, expense);
+            }
+            return await FinancialUnlink.SaveAsync(database, transaction);
         }).WithName("UnlinkBookingExpense");
 
         routes.MapDelete("/bookings/{id:guid}/planned-costs/{planId:guid}", async (
@@ -571,23 +558,8 @@ public static class BookingEndpoints
 
             var expense = await database.Expenses.SingleOrDefaultAsync(item =>
                 item.TripId == tripId && item.PlannedCostId == plan.Id);
-            var core = plan.ItemCore;
-            core.Revision = Guid.NewGuid();
-            var detachedCore = new ItemCore { TripId = tripId };
-            var cost = new ItemCost { ItemCore = detachedCore, Cost = plan.Amount };
-            database.ItemCosts.Add(cost);
-            plan.ItemCore = detachedCore;
-            plan.ItemCost = cost;
-            if (expense is not null)
-            {
-                if (expense.ItemCoreId != core.Id)
-                {
-                    expense.ItemCore.Revision = Guid.NewGuid();
-                }
-                expense.PlannedCostId = null;
-                await LinkedRecordReviews.ClearPairAsync(database, plan.Id, expense.Id);
-            }
-            return await SaveFinancialUnlink(database, transaction);
+            await FinancialUnlink.DetachPlanAsync(database, plan, expense, keepBookingCost: true);
+            return await FinancialUnlink.SaveAsync(database, transaction);
         }).WithName("UnlinkBookingPlannedCost");
 
         routes.MapPost("/bookings/{id:guid}/dismiss-outside-trip-warning", async (
@@ -616,22 +588,6 @@ public static class BookingEndpoints
             .Include(booking => booking.Expense)
             .Include(booking => booking.ItemCost).ThenInclude(cost => cost.PlannedCost)
             .SingleOrDefaultAsync(booking => booking.Id == id && booking.TripId == tripId);
-
-    private static async Task<IResult> SaveFinancialUnlink(
-        TravelAssistantDbContext database,
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction)
-    {
-        try
-        {
-            await database.SaveChangesAsync();
-            if (transaction is not null) await transaction.CommitAsync();
-        }
-        catch (Exception exception) when (BudgetRelationshipConstraintErrors.IsFinancialItemWriteConflict(exception))
-        {
-            return Results.Conflict("The linked entries changed. Refresh before unlinking.");
-        }
-        return Results.NoContent();
-    }
 
     private static void ApplyRequest(Booking booking, SaveBookingRequest request)
     {
@@ -772,6 +728,7 @@ public static class BookingEndpoints
         expense.ItemCore.Revision,
         expense.SharesBookingPayment,
         PlannedAmount = expense.PlannedCost?.Amount,
+        PlannedCostName = expense.PlannedCost?.Name,
         BookingTotalCost = expense.SharesBookingPayment ? booking.TotalCost : null,
         expense.ExpenseDate,
         expense.CreatedAtUtc,

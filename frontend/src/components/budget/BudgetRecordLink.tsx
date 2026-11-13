@@ -4,12 +4,13 @@ import { createCardFocusState } from "../../utils/useNavigationCardFocus";
 
 type Props = {
     tripId: string;
-    bookingId: string;
-    bookingName?: string | null;
+    recordId: string;
+    name?: string | null;
+    label: "Booking" | "Planned cost" | "Expense";
     onUnlink: () => Promise<void>;
 };
 
-export function BudgetBookingLink({ tripId, bookingId, bookingName, onUnlink }: Props) {
+export function BudgetRecordLink({ tripId, recordId, name, label, onUnlink }: Props) {
     const [isPending, setIsPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,7 @@ export function BudgetBookingLink({ tripId, bookingId, bookingName, onUnlink }: 
         try {
             await onUnlink();
         } catch (exception) {
-            setError(exception instanceof Error ? exception.message : "Could not unlink this booking.");
+            setError(exception instanceof Error ? exception.message : "Could not unlink this entry.");
         } finally {
             setIsPending(false);
         }
@@ -27,14 +28,14 @@ export function BudgetBookingLink({ tripId, bookingId, bookingName, onUnlink }: 
 
     return (
         <>
-            <div className="budget-booking-link">
-                <strong>Booking</strong>
+            <div className="budget-record-link">
+                <strong>{label}</strong>
                 <Link
                     className="internal-record-link"
-                    to={`/trips/${tripId}/bookings`}
-                    state={createCardFocusState(bookingId)}
+                    to={`/trips/${tripId}/${label === "Booking" ? "bookings" : "budget"}`}
+                    state={createCardFocusState(recordId)}
                 >
-                    {bookingName || "View booking"}
+                    {name || `View ${label.toLowerCase()}`}
                 </Link>
                 <button className="text-button" type="button" disabled={isPending} onClick={() => void unlink()}>
                     {isPending ? "Unlinking…" : "Unlink"}

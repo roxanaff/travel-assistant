@@ -838,6 +838,11 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await page.goto(`/trips/${trip.id}/budget`);
     const notice = page.locator(".linked-record-warning");
     const planRow = page.locator(`#planned-cost-${plan.id}`);
+    const expenseRow = page.locator(`#expense-${expense.id}`);
+    await planRow.getByRole("link", { name: "Museum payment", exact: true }).click();
+    await expect(expenseRow).toHaveClass(/budget-record-highlighted/);
+    await expenseRow.getByRole("link", { name: "Museum budget", exact: true }).click();
+    await expect(planRow).toHaveClass(/budget-record-highlighted/);
     const planNotice = planRow.locator(".linked-record-warning");
     await expect(planNotice).toContainText("Cost: €100 → €120");
     const content = await planNotice.locator(".linked-record-warning-content").boundingBox();
@@ -851,7 +856,6 @@ test("linked reviews apply exact fields and financial amounts without reciprocal
     await expect(planRow.locator(".budget-item-amount")).toHaveText("€120");
     await browserRequest(page, `${tripApi}/planned-costs/${plan.id}`, { ...plan, amount: 140 }, "PUT");
     await page.reload();
-    const expenseRow = page.locator(`#expense-${expense.id}`);
     await expect(expenseRow.locator(".linked-record-warning")).toContainText("Cost: €120 → €140");
     await expenseRow.getByRole("button", { name: "Keep as is", exact: true }).click();
     await page.reload();

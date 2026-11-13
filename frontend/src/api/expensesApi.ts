@@ -70,3 +70,13 @@ export async function deleteExpense(
         throw new Error("Could not delete this expense.");
     return true;
 }
+
+export async function unlinkPlannedCostExpense(
+    tripId: string, planId: string, expenseId: string, detach: "plan" | "expense",
+): Promise<void> {
+    const response = await apiFetch(
+        `${apiBaseUrl}/api/trips/${tripId}/planned-costs/${planId}/expenses/${expenseId}/link?detachPlan=${detach === "plan"}`,
+        { method: "DELETE" },
+    );
+    await throwIfApiError(response, "Could not unlink these entries.");
+}

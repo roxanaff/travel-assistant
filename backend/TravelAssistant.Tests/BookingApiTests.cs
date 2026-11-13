@@ -288,6 +288,39 @@ public sealed class BookingApiTests : IAsyncLifetime
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BudgetUnlinkKeepsBothEntriesAndAllowsAnotherExpense(bool detachPlan)
+    {
+        using var client = CreateClient();
+        await RegisterAsync(client, "Roxi", "budget-unlink@example.com");
+        var trip = await CreateTripAsync(client);
+        var plan = await ReadJson(await client.PostAsJsonAsync($"{trip}/planned-costs",
+            new CreatePlannedCostRequest("Hotel budget", null, 150)));
+        var planId = plan.GetProperty("id").GetGuid();
+        var request = new CreateExpenseRequest("Deposit", null, 80, null, planId);
+        var expense = await ReadJson(await client.PostAsJsonAsync($"{trip}/expenses", request));
+        var expenseId = expense.GetProperty("id").GetGuid();
+        Assert.Equal("Hotel budget", expense.GetProperty("plannedCostName").GetString());
+        var linkedPlan = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/planned-costs"))).EnumerateArray());
+        Assert.Equal("Deposit", linkedPlan.GetProperty("expenseName").GetString());
+        var path = $"{trip}/planned-costs/{planId}/expenses/{expenseId}/link?detachPlan={detachPlan}";
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync(path)).StatusCode);
+        Assert.Empty(await GetReviews(client, trip));
+        var savedPlan = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/planned-costs"))).EnumerateArray());
+        var savedExpense = Assert.Single((await ReadJson(await client.GetAsync($"{trip}/expenses"))).EnumerateArray());
+        Assert.Equal(planId, savedPlan.GetProperty("id").GetGuid());
+        Assert.Equal(150, savedPlan.GetProperty("amount").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, savedPlan.GetProperty("expenseId").ValueKind);
+        Assert.Equal(expenseId, savedExpense.GetProperty("id").GetGuid());
+        Assert.Equal(80, savedExpense.GetProperty("amount").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, savedExpense.GetProperty("plannedCostId").ValueKind);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{trip}/expenses", request)).StatusCode);
+    }
+
+    [Theory]
     [InlineData(BookingExpenseTotalSource.Booking, 150, false)]
     [InlineData(BookingExpenseTotalSource.PlannedCost, 110, true)]
     public async Task UnlinkDetachesOnlyTheSelectedFinancialEntry(

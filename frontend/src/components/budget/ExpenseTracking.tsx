@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import {
-    createExpense, deleteExpense as deleteExpenseApi, getExpenses, updateExpense, type ExpenseRequest,
+    createExpense, deleteExpense as deleteExpenseApi, getExpenses, unlinkPlannedCostExpense, updateExpense, type ExpenseRequest,
 } from "../../api/expensesApi";
 import { unlinkBookingExpense } from "../../api/bookingsApi";
 import { useNavigationCardFocus } from "../../utils/useNavigationCardFocus";
 import { expenseCategories, type Expense, type NewExpenseForm } from "../../types/expense";
 import { localToday } from "../../utils/localToday";
 import { ExpenseFormFields } from "./ExpenseFormFields";
-import { BudgetBookingLink } from "./BudgetBookingLink";
+import { BudgetRecordLink } from "./BudgetRecordLink";
 import { formatDate, formatMoney } from "../../utils/format";
 import { SectionCard } from "../shared/SectionCard";
 import { SectionHeader } from "../shared/SectionHeader";
@@ -265,7 +265,7 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey, onLinkedPl
         try {
             const updated = await updateExpense(trip.id, editingExpenseId, toRequest(editingExpense, editingRevision));
             setExpenses((current) => current.map((expense) => (expense.id === updated.id ? updated : expense)));
-            if (updated.sharesBookingPayment && updated.plannedCostId) onLinkedPlanChange?.();
+            if (updated.plannedCostId) onLinkedPlanChange?.();
             setEditingExpenseId(null);
         } catch (exception) {
             setFormError(
@@ -534,15 +534,30 @@ function ExpenseTrackingContent({ trip, onFormOpenChange, refreshKey, onLinkedPl
                                                     </span>
                                                 )}
                                                 {expense.bookingId && (
-                                                    <BudgetBookingLink
+                                                    <BudgetRecordLink
                                                         tripId={trip.id}
-                                                        bookingId={expense.bookingId}
-                                                        bookingName={expense.bookingName}
+                                                        recordId={expense.bookingId}
+                                                        name={expense.bookingName}
+                                                        label="Booking"
                                                         onUnlink={async () => {
                                                             await unlinkBookingExpense(trip.id, expense.bookingId!, expense.id);
                                                             setIsLoading(true);
                                                             setExpenseLoadVersion((version) => version + 1);
                                                             if (expense.plannedCostId) onLinkedPlanChange?.();
+                                                        }}
+                                                    />
+                                                )}
+                                                {expense.plannedCostId && (
+                                                    <BudgetRecordLink
+                                                        tripId={trip.id}
+                                                        recordId={expense.plannedCostId}
+                                                        name={expense.plannedCostName}
+                                                        label="Planned cost"
+                                                        onUnlink={async () => {
+                                                            await unlinkPlannedCostExpense(trip.id, expense.plannedCostId!, expense.id, "plan");
+                                                            setIsLoading(true);
+                                                            setExpenseLoadVersion((version) => version + 1);
+                                                            onLinkedPlanChange?.();
                                                         }}
                                                     />
                                                 )}

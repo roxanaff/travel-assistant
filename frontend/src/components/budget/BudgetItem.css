@@ -43,7 +43,7 @@
     min-width: 0;
     overflow-wrap: anywhere;
 }
-.budget-booking-link {
+.budget-record-link {
     display: flex;
     align-items: center;
     flex-wrap: wrap;

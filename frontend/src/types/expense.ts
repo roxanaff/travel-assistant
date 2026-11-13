@@ -5,6 +5,7 @@ export type Expense = {
     tripId: string;
     name: string;
     plannedCostId: string | null;
+    plannedCostName?: string | null;
     plannedAmount?: number | null;
     bookingId: string | null;
     bookingName?: string | null;

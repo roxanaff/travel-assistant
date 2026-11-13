@@ -1,7 +1,3 @@
-.planned-cost-expense-added {
-    color: var(--color-gray-500);
-    font-size: 0.85rem;
-}
 .text-button.planned-cost-expense-action {
     justify-self: start;
     padding: 0;

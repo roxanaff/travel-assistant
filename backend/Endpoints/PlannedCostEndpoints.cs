@@ -166,7 +166,8 @@ public static class PlannedCostEndpoints
         BookingPaid = bookingPaid,
         cost.CreatedAtUtc,
         ExpenseAdded = cost.Expense is not null,
-        ExpenseId = cost.Expense?.Id
+        ExpenseId = cost.Expense?.Id,
+        ExpenseName = cost.Expense?.Name
     };
 
     /// <summary>Provides a consistent display name when an optional planned-cost name is omitted.</summary>
